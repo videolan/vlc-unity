@@ -199,7 +199,6 @@ GameObject:
   - component: {fileID: 1070510175}
   - component: {fileID: 1070510174}
   - component: {fileID: 1070510173}
-  - component: {fileID: 1070510178}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -271,23 +270,12 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1070510172}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalPosition: {x: 0, y: 1.42, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1070510178
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1070510172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 77050ffe722634798ab59618149c9e04, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1326364068
 GameObject:
   m_ObjectHideFlags: 0
@@ -299,6 +287,7 @@ GameObject:
   - component: {fileID: 1326364071}
   - component: {fileID: 1326364070}
   - component: {fileID: 1326364069}
+  - component: {fileID: 1326364073}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -365,10 +354,21 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1326364068}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.6759464, y: -0, z: -0, w: 0.7369509}
+  m_LocalPosition: {x: 0, y: 2.39, z: 2.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -85.055, y: 0, z: 0}
+--- !u!114 &1326364073
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1326364068}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fd71b38c0e7943b8ace04f25c5ec093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
