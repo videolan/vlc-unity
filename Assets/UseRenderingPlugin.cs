@@ -71,6 +71,9 @@ public class UseRenderingPlugin : MonoBehaviour
 
 	private void CreateTextureAndPassToPlugin()
 	{
+        // Scale the texture as a screen 16/9 wide
+        transform.localScale = new Vector3(-1.0f, 1.0f, 0.5625f);
+
 		// Create a texture
 		Texture2D tex = new Texture2D(1920,1080,TextureFormat.BGRA32,false);
 		// Set point filtering just so we can see the pixels clearly
