@@ -10,8 +10,9 @@
 extern "C"
 {
 #include <stdlib.h>
-#include <vlc/vlc.h>
+#include <pthread.h>
 #include <unistd.h>
+#include <vlc/vlc.h>
 }
 
 #define VIDEOFILE "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Antman.mkv" // The movie to read
@@ -36,6 +37,7 @@ static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
 
 static unsigned char* vlcVideoFramePtr = NULL;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 extern "C" void * lockfct(void *data, void **p_pixels) {
     //    void* textureHandle = g_TextureHandle;
@@ -44,6 +46,8 @@ extern "C" void * lockfct(void *data, void **p_pixels) {
     
 
     //*p_pixels = s_CurrentAPI->BeginModifyTexture(textureHandle, width, height, &g_TextureRowPitch);
+    // Lock the mutex to ensure data safeness
+    pthread_mutex_lock(&mutex);
 
     free(vlcVideoFramePtr);
 	vlcVideoFramePtr = (unsigned char *) malloc (width * height * 4);
@@ -56,6 +60,8 @@ extern "C" void * lockfct(void *data, void **p_pixels) {
 
 // Unlock func
 extern "C" void unlockfct(void *data, void *id, void * const *p_pixels) {
+  // Release datas
+  pthread_mutex_unlock(&mutex);
     /*    void* textureHandle = g_TextureHandle;
     int width = g_TextureWidth;
     int height = g_TextureHeight;
@@ -93,6 +99,9 @@ static void ModifyTexturePixels()
    	if (!textureHandle)
 		return;
 
+    // Lock mutex to ensure all datas had been written
+    pthread_mutex_lock(&mutex);
+
 	int textureRowPitch;
 	void* textureDataPtr = s_CurrentAPI->BeginModifyTexture(textureHandle, width, height, &textureRowPitch);
 	if (!textureDataPtr)
@@ -111,6 +120,9 @@ static void ModifyTexturePixels()
         }
 
 	s_CurrentAPI->EndModifyTexture(textureHandle, width, height, textureRowPitch, textureDataPtr);
+
+    // Release datas
+    pthread_mutex_unlock(&mutex);
 }
 
 
@@ -133,6 +145,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API launchVLC() {
 	vlcVideoFramePtr = (unsigned char *) malloc (g_TextureWidth * g_TextureHeight * 4);
 
     inst = libvlc_new (0, NULL);
+  if (pthread_mutex_init(&mutex, NULL) != 0)
+    fprintf(stderr, "[CUSTOMVLC] Mutex init failed\n");
+  
     
     fprintf(stderr, "[CUSTOMVLC] Instantiating LibLVC...\n");
     
