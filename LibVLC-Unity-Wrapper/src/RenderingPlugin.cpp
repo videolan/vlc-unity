@@ -176,6 +176,28 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API stopVLC() {
     fprintf(stderr, "[CUSTOMVLC] VLC STOPPED\n");
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API playPauseVLC() {
+	// Stop playing 
+	libvlc_media_player_pause (mp);
+ 
+	fprintf(stderr, "[CUSTOMVLC] VLC PAUSE TOGGLED\n");
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API pauseVLC() {
+	// Stop playing 
+	libvlc_media_player_pause (mp);
+ 
+	fprintf(stderr, "[CUSTOMVLC] VLC PAUSED\n");
+}
+
+extern "C" float UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API getPositionVLC() {
+	return libvlc_media_player_get_position (mp);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API setPositionVLC(float pos) {
+	if (pos <= 1.0 && pos >= 0.0)
+	    libvlc_media_player_set_position (mp, pos);
+}
 
 // --------------------------------------------------------------------------
 // UnitySetInterfaces
