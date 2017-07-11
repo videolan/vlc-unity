@@ -15,7 +15,7 @@ extern "C"
 #include <vlc/vlc.h>
 }
 
-#define VIDEOFILE "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Antman.mkv" // The movie to read
+#define VIDEOFILE "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Movies/Antman.mkv" // The movie to read
 
 
 // --------------------------------------------------------------------------
