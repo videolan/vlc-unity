@@ -487,7 +487,8 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 2.01, z: -11.43}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
+  m_Children:
+  - {fileID: 2057521777}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -801,7 +802,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1604843967}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.45, y: -2.99, z: 1.61}
+  m_LocalPosition: {x: -6.31, y: -2.99, z: -0.32}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1555529394}
@@ -1077,7 +1078,7 @@ Transform:
   m_LocalScale: {x: 0.0030251974, y: 0.006330418, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1954254037
 GameObject:
@@ -1225,7 +1226,7 @@ GameObject:
   - component: {fileID: 2057521775}
   - component: {fileID: 2057521774}
   m_Layer: 5
-  m_Name: Canvas
+  m_Name: Remote Controller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1294,19 +1295,19 @@ RectTransform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 2057521773}
-  m_LocalRotation: {x: 0.51998276, y: 0.21342355, z: -0.059366543, w: 0.82495093}
-  m_LocalPosition: {x: 0, y: 0, z: -3.39}
-  m_LocalScale: {x: 0.0028394884, y: 0.0060270675, z: 1}
+  m_LocalRotation: {x: 0.5088901, y: 0.28749084, z: -0.099951655, w: 0.8052264}
+  m_LocalPosition: {x: 0, y: 0, z: 6.27}
+  m_LocalScale: {x: 0.0028394884, y: 0.0060270685, z: 1}
   m_Children:
   - {fileID: 227262526}
   - {fileID: 1838882754}
   - {fileID: 1815452281}
   - {fileID: 1954254038}
-  m_Father: {fileID: 0}
-  m_RootOrder: 4
-  m_LocalEulerAnglesHint: {x: 62.038002, y: 38.267002, z: 15.335001}
+  m_Father: {fileID: 1070510177}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 61.284004, y: 48.755, z: 15.901001}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 2.92, y: -0.66}
+  m_AnchoredPosition: {x: 4.59, y: -2.58}
   m_SizeDelta: {x: 562, y: 407}
   m_Pivot: {x: 0.5, y: 0.5}
