@@ -8,23 +8,17 @@ using System.Runtime.InteropServices;
 public class RemoteTimeDisplayer : MonoBehaviour
 {
     public Text txt;
-    private string length;
 
-#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport ("VlcUnityWrapper")]
-#endif
-    private static extern int getTimeVLC ();
+    string length;
+    bool playing;
 
-#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
-    [DllImport ("__Internal")]
-#else
-    [DllImport ("VlcUnityWrapper")]
-#endif
-    private static extern int getLengthVLC ();
 
-    private string
+    public void
+    setPlaying (bool state) {
+	playing = state;
+    }
+
+    string
     formatMsToStr (int ms)
     {
 	TimeSpan t = TimeSpan.FromMilliseconds (ms);
@@ -35,26 +29,27 @@ public class RemoteTimeDisplayer : MonoBehaviour
 	return formattedTime;
     }
 
-    public void
+    void
     Start ()
     {
 	// Get text object to update
 	txt = GetComponent<Text> ();
 	length = formatMsToStr (0);
-
-	// Avoid duplication of code
-	Update ();
     }
 
     void
     Update ()
     {
+	if (!playing)
+	    return;
+  
 	// We may not receive length the first time
-	// if (length == formatMsToStr (0)) { 
-	//     length = formatMsToStr (getLengthVLC ());
-	// }
+	if (length == formatMsToStr (0)) { 
+	    length = formatMsToStr (UseRenderingPlugin.getLengthVLC ());
+	}
+
 	// Format actual time and concate it to length
-	string pos = formatMsToStr (0);//getTimeVLC ());
+	string pos = formatMsToStr (UseRenderingPlugin.getTimeVLC ());
 
 	txt.text = pos + "\n" + length;
     }

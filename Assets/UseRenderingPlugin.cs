@@ -14,6 +14,9 @@ public class UseRenderingPlugin : MonoBehaviour
 
   // Menu to select video
   public GameObject menuVideoSelector;
+  public RemoteTimeDisplayer rtd;
+
+  public int seekTimeDelta = 2000; // In ms
 
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
   [DllImport ("__Internal")]
@@ -51,21 +54,40 @@ public class UseRenderingPlugin : MonoBehaviour
   [DllImport ("VlcUnityWrapper")]
 #endif
   private static extern void stopVLC ();
-  
+
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern void playPauseVLC ();
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern int getLengthVLC ();
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern int getTimeVLC ();
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern void setTimeVLC (int pos);
+
 #if UNITY_WEBGL && !UNITY_EDITOR
   [DllImport ("__Internal")]
   private static extern void RegisterPlugin ();
 #endif
-
-  void
-  Start ()
-  {
-#if UNITY_WEBGL && !UNITY_EDITOR
-    RegisterPlugin();
-#endif
-
-    CreateTextureAndPassToPlugin ();
-  }
 
   public void
   OnMenuClick(int index)
@@ -88,11 +110,45 @@ public class UseRenderingPlugin : MonoBehaviour
 
     menuVideoSelector.SetActive(false);
     launchVLC (movieURL);
+    rtd.setPlaying(true);
     StartCoroutine ("CallPluginAtEndOfFrames");
-
   }
+
+  public void
+  playPause ()
+  {
+    Debug.Log ("[VLC] Toggling Play Pause !");
+    playPauseVLC ();
+  }
+
+  public void
+  stop ()
+  {
+    Debug.Log ("[VLC] Stopping Player !");
+    rtd.setPlaying(false);
+    StopCoroutine("CallPluginAtEndOfFrames");
+    stopVLC ();
+    menuVideoSelector.SetActive(true);
+  }
+
+  public void
+  seekForward ()
+  {
+    Debug.Log ("[VLC] Seeking forward !");
+    int pos = getTimeVLC ();
+    setTimeVLC(pos + seekTimeDelta);
+  }
+
+  public void
+  seekBackward ()
+  {
+    Debug.Log ("[VLC] Seeking backward !");
+    int pos = getTimeVLC ();
+    setTimeVLC(Math.Max(0,pos - seekTimeDelta));
+  }
+
   private void
-  CreateTextureAndPassToPlugin ()
+  createTextureAndPassToPlugin ()
   {
     // Scale the texture as a screen 16/9 wide, so h = 9/16 ~= 0.5625
     transform.localScale = new Vector3 (-1.0f, 1.0f, 0.5625f);
@@ -111,6 +167,16 @@ public class UseRenderingPlugin : MonoBehaviour
 
     // Pass texture pointer to the plugin
     SetTextureFromUnity (tex.GetNativeTexturePtr(), tex.width, tex.height);
+  }
+
+  void
+  Start ()
+  {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    RegisterPlugin();
+#endif
+
+    createTextureAndPassToPlugin ();
   }
 
   private IEnumerator

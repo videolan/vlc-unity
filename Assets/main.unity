@@ -1205,6 +1205,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7be614d2bf5d44468a9fff198fe1bf83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  seekTimeDelta: 2000
 --- !u!114 &1093360999
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1244,7 +1245,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1093360998}
+      - m_Target: {fileID: 1326364073}
         m_MethodName: seekBackward
         m_Mode: 1
         m_Arguments:
@@ -1657,6 +1658,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuVideoSelector: {fileID: 174727768}
+  rtd: {fileID: 1838882758}
+  seekTimeDelta: 2000
 --- !u!1 &1555529393
 GameObject:
   m_ObjectHideFlags: 0
@@ -1826,6 +1829,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7be614d2bf5d44468a9fff198fe1bf83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  seekTimeDelta: 2000
 --- !u!114 &1611139151
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1865,7 +1869,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1611139150}
+      - m_Target: {fileID: 1326364073}
         m_MethodName: seekForward
         m_Mode: 1
         m_Arguments:
@@ -1988,7 +1992,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1815452285}
+      - m_Target: {fileID: 1326364073}
         m_MethodName: playPause
         m_Mode: 1
         m_Arguments:
@@ -2045,6 +2049,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7be614d2bf5d44468a9fff198fe1bf83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  seekTimeDelta: 2000
 --- !u!1 &1838882753
 GameObject:
   m_ObjectHideFlags: 0
@@ -2286,7 +2291,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1954254042}
+      - m_Target: {fileID: 1326364073}
         m_MethodName: stop
         m_Mode: 1
         m_Arguments:
@@ -2343,6 +2348,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7be614d2bf5d44468a9fff198fe1bf83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  seekTimeDelta: 2000
 --- !u!1 &2057521773
 GameObject:
   m_ObjectHideFlags: 0
