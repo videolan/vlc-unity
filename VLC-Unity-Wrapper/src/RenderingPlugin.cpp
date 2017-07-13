@@ -15,9 +15,6 @@ extern "C"
 #include <vlc/vlc.h>
 }
 
-#define VIDEOFILE "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Movies/Antman.mkv" // The movie to read
-
-
 // --------------------------------------------------------------------------
 // SetTimeFromUnity, an example function we export which is called by one of the scripts.
 static RenderAPI* s_CurrentAPI = NULL;
@@ -128,7 +125,7 @@ libvlc_media_t *m;
  */
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-launchVLC ()
+launchVLC (char *videoURL)
 {
   // Create a mutex, to share data between LibVLC's callback and Unity
   fprintf (stderr, "[CUSTOMVLC] Instantiating mutex...\n");
@@ -140,7 +137,8 @@ launchVLC ()
   inst = libvlc_new (0, NULL);
 
   // Create a new item
-  m = libvlc_media_new_location (inst, VIDEOFILE);
+  fprintf(stderr, "[CUSTOMVLC] Video url : %s", videoURL);
+  m = libvlc_media_new_location (inst, videoURL);
   mp = libvlc_media_player_new_from_media (m);
 
   // Release the media and the player since we don't need them anymore

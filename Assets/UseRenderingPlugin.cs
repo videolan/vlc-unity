@@ -12,6 +12,9 @@ public class UseRenderingPlugin : MonoBehaviour
   // For this example, we'll call into plugin's SetTimeFromUnity
   // function and pass the current time so the plugin can animate.
 
+  // Menu to select video
+  public GameObject menuVideoSelector;
+
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
   [DllImport ("__Internal")]
 #else
@@ -40,7 +43,7 @@ public class UseRenderingPlugin : MonoBehaviour
 #else
   [DllImport ("VlcUnityWrapper")]
 #endif
-  private static extern void launchVLC ();
+  private static extern void launchVLC (string videoURL);
   
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
   [DllImport ("__Internal")]
@@ -62,11 +65,32 @@ public class UseRenderingPlugin : MonoBehaviour
 #endif
 
     CreateTextureAndPassToPlugin ();
-    launchVLC ();
-
-    StartCoroutine ("CallPluginAtEndOfFrames");
   }
 
+  public void
+  OnMenuClick(int index)
+  {
+    string movieURL;
+
+    switch (index)
+      {
+      case 1:
+	movieURL = "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Movies/AH.mp4";
+	break;
+      case 3:
+	movieURL = "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Movies/PERLIMPINPIN.mp4";
+	break;
+      case 2:
+      default:
+	movieURL = "file:///home/nimag42/VLC/VLC-Virtual-Cinema/Assets/Movies/Antman.mkv";
+	break;
+      }
+
+    menuVideoSelector.SetActive(false);
+    launchVLC (movieURL);
+    StartCoroutine ("CallPluginAtEndOfFrames");
+
+  }
   private void
   CreateTextureAndPassToPlugin ()
   {
@@ -102,7 +126,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
 	// Issue a plugin event with arbitrary integer identifier.
 	GL.IssuePluginEvent(GetRenderEventFunc(), 1);
-
 
 	// // Code to automatically stop after 40sec, uncomment if needed
 	// if(Time.timeSinceLevelLoad > 40.0f)
