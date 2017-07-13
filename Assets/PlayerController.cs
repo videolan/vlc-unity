@@ -7,27 +7,59 @@ using System.Runtime.InteropServices;
 
 public class PlayerController : MonoBehaviour
 {
-#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
-	[DllImport ("__Internal")]
-#else
-	[DllImport("VlcUnityWrapper")]
-#endif
-	public static extern void playPauseVLC();
+    int seekTimeDelta = 2000; // In ms
 
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
-	[DllImport ("__Internal")]
+    [DllImport ("__Internal")]
 #else
-	[DllImport("VlcUnityWrapper")]
+    [DllImport ("VlcUnityWrapper")]
 #endif
-	public static extern void stopVLC();
+    public static extern void playPauseVLC ();
 
-     public void playPause() {
-	  Debug.Log("[VLC] Toggling Play Pause !");
-	  playPauseVLC();
-     }
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+    [DllImport ("__Internal")]
+#else
+    [DllImport ("VlcUnityWrapper")]
+#endif
+    public static extern void stopVLC ();
 
-     public void stop() {
-	  Debug.Log("[VLC] Stopping Player !");
-	  stopVLC();
-     }
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+    [DllImport ("__Internal")]
+#else
+    [DllImport ("VlcUnityWrapper")]
+#endif
+    public static extern int getTimeVLC ();
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+    [DllImport ("__Internal")]
+#else
+    [DllImport ("VlcUnityWrapper")]
+#endif
+    public static extern void setTimeVLC (int pos);
+
+    public void playPause ()
+    {
+	Debug.Log ("[VLC] Toggling Play Pause !");
+	playPauseVLC ();
+    }
+
+    public void stop ()
+    {
+	Debug.Log ("[VLC] Stopping Player !");
+	stopVLC ();
+    }
+
+    public void seekForward ()
+    {
+	Debug.Log ("[VLC] Seeking forward !");
+	int pos = getTimeVLC ();
+	setTimeVLC(pos + seekTimeDelta);
+    }
+    
+    public void seekBackward ()
+    {
+	Debug.Log ("[VLC] Seeking backward !");
+	int pos = getTimeVLC ();
+	setTimeVLC(pos - seekTimeDelta);
+    }
 }

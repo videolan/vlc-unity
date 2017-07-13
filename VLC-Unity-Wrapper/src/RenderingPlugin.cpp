@@ -186,15 +186,23 @@ pauseVLC () {
   fprintf(stderr, "[CUSTOMVLC] VLC PAUSED\n");
 }
 
-extern "C" float UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getPositionVLC () {
-  return libvlc_media_player_get_position (mp);
+extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+getLengthVLC ()
+{
+  fprintf(stderr, "[CUSTOMVLC] Length %d", (int) libvlc_media_player_get_length (mp));
+  return (int) libvlc_media_player_get_length (mp);
+}
+
+extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+getTimeVLC ()
+{
+  return (int) libvlc_media_player_get_time (mp);
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-setPositionVLC (float pos) {
-  if (pos <= 1.0 && pos >= 0.0)
-    libvlc_media_player_set_position (mp, pos);
+setTimeVLC (int pos)
+{
+    libvlc_media_player_set_time (mp, pos);
 }
 
 
