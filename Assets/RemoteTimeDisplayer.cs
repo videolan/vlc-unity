@@ -50,11 +50,11 @@ public class RemoteTimeDisplayer : MonoBehaviour
     Update ()
     {
 	// We may not receive length the first time
-	if (length == formatMsToStr (0)) { 
-	    length = formatMsToStr (getLengthVLC ());
-	}
+	// if (length == formatMsToStr (0)) { 
+	//     length = formatMsToStr (getLengthVLC ());
+	// }
 	// Format actual time and concate it to length
-	string pos = formatMsToStr (getTimeVLC ());
+	string pos = formatMsToStr (0);//getTimeVLC ());
 
 	txt.text = pos + "\n" + length;
     }
