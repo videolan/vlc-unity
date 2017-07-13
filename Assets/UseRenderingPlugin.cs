@@ -54,7 +54,7 @@ public class UseRenderingPlugin : MonoBehaviour
   private static extern void RegisterPlugin ();
 #endif
 
-  IEnumerator
+  void
   Start ()
   {
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -64,7 +64,7 @@ public class UseRenderingPlugin : MonoBehaviour
     CreateTextureAndPassToPlugin ();
     launchVLC ();
 
-    yield return StartCoroutine ("CallPluginAtEndOfFrames");
+    StartCoroutine ("CallPluginAtEndOfFrames");
   }
 
   private void

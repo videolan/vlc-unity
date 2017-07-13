@@ -128,7 +128,8 @@ libvlc_media_t *m;
  */
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-launchVLC () {
+launchVLC ()
+{
   // Create a mutex, to share data between LibVLC's callback and Unity
   fprintf (stderr, "[CUSTOMVLC] Instantiating mutex...\n");
   if (pthread_mutex_init (&mutex, NULL) != 0)
@@ -171,7 +172,8 @@ stopVLC () {
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-playPauseVLC () {
+playPauseVLC ()
+{
   // Pause playing
   libvlc_media_player_pause (mp);
  
@@ -179,7 +181,8 @@ playPauseVLC () {
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-pauseVLC () {
+pauseVLC ()
+{
   // Paused playing
   libvlc_media_player_pause (mp);
  
