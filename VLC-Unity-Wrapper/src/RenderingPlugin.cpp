@@ -84,6 +84,7 @@ ModifyTexturePixels ()
     
   //fprintf(stderr, "[CUSTOMVLC] MODIFY TEXTURE Called  : Texture PTR: %p, DataPTR: %p\n", textureHandle, textureDataPtr);
 
+  /*
   unsigned char* ptr = (unsigned char *) textureDataPtr;
   unsigned char* origin = (unsigned char *) vlcVideoFramePtr;
     
@@ -93,8 +94,9 @@ ModifyTexturePixels ()
       ++ptr;
       ++origin;
     }
+  */
 
-  s_CurrentAPI->EndModifyTexture(textureHandle, width, height, textureRowPitch, textureDataPtr);
+  s_CurrentAPI->EndModifyTexture(textureHandle, width, height, textureRowPitch, vlcVideoFramePtr);
 
   // Release datas
   pthread_mutex_unlock(&mutex);

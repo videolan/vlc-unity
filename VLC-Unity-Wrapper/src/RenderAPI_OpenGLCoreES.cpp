@@ -201,7 +201,7 @@ void RenderAPI_OpenGLCoreES::EndModifyTexture(void* textureHandle, int textureWi
 	// Update texture data, and free the memory buffer
 	glBindTexture(GL_TEXTURE_2D, gltex);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, GL_RGBA, GL_UNSIGNED_BYTE, dataPtr);
-	delete[](unsigned char*)dataPtr;
+	//delete[](unsigned char*)dataPtr;
 }
 
 #endif // #if SUPPORT_OPENGL_UNIFIED
