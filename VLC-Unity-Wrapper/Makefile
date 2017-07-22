@@ -11,9 +11,9 @@ OBJ = $(patsubst %.cpp,$(BUILDDIR)%.o,$(SRCS))
 UNITY_DEFINES = -DSUPPORT_OPENGL_LEGACY=1 -DSUPPORT_OPENGL_UNIFIED=1 -DUNITY_LINUX=1
 GLEW_CFLAGS = $(shell pkg-config --cflags glew)
 GLEW_LIBS = $(shell pkg-config --libs glew)
-CXXFLAGS = $(UNITY_DEFINES) -O2 -fPIC $(GLEW_CFLAGS) -I/home/nimag42/VLC/vlc-src/include
+CXXFLAGS = $(UNITY_DEFINES) -O2 -fPIC $(GLEW_CFLAGS) -I/home/nimag42/VLC/src/include
 LDFLAGS = -shared -rdynamic
-LIBS = $(GLEW_LIBS) -L/home/nimag42/VLC/vlc-src/lib/.libs -lvlc 
+LIBS = $(GLEW_LIBS) -L/home/nimag42/VLC/src/lib/.libs -lvlc 
 PLUGIN_SHARED = $(BUILDDIR)libVlcUnityWrapper.so
 CXX ?= g++
 
