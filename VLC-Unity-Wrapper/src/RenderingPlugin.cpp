@@ -155,7 +155,7 @@ ModifyTexturePixels ()
   fprintf(stderr, "2: %d ; ", glGetError());
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, g_TextureWidth, g_TextureHeight, GL_RGBA, GL_UNSIGNED_BYTE, vlcVideoFramePtr);
   fprintf(stderr, "3: %d ; ", glGetError());
-  debugTexture(bufferTexture, 100);
+  //debugTexture(bufferTexture, 100);
 
   /****** in-GPU copy from intermediate buffer to Unity's */
   fprintf(stderr, "\n[LIBVLC] In-GPU Copy :\n");
@@ -222,18 +222,24 @@ launchVLC (char *videoURL)
   createTexture();
 
   // Create a mutex, to share data between LibVLC's callback and Unity
-  fprintf (stderr, "[CUSTOMVLC] Instantiating mutex...\n");
+  fprintf (stderr, "[LIBVLC] Instantiating mutex...\n");
   if (pthread_mutex_init (&mutex, NULL) != 0)
-    fprintf(stderr, "[CUSTOMVLC] Mutex init failed\n");
+    fprintf(stderr, "[LIBVLC] Mutex init failed\n");
 
   // Create an instance of LibVLC
-  fprintf(stderr, "[CUSTOMVLC] Instantiating LibLVC...\n");
+  fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
   inst = libvlc_new (0, NULL);
+  if (inst == NULL)
+    fprintf(stderr, "[LIBVLC] Error instantiating LibVLC\n");
 
   // Create a new item
-  fprintf(stderr, "[CUSTOMVLC] Video url : %s", videoURL);
+  fprintf(stderr, "[LIBVLC] Video url : %s\n", videoURL);
   m = libvlc_media_new_location (inst, videoURL);
+  if (m == NULL)
+    fprintf(stderr, "[LIBVLC] Error initializing media\n");
   mp = libvlc_media_player_new_from_media (m);
+  if (mp == NULL)
+    fprintf(stderr, "[LIBVLC] Error initializing media player\n");
 
   // Release the media and the player since we don't need them anymore
   libvlc_media_release (m);
