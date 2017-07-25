@@ -13,7 +13,7 @@ GLEW_CFLAGS = $(shell pkg-config --cflags glew)
 GLEW_LIBS = $(shell pkg-config --libs glew)
 CXXFLAGS = $(UNITY_DEFINES) -O2 -fPIC $(GLEW_CFLAGS) -I/home/nimag42/VLC/src/include
 LDFLAGS = -shared -rdynamic
-LIBS = $(GLEW_LIBS) -L/home/nimag42/VLC/src/lib/.libs -lvlc 
+LIBS = $(GLEW_LIBS) -Wl,-rpath,/home/nimag42/VLC/src/lib/.libs -L/home/nimag42/VLC/src/lib/.libs -lvlc 
 PLUGIN_SHARED = $(BUILDDIR)libVlcUnityWrapper.so
 CXX ?= g++
 
