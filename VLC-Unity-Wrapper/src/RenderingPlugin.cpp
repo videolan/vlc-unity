@@ -21,7 +21,7 @@ static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
 static float g_Time;
 
-static void* g_TextureHandle = NULL;
+static GLuint g_TextureHandle = 0;
 static int   g_TextureWidth  = 0;
 static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
@@ -42,7 +42,7 @@ SetTextureFromUnity (void* textureHandle, int w, int h)
   // A script calls this at initialization time; just remember the texture pointer here.
   // Will update texture pixels each frame from the plugin rendering event (texture update
   // needs to happen on the rendering thread).
-  g_TextureHandle = textureHandle;
+  g_TextureHandle = (GLuint) (size_t) textureHandle;
   g_TextureWidth = w;
   g_TextureHeight = h;
 }
