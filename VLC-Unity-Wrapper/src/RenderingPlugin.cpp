@@ -71,14 +71,39 @@ launchVLC (char *videoURL)
 {
 
   dpy = XOpenDisplay(NULL);
+  char display[128];
+  if (snprintf(display, sizeof(display), "%ld", (long)dpy) < 0)
+    {
+      printf("Could not write the display variable\n");
+      exit(1);
+    }
 
   unityGLContext = glXGetCurrentContext();
+  char glx_context[128];
+  if (snprintf(glx_context, sizeof(glx_context), "%ld", (long)unityGLContext) < 0)
+    {
+      printf("Could not write the context variable\n");
+      exit(1);
+    }
 
+  char textureId[128];
+  if (snprintf(textureId, sizeof(textureId), "%d", (GLuint) g_TextureHandle) < 0)
+    {
+      printf("Could not write the framebuffer Id\n");
+      exit(1);
+    }
+
+  const char *args[] = {"--vout", "gl",
+			"--glx-display", display,
+			"--glx-context", glx_context,
+			"--glx-texture", textureId,
+			"--avcodec-hw", "none"};
   // Create an instance of LibVLC
   fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
-  inst = libvlc_new (0, NULL);
+  inst = libvlc_new(sizeof(args) / sizeof(*args), args);
   if (inst == NULL)
     fprintf(stderr, "[LIBVLC] Error instantiating LibVLC\n");
+
 
   // Create a new item
   fprintf(stderr, "[LIBVLC] Video url : %s\n", videoURL);
@@ -88,19 +113,6 @@ launchVLC (char *videoURL)
   mp = libvlc_media_player_new_from_media (m);
   if (mp == NULL)
     fprintf(stderr, "[LIBVLC] Error initializing media player\n");
-
-  // Release the media and the player since we don't need them anymore
-  libvlc_media_release (m);
-  libvlc_release(inst);
-
-  // Instantiate a first buffer from frame, because our callbacks will
-  // try to free it
-  vlcVideoFramePtr = (unsigned char *) malloc (g_TextureWidth * g_TextureHeight * 4);
-
-  // Set callbacks for activating vmem. Vmem let us handle video output
-  // separatly from LibVLC classical way
-  libvlc_video_set_callbacks(mp, lockfct, unlockfct, NULL, NULL);
-  libvlc_video_set_format(mp, "RV32", g_TextureWidth, g_TextureHeight, g_TextureWidth*4);
 
   // Play the media
   libvlc_media_player_play (mp);
