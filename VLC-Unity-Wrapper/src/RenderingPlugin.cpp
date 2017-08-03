@@ -8,6 +8,11 @@
 #include <vector>
 
 #include "GLEW/glew.h"
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
+
 extern "C"
 {
 #include <stdlib.h>
@@ -30,6 +35,8 @@ static unsigned char* vlcVideoFramePtr = NULL;
 
 GLuint bufferTexture;
 
+Display * dpy;
+GLXContext unityGLContext;
 
 // --------------------------------------------------------------------------
 // SetTimeFromUnity, an example function we export which is called by one of the scripts.
@@ -63,7 +70,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 launchVLC (char *videoURL)
 {
 
+  dpy = XOpenDisplay(NULL);
 
+  unityGLContext = glXGetCurrentContext();
 
   // Create an instance of LibVLC
   fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
