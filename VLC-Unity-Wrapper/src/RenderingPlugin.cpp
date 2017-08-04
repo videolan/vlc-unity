@@ -97,7 +97,9 @@ launchVLC (char *videoURL)
 			"--glx-display", display,
 			"--glx-context", glx_context,
 			"--glx-texture", textureId,
-			"--avcodec-hw", "none"};
+			"--avcodec-hw", "vaapi",
+			"--verbose=3"};
+
   // Create an instance of LibVLC
   fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
   inst = libvlc_new(sizeof(args) / sizeof(*args), args);
