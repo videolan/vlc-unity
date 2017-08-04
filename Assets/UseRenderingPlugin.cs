@@ -18,13 +18,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
   public int seekTimeDelta = 2000; // In ms
 
-#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
-  [DllImport ("__Internal")]
-#else
-  [DllImport ("VlcUnityWrapper")]
-#endif
-  private static extern void SetTimeFromUnity (float t);
-
   // We'll also pass native pointer to a texture in Unity.
   // The plugin will fill texture data from native code.
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
@@ -186,9 +179,6 @@ public class UseRenderingPlugin : MonoBehaviour
       {
 	// Wait until all frame rendering is done
 	yield return new WaitForEndOfFrame();
-
-	// Set time for the plugin
-	SetTimeFromUnity (Time.timeSinceLevelLoad);
 
 	// Issue a plugin event with arbitrary integer identifier.
 	GL.IssuePluginEvent(GetRenderEventFunc(), 1);

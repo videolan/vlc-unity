@@ -24,24 +24,14 @@ extern "C"
 static RenderAPI* s_CurrentAPI = NULL;
 static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
-static float g_Time;
-
 static GLuint g_TextureHandle = 0;
 static int   g_TextureWidth  = 0;
 static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
 
-static unsigned char* vlcVideoFramePtr = NULL;
-
 GLuint bufferTexture;
-
 Display * dpy;
 GLXContext unityGLContext;
-
-// --------------------------------------------------------------------------
-// SetTimeFromUnity, an example function we export which is called by one of the scripts.
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTimeFromUnity (float t) { g_Time = t; }
-
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 SetTextureFromUnity (void* textureHandle, int w, int h)
@@ -105,7 +95,6 @@ launchVLC (char *videoURL)
   inst = libvlc_new(sizeof(args) / sizeof(*args), args);
   if (inst == NULL)
     fprintf(stderr, "[LIBVLC] Error instantiating LibVLC\n");
-
 
   // Create a new item
   fprintf(stderr, "[LIBVLC] Video url : %s\n", videoURL);
