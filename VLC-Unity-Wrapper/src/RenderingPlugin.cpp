@@ -70,7 +70,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 launchVLC (char *videoURL)
 {
 
-  dpy = XOpenDisplay(NULL);
+  dpy = glXGetCurrentDisplay(); // XOpenDisplay(NULL);
   char display[128];
   if (snprintf(display, sizeof(display), "%ld", (long)dpy) < 0)
     {
