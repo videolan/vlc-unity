@@ -60,35 +60,14 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 launchVLC (char *videoURL)
 {
 
+  // Gather important stuff
   dpy = glXGetCurrentDisplay(); // XOpenDisplay(NULL);
-  char display[128];
-  if (snprintf(display, sizeof(display), "%ld", (long)dpy) < 0)
-    {
-      printf("Could not write the display variable\n");
-      exit(1);
-    }
-
   unityGLContext = glXGetCurrentContext();
-  char glx_context[128];
-  if (snprintf(glx_context, sizeof(glx_context), "%ld", (long)unityGLContext) < 0)
-    {
-      printf("Could not write the context variable\n");
-      exit(1);
-    }
 
-  char textureId[128];
-  if (snprintf(textureId, sizeof(textureId), "%d", (GLuint) g_TextureHandle) < 0)
-    {
-      printf("Could not write the framebuffer Id\n");
-      exit(1);
-    }
-
-  const char *args[] = {"--vout", "gl",
-			"--glx-display", display,
-			"--glx-context", glx_context,
-			"--glx-texture", textureId,
-			"--avcodec-hw", "vaapi",
-			"--verbose=3"};
+  const char *args[] = {
+    "--avcodec-hw=vdpau",
+    "--vout", "gl",
+    "--verbose=4"};
 
   // Create an instance of LibVLC
   fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
@@ -101,10 +80,12 @@ launchVLC (char *videoURL)
   m = libvlc_media_new_location (inst, videoURL);
   if (m == NULL)
     fprintf(stderr, "[LIBVLC] Error initializing media\n");
+
   mp = libvlc_media_player_new_from_media (m);
   if (mp == NULL)
     fprintf(stderr, "[LIBVLC] Error initializing media player\n");
 
+  libvlc_video_set_glx_opengl_context(mp, dpy, unityGLContext, g_TextureHandle);
   // Play the media
   libvlc_media_player_play (mp);
 }	
