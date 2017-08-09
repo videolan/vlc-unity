@@ -184,7 +184,7 @@ public class UseRenderingPlugin : MonoBehaviour
   private void
   setTextureScale ()
   {
-    Vector2 scale = new Vector2(1f, 1f);
+    Vector2 scale = new Vector2(videoWidth/screenWidth, videoHeight/screenHeight);
     // if(videoWidth > videoHeight)
     //   scale = new Vector2(videoHeight/screenHeight, screenWidth/videoWidth);
     // else

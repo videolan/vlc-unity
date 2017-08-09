@@ -1659,8 +1659,8 @@ MonoBehaviour:
   menuVideoSelector: {fileID: 174727768}
   rtd: {fileID: 1838882758}
   seekTimeDelta: 2000
-  screenHeight: 720
-  screenWidth: 1280
+  screenHeight: 1080
+  screenWidth: 1920
 --- !u!1 &1555529393
 GameObject:
   m_ObjectHideFlags: 0
