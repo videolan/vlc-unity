@@ -142,7 +142,8 @@ extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoHeightVLC ()
 {
   unsigned int w, h;
-  libvlc_video_get_size (mp, 0, &w, &h);
+  if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
+    return 0;
   return h;
 }
 
@@ -150,8 +151,8 @@ extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoWidthVLC ()
 {
   unsigned int w, h;
-  int ret = libvlc_video_get_size (mp, 0, &w, &h);
-  fprintf(stderr, "Video size is %d %d, ret = %d", w, h, ret);
+  if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
+    return 0;
   return w;
 }
 
