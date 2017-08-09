@@ -18,6 +18,9 @@ public class UseRenderingPlugin : MonoBehaviour
 
   public int seekTimeDelta = 2000; // In ms
 
+  private float videoHeight = 0F;
+  private float videoWidth = 0F;
+
   // We'll also pass native pointer to a texture in Unity.
   // The plugin will fill texture data from native code.
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
@@ -76,6 +79,20 @@ public class UseRenderingPlugin : MonoBehaviour
   [DllImport ("VlcUnityWrapper")]
 #endif
   public static extern void setTimeVLC (int pos);
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern uint getVideoWidthVLC ();
+
+#if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
+  [DllImport ("__Internal")]
+#else
+  [DllImport ("VlcUnityWrapper")]
+#endif
+  public static extern uint getVideoHeightVLC ();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
   [DllImport ("__Internal")]
@@ -162,6 +179,19 @@ public class UseRenderingPlugin : MonoBehaviour
     SetTextureFromUnity (tex.GetNativeTexturePtr(), tex.width, tex.height);
   }
 
+  private void
+  setTextureScale ()
+  {
+    Vector2 scale = new Vector2(1f, 1f);
+    // if(videoWidth > videoHeight)
+    //   scale = new Vector2(videoHeight/screenHeight, screenWidth/videoWidth);
+    // else
+    //   scale = new Vector2(1, videoWidth/screenWidth);
+
+    Debug.Log("Scaling texture : x*" +scale.x+", y*"+scale.y);
+    GetComponent<Renderer>().material.mainTextureScale = scale;
+  }
+
   void
   Start ()
   {
@@ -180,16 +210,21 @@ public class UseRenderingPlugin : MonoBehaviour
 	// Wait until all frame rendering is done
 	yield return new WaitForEndOfFrame();
 
+	// We may not receive video size the first time
+	if (videoWidth == 0F || videoHeight == 0F) {
+	  // If received size is not null, it and scale the texture
+	  uint vh = getVideoHeightVLC();
+	  uint vw = getVideoWidthVLC();
+	  Debug.Log("Get video size : h:" +vh+", w:"+vw);
+	  videoHeight = (float) vh;
+	  videoWidth = (float) vw;
+
+	  if (videoWidth != 0F && videoHeight != 0F)
+	    setTextureScale();
+	}
+
 	// Issue a plugin event with arbitrary integer identifier.
 	GL.IssuePluginEvent(GetRenderEventFunc(), 1);
-
-	// // Code to automatically stop after 40sec, uncomment if needed
-	// if(Time.timeSinceLevelLoad > 40.0f)
-	//   {
-	//     stopVLC();
-	//     break;
-	//   }
-
       }
   }
 }

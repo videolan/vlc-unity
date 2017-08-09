@@ -135,7 +135,24 @@ getTimeVLC ()
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 setTimeVLC (int pos)
 {
-    libvlc_media_player_set_time (mp, pos);
+  libvlc_media_player_set_time (mp, pos);
+}
+
+extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+getVideoHeightVLC ()
+{
+  unsigned int w, h;
+  libvlc_video_get_size (mp, 0, &w, &h);
+  return h;
+}
+
+extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+getVideoWidthVLC ()
+{
+  unsigned int w, h;
+  int ret = libvlc_video_get_size (mp, 0, &w, &h);
+  fprintf(stderr, "Video size is %d %d, ret = %d", w, h, ret);
+  return w;
 }
 
 
