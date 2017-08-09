@@ -18,6 +18,9 @@ public class UseRenderingPlugin : MonoBehaviour
 
   public int seekTimeDelta = 2000; // In ms
 
+  public float screenHeight = 720;
+  public float screenWidth = 1280;
+
   private float videoHeight = 0F;
   private float videoWidth = 0F;
 
@@ -160,14 +163,13 @@ public class UseRenderingPlugin : MonoBehaviour
   private void
   createTextureAndPassToPlugin ()
   {
-    // Scale the texture as a screen 16/9 wide, so h = 9/16 ~= 0.5625
-    transform.localScale = new Vector3 (-1.0f, 1.0f, -0.5625f);
+    transform.localScale = new Vector3 (-1.0f, 1.0f, -1.0f  * screenHeight / screenWidth);
 
     // Create a texture. TextureFormat should match the one you
     // choosed in liblvc_video_set_format.
     // RV32 matches BGRA32 if you use libvlc <= v2 (there's a bug that inverts chroma)
     // RV32 matches RGBA32 if you use libvlc >  v2
-    Texture2D tex = new Texture2D (1920, 1080, TextureFormat.RGBA32, false);
+    Texture2D tex = new Texture2D ((int)screenWidth, (int)screenWidth, TextureFormat.RGBA32, false);
 
     // Call Apply() so it's actually uploaded to the GPU
     tex.Apply();
