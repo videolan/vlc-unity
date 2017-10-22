@@ -21,7 +21,7 @@ WSL? MinGW? Isn't it better to use Visual Studio?
 
 I just prefer UNIX-style CLI development environment.
 
-If so, why don't you use cygwin/msys?
+If so, why don't you use Cygwin/MSYS?
 -------------------------------------
 
 I used to do. I switched to use WSL because it's matured enough for practical
