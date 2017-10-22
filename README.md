@@ -9,19 +9,20 @@ WSL (Windows Subsystem for Linux) development environment.
 How to build the plugin
 -----------------------
 
-- Enable WSL and install a distro that you like.
-- Install a development toolchain. At least you have to install GNU make.
-  - `audo apt install make`
-- Install mingw-w64.
-  - `audo apt install mingw-w64`
+- Enable WSL and install a distro (any distro is fine; Ubuntu is recommended).
+- Install `make`.
+  - `sudo apt install make`
+- Install `mingw-w64` (development toolchain targeting 64-bit Windows).
+  - `sudo apt install mingw-w64`
 - Execute `make` in the `Plugin` directory.
 
-Why don't you use Visual Studio?
---------------------------------
+WSL? MinGW? Isn't it better to use Visual Studio?
+-------------------------------------------------
 
-I just prefer UNIX command line toolchain.
+I just prefer UNIX-style CLI development environment.
 
 If so, why don't you use cygwin/msys?
 -------------------------------------
 
-I used to do. Now WSL gets better than cygsin/msys, so switched to use WSL.
+I used to do. I switched to use WSL because it's matured enough for practical
+use.
