@@ -15,6 +15,7 @@ else
     LDFLAGS += -rdynamic -fPIC
     ifeq ($(PLATFORM), MacOS)
         OUTPUT = $(TARGET).bundle
+	NOSTRIP = true
     else
         OUTPUT = lib$(TARGET).so
     endif
@@ -25,8 +26,10 @@ STRIP = $(BIN_PREFIX)-strip
 
 all: $(OUTPUT)
 
-copy:
+copy: $(OUTPUT)
+ifndef NOSTRIP
 	$(STRIP) $(OUTPUT)
+endif
 	cp -f $(OUTPUT) ../Assets/$(OUTPUT)
 
 clean:

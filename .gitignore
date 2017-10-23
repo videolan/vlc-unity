@@ -16,3 +16,4 @@ Desktop.ini
 /Plugin/*.o
 /Plugin/*.so
 /Plugin/*.dll
+/Plugin/*.bundle
