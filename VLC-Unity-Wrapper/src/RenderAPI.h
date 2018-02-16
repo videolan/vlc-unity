@@ -1,8 +1,11 @@
 #pragma once
 
 #include "Unity/IUnityGraphics.h"
-
+extern "C"
+{
+#include <vlc/vlc.h>
 #include <stddef.h>
+}
 
 struct IUnityInterfaces;
 
@@ -20,9 +23,10 @@ public:
 	virtual void* BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch) = 0;
 	// End modifying texture data.
 	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr) = 0;
+
+    virtual void setVlcContext(libvlc_media_player_t *mp, void*  textureHandle) {}
 };
 
 
 // Create a graphics API implementation instance for the given API type.
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType);
-

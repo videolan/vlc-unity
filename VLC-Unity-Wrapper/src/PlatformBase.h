@@ -13,7 +13,7 @@
 // UNITY_ANDROID - Android
 // UNITY_METRO - WSA or UWP
 // UNITY_WEBGL - WebGL
-#if _MSC_VER
+#if _WIN32
 	#define UNITY_WIN 1
 #elif defined(__APPLE__)
 	#if defined(__arm__) || defined(__arm64__)

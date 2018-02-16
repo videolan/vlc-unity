@@ -178,7 +178,8 @@ void RenderAPI_D3D11::CreateResources()
 	memset(&dsdesc, 0, sizeof(dsdesc));
 	dsdesc.DepthEnable = TRUE;
 	dsdesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-	dsdesc.DepthFunc = GetUsesReverseZ() ? D3D11_COMPARISON_GREATER_EQUAL : D3D11_COMPARISON_LESS_EQUAL;
+    //FIXME GetUsesReverseZ not found with mingw64
+	//dsdesc.DepthFunc = GetUsesReverseZ() ? D3D11_COMPARISON_GREATER_EQUAL : D3D11_COMPARISON_LESS_EQUAL;
 	m_Device->CreateDepthStencilState(&dsdesc, &m_DepthState);
 
 	D3D11_BLEND_DESC bdesc;
