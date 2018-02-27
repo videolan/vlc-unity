@@ -31,6 +31,8 @@ public class UseRenderingPlugin : MonoBehaviour
     private uint videoHeight = 0;
     private uint videoWidth = 0;
 
+	private Texture2D tex;
+
     // We'll also pass native pointer to a texture in Unity.
     // The plugin will fill texture data from native code.
 
@@ -63,6 +65,10 @@ public class UseRenderingPlugin : MonoBehaviour
 
     [DllImport (dllname)]
     public static extern uint getVideoHeightVLC ();
+
+	[DllImport (dllname)]
+	public static extern IntPtr getVideoFrameVLC (out bool updated);
+
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport ("__Internal")]
@@ -131,7 +137,7 @@ public class UseRenderingPlugin : MonoBehaviour
         // choosed in liblvc_video_set_format.
         // RV32 matches BGRA32 if you use libvlc <= v2 (there's a bug that inverts chroma)
         // RV32 matches RGBA32 if you use libvlc >  v2
-        Texture2D tex = new Texture2D ((int)screenWidth, (int)screenWidth, TextureFormat.RGBA32, false);
+		tex = new Texture2D.CreateExternalTexture ((int)screenWidth, (int)screenWidth, TextureFormat.RGBA32, false, null);
 
         tex.filterMode = FilterMode.Point;
 
@@ -142,7 +148,7 @@ public class UseRenderingPlugin : MonoBehaviour
         GetComponent<Renderer> ().material.mainTexture = tex;
 
         // Pass texture pointer to the plugin
-        SetTextureFromUnity (tex.GetNativeTexturePtr (), tex.width, tex.height);
+        //SetTextureFromUnity (tex.GetNativeTexturePtr (), tex.width, tex.height);
     }
 
     private void setTextureScale ()
@@ -151,7 +157,7 @@ public class UseRenderingPlugin : MonoBehaviour
         Debug.LogError ("Scaling texture : w(v/s) " + videoWidth + "/" + screenWidth + "  h(v/s) " +  videoHeight + "/" + screenHeight);
         //Vector2 scale = new Vector2 (videoWidth / (float)screenWidth, videoWidth / (float)screenWidth);
         Vector2 scale = new Vector2 (videoWidth / (float)screenWidth, videoWidth / (float)screenWidth);
-        Debug.LogError ("texture scale was : x*" + GetComponent<Renderer> ().material.mainTextureScale.x + 
+        Debug.LogError ("texture scale was : x*" + GetComponent<Renderer> ().material.mainTextureScale.x +
             ", y*" + GetComponent<Renderer> ().material.mainTextureScale.y);
         Debug.LogError ("Scaling texture : x*" + scale.x + ", y*" + scale.y);
 
@@ -163,7 +169,7 @@ public class UseRenderingPlugin : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
         RegisterPlugin();
 #endif
-        createTextureAndPassToPlugin ();
+        //createTextureAndPassToPlugin ();
     }
 
     private IEnumerator CallPluginAtEndOfFrames ()
@@ -182,9 +188,14 @@ public class UseRenderingPlugin : MonoBehaviour
                 if (videoWidth != 0 && videoHeight != 0)
                     setTextureScale ();
             }
-
-            // Issue a plugin event with arbitrary integer identifier.
-            GL.IssuePluginEvent (GetRenderEventFunc (), 1);
+			bool updated;
+			IntPtr texptr = getVideoFrame(out updated);
+			if (updated)
+			{
+				tex.UpdateExternalTexture(texptr);
+			}
+            // Issue a plugin rendering event with arbitrary integer identifier.
+            //GL.IssuePluginEvent (GetRenderEventFunc (), 1);
         }
     }
 }

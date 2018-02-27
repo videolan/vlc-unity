@@ -2,16 +2,15 @@
 
 #include "PlatformBase.h"
 #include "RenderAPI.h"
-
-#include <assert.h>
-#include <math.h>
-#include <vector>
+#include "Log.h"
 
 extern "C"
 {
 #include <stdlib.h>
 #include <unistd.h>
 #include <vlc/vlc.h>
+#include <string.h>
+
 }
 
 static RenderAPI* s_CurrentAPI = NULL;
@@ -25,6 +24,7 @@ static void* g_TextureHandle = NULL;
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 SetTextureFromUnity (void* textureHandle, int w, int h)
 {
+    DEBUG("SetTexture from Unity");
 
     // A script calls this at initialization time; just remember the texture pointer here.
     // Will update texture pixels each frame from the plugin rendering event (texture update
@@ -47,8 +47,7 @@ libvlc_media_t *m;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 stopVLC () {
-    if ( mp )
-    {
+    if ( mp ) {
         // Stop playing
         libvlc_media_player_stop (mp);
 
@@ -57,50 +56,55 @@ stopVLC () {
         mp = NULL;
     }
 
-    if (m)
-    {
+    if (m) {
         libvlc_media_release( m );
         m = NULL;
     }
 
-    fprintf(stderr, "[CUSTOMVLC] VLC STOPPED\n");
+    DEBUG("VLC STOPPED");
 }
 
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 launchVLC (char *videoURL)
 {
+    if (!s_CurrentAPI) {
+        DEBUG("Error, no Render API");
+        return;
+    }
+
     const char *args[] = {
-        "--verbose=4"};
+        "--verbose=4"
+    };
 
     // Create an instance of LibVLC
-    fprintf(stderr, "[LIBVLC] Instantiating LibLVC : %s...\n", libvlc_get_version());
+    DEBUG("Instantiating LibLVC : %s...", libvlc_get_version());
     if (!inst)
         inst = libvlc_new(sizeof(args) / sizeof(*args), args);
 
-    if (inst == NULL)
-    {
-        fprintf(stderr, "[LIBVLC] Error instantiating LibVLC\n");
+    if (inst == NULL) {
+        DEBUG("Error instantiating LibVLC");
         goto err;
     }
 
     // Create a new item
-    fprintf(stderr, "[LIBVLC] Video url : %s\n", videoURL);
+    DEBUG("Video url : %s", videoURL);
     m = libvlc_media_new_location (inst, videoURL);
-    if (m == NULL)
-    {
-        fprintf(stderr, "[LIBVLC] Error initializing media\n");
+    if (m == NULL) {
+        DEBUG("Error initializing media");
         goto err;
     }
 
     mp = libvlc_media_player_new_from_media (m);
-    if (mp == NULL)
-    {
-        fprintf(stderr, "[LIBVLC] Error initializing media player\n");
+    if (mp == NULL) {
+        DEBUG("Error initializing media player");
         goto err;
     }
 
+    DEBUG("setVlcContext s_CurrentAPI=%p mp=%p g_TextureHandle=%p", s_CurrentAPI, mp, g_TextureHandle);
     s_CurrentAPI->setVlcContext(mp, g_TextureHandle);
+
+    DEBUG("play");
 
     // Play the media
     libvlc_media_player_play (mp);
@@ -118,7 +122,7 @@ playPauseVLC ()
 
     // Pause playing
     libvlc_media_player_pause (mp);
-    fprintf(stderr, "[CUSTOMVLC] VLC PAUSE TOGGLED\n");
+    DEBUG("VLC PAUSE TOGGLED");
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
@@ -129,7 +133,7 @@ pauseVLC ()
 
     // Paused playing
     libvlc_media_player_pause (mp);
-    fprintf(stderr, "[CUSTOMVLC] VLC PAUSED\n");
+    DEBUG("VLC PAUSED");
 }
 
 extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
@@ -137,7 +141,7 @@ getLengthVLC ()
 {
     if (! mp)
         return -1;
-    fprintf(stderr, "[CUSTOMVLC] Length %d\n", (int) libvlc_media_player_get_length (mp));
+    DEBUG( "Length %d", (int) libvlc_media_player_get_length (mp));
     return (int) libvlc_media_player_get_length (mp);
 }
 
@@ -167,7 +171,7 @@ getVideoHeightVLC ()
     unsigned int w, h;
     if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
         return 0;
-    fprintf(stderr, "getVideoHeightVLC %u\n", h);
+    DEBUG("getVideoHeightVLC %u", h);
     return h;
 }
 
@@ -180,10 +184,23 @@ getVideoWidthVLC ()
     unsigned int w, h;
     if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
         return 0;
-    fprintf(stderr, "getVideoWidthVLC %u\n", w);
+    DEBUG("getVideoWidthVLC %u", w);
     return w;
 }
 
+
+extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+getVideoFrameVLC (bool * updated)
+{
+    if (!s_CurrentAPI) {
+        DEBUG("Error, no Render API");
+        if (updated)
+            *updated = false;
+        return nullptr;
+    }
+
+    return s_CurrentAPI->getVideoFrame(updated);
+}
 
 /** Unity API function
  *
@@ -201,6 +218,7 @@ static IUnityGraphics* s_Graphics = NULL;
 
 extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
+    DEBUG("UnityPluginLoad");
     s_UnityInterfaces = unityInterfaces;
     s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
     s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
@@ -233,22 +251,26 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterPlugin()
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 {
     // Create graphics API implementation upon initialization
-    if (eventType == kUnityGfxDeviceEventInitialize)
-    {
-        assert(s_CurrentAPI == NULL);
+    if (eventType == kUnityGfxDeviceEventInitialize) {
+        DEBUG("Initialise Render API");
+        if (s_CurrentAPI != NULL) {
+            DEBUG("*** s_CurrentAPI != NULL while initialising ***");
+            return;
+        }
         s_DeviceType = s_Graphics->GetRenderer();
         s_CurrentAPI = CreateRenderAPI(s_DeviceType);
     }
 
     // Let the implementation process the device related events
-    if (s_CurrentAPI)
-    {
+    if (s_CurrentAPI) {
         s_CurrentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
+    } else {
+        DEBUG("Unable to process event, no Render API");
     }
 
     // Cleanup graphics API implementation upon shutdown
-    if (eventType == kUnityGfxDeviceEventShutdown)
-    {
+    if (eventType == kUnityGfxDeviceEventShutdown) {
+        DEBUG("Destroy Render API");
         delete s_CurrentAPI;
         s_CurrentAPI = NULL;
         s_DeviceType = kUnityGfxRendererNull;
@@ -269,6 +291,7 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
     if (s_CurrentAPI == NULL)
         return;
 
+    s_CurrentAPI->BeginModifyTexture(g_TextureHandle, g_TextureWidth, g_TextureHeight, &g_TextureRowPitch);
 }
 
 
