@@ -31,7 +31,7 @@ public class UseRenderingPlugin : MonoBehaviour
     private uint videoHeight = 0;
     private uint videoWidth = 0;
 
-	private Texture2D tex;
+	private Texture2D tex = null;
 
     // We'll also pass native pointer to a texture in Unity.
     // The plugin will fill texture data from native code.
@@ -88,7 +88,7 @@ public class UseRenderingPlugin : MonoBehaviour
             break;
         case 3:
         default:
-            movieURL = "file:///home/pierre/Videos/ball.mkv";
+            movieURL = "file:///C:/Users/VLC/Videos/big_buck_bunny_480p_h264.mov";
             break;
         }
 
@@ -137,7 +137,7 @@ public class UseRenderingPlugin : MonoBehaviour
         // choosed in liblvc_video_set_format.
         // RV32 matches BGRA32 if you use libvlc <= v2 (there's a bug that inverts chroma)
         // RV32 matches RGBA32 if you use libvlc >  v2
-		tex = new Texture2D.CreateExternalTexture ((int)screenWidth, (int)screenWidth, TextureFormat.RGBA32, false, null);
+		tex = Texture2D.CreateExternalTexture((int)screenWidth, (int)screenWidth, TextureFormat.RGBA32, false, true, IntPtr.Zero);
 
         tex.filterMode = FilterMode.Point;
 
@@ -148,7 +148,7 @@ public class UseRenderingPlugin : MonoBehaviour
         GetComponent<Renderer> ().material.mainTexture = tex;
 
         // Pass texture pointer to the plugin
-        //SetTextureFromUnity (tex.GetNativeTexturePtr (), tex.width, tex.height);
+        SetTextureFromUnity (tex.GetNativeTexturePtr (), tex.width, tex.height);
     }
 
     private void setTextureScale ()
@@ -169,7 +169,7 @@ public class UseRenderingPlugin : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
         RegisterPlugin();
 #endif
-        //createTextureAndPassToPlugin ();
+        //createTextureAndPassToPlugin();
     }
 
     private IEnumerator CallPluginAtEndOfFrames ()
@@ -179,23 +179,46 @@ public class UseRenderingPlugin : MonoBehaviour
             yield return new WaitForEndOfFrame ();
 
             // We may not receive video size the first time
-            if (videoWidth == 0 || videoHeight == 0) {
+            
+            if (tex == null)
+            {
                 // If received size is not null, it and scale the texture
-                videoHeight = getVideoHeightVLC ();
-                videoWidth = getVideoWidthVLC ();
-                Debug.Log ("Get video size : h:" + videoHeight + ", w:" + videoWidth);
+                uint i_videoHeight = getVideoHeightVLC();
+                uint i_videoWidth = getVideoWidthVLC();
+                bool updated;
+                IntPtr texptr = getVideoFrameVLC(out updated);
+                Debug.Log("Get video size : h:" + videoHeight + ", w:" + videoWidth);
 
-                if (videoWidth != 0 && videoHeight != 0)
-                    setTextureScale ();
+                if (i_videoWidth != 0 && i_videoHeight != 0 && updated)
+                {
+                    videoWidth = i_videoWidth;
+                    videoHeight = i_videoHeight;
+                    tex = Texture2D.CreateExternalTexture((int)videoWidth, (int)videoHeight, TextureFormat.RGBA32, false, true, texptr);
+                    tex.filterMode = FilterMode.Point;
+                    tex.Apply();
+                    GetComponent<Renderer>().material.mainTexture = tex;
+                    //GetComponent<Renderer>().material.mainTextureScale = new Vector2(2f, 2f);
+                    transform.localScale = new Vector3(-1.0f, 1.0f, -1.0f * videoHeight/videoWidth);
+                    //setTextureScale();
+                }
             }
-			bool updated;
-			IntPtr texptr = getVideoFrame(out updated);
-			if (updated)
-			{
-				tex.UpdateExternalTexture(texptr);
-			}
+            else if (tex != null)
+            {
+                bool updated;
+                IntPtr texptr = getVideoFrameVLC(out updated);
+                if (updated)
+                {
+                    Debug.Log("Update texture");
+                    tex.UpdateExternalTexture(texptr);
+                }
+                else
+                {
+                    Debug.Log("texture not updated");
+                }
+            }
+
             // Issue a plugin rendering event with arbitrary integer identifier.
-            //GL.IssuePluginEvent (GetRenderEventFunc (), 1);
+            GL.IssuePluginEvent (GetRenderEventFunc (), 1);
         }
     }
 }
