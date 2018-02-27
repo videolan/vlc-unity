@@ -68,6 +68,7 @@ stopVLC () {
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 launchVLC (char *videoURL)
 {
+    DEBUG("LAUNCH");
     if (!s_CurrentAPI) {
         DEBUG("Error, no Render API");
         return;
@@ -288,10 +289,12 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
 
     // Unknown / unsupported graphics device type? Do nothing
-    if (s_CurrentAPI == NULL)
+    if (s_CurrentAPI == NULL) {
+        DEBUG("OnRenderEvent no API");
         return;
+    }
 
-    s_CurrentAPI->BeginModifyTexture(g_TextureHandle, g_TextureWidth, g_TextureHeight, &g_TextureRowPitch);
+    //s_CurrentAPI->BeginModifyTexture(g_TextureHandle, g_TextureWidth, g_TextureHeight, &g_TextureRowPitch);
 }
 
 

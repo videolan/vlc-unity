@@ -100,17 +100,12 @@ void RenderAPI_OpenGLCoreES::create_fbo(void* data, size_t width, size_t height)
 {
     DEBUG("create_fbo %p, %lu x %lu", data, width, height);
     RenderAPI_OpenGLCoreES* that = reinterpret_cast<RenderAPI_OpenGLCoreES*>(data);
-    DEBUG("gen texture");
     glGenTextures(3, that->tex);
-    DEBUG("gen FBO");
     glGenFramebuffersEXT(3, that->fbo);
 
     for (int i = 0; i < 3; i++) {
-        DEBUG("bind texture");
         glBindTexture(GL_TEXTURE_2D, that->tex[i]);
-        DEBUG("text image 2D");
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_INT, NULL);
-        DEBUG("tex param");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -122,17 +117,14 @@ void RenderAPI_OpenGLCoreES::create_fbo(void* data, size_t width, size_t height)
         DEBUG("FB Texture 2D");
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, that->tex[i], 0);
     }
-    DEBUG("glBindTexture(GL_TEXTURE_2D, 0)");
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    DEBUG("glCheckFramebufferStatus");
     GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 
     if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
         DEBUG("failed to create the FBO");
         return;
     }
-    DEBUG("glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0)");
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 }
 
@@ -146,7 +138,6 @@ void RenderAPI_OpenGLCoreES::destroy_fbo(void* data)
 
 void RenderAPI_OpenGLCoreES::render_fbo(void* data, bool enter)
 {
-    DEBUG("render_fbo %s", enter? "enter" : "leave");
     RenderAPI_OpenGLCoreES* that = reinterpret_cast<RenderAPI_OpenGLCoreES*>(data);
     if (enter) {
         glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, that->fbo[that->idx_render]);
@@ -213,10 +204,6 @@ void RenderAPI_OpenGLCoreES::ProcessDeviceEvent(UnityGfxDeviceEventType type, IU
             }
 
         }
-
-        /*
-
-        */
 #endif
 	}
 	else if (type == kUnityGfxDeviceEventShutdown)
