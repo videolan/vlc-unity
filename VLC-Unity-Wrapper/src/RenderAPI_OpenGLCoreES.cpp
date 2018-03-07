@@ -1,15 +1,11 @@
 #include "RenderAPI.h"
 #include "PlatformBase.h"
 #include "Log.h"
-//#include <pthread.h>
-#include <mingw.mutex.h>
 
 // OpenGL Core profile (desktop) or OpenGL ES (mobile) implementation of RenderAPI.
 // Supports several flavors: Core, ES2, ES3
 
-
 #if SUPPORT_OPENGL_UNIFIED
-
 
 #include <assert.h>
 #if UNITY_IPHONE
@@ -17,21 +13,24 @@
 #elif UNITY_ANDROID || UNITY_WEBGL
 #	include <GLES2/gl2.h>
 #else
-#   include <windows.h>
-#define GL_GLEXT_PROTOTYPES
+#   define GL_GLEXT_PROTOTYPES
 #	include "GLEW/glew.h"
 #endif
 
 #if UNITY_LINUX
 #    include <X11/Xlib.h>
 #    include <GL/glx.h>
+#    include <mutex>
+
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, bool, const int*);
+
 #elif UNITY_WIN
-#    include  "windows.h"
+#    include "windows.h"
 #    include "wingdi.h"
+#  include <mingw.mutex.h>
 
 typedef HGLRC(WINAPI * PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC hDC, HGLRC hShateContext, const int *attribList);
 PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = NULL;
-
 #endif
 
 class RenderAPI_OpenGLCoreES : public RenderAPI
@@ -46,25 +45,27 @@ public:
 	virtual void* BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch) override;
 	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr) override;
 
-
     void* getVideoFrame(bool* out_updated);
 
     static void create_fbo(void* data, size_t width, size_t height);
     static void destroy_fbo(void* data);
     static void render_fbo(void* data, bool lock);
 
+    static bool  make_current(void* data, bool current);
+    static void* get_proc_address(void* /*data*/, const char* current);
+
 private:
 	UnityGfxRenderer m_APIType;
 
 #if UNITY_LINUX
     Display * m_dpy;
+    GLXWindow m_win;
     GLXContext m_glContext;
 #elif UNITY_WIN
     HDC m_hdc;
     HGLRC m_glContext;
 
 #endif
-    //pthread_mutex_t* text_lock = PTHREAD_MUTEX_INITIALIZER;;
     std::mutex text_lock;
     GLuint tex[3];
     GLuint fbo[3];
@@ -78,7 +79,7 @@ private:
 
 RenderAPI* CreateRenderAPI_OpenGLCoreES(UnityGfxRenderer apiType)
 {
-    glewExperimental=TRUE;
+    glewExperimental=true;
     if (glewInit() != GLEW_OK) {
         DEBUG("unable to initialise GLEW");
     } else {
@@ -95,6 +96,27 @@ RenderAPI_OpenGLCoreES::RenderAPI_OpenGLCoreES(UnityGfxRenderer apiType)
 {
 }
 
+
+bool RenderAPI_OpenGLCoreES::make_current(void* data, bool current)
+{
+    RenderAPI_OpenGLCoreES* that = reinterpret_cast<RenderAPI_OpenGLCoreES*>(data);
+#if UNITY_LINUX
+    //DEBUG("make current %s", current? "y" : "n" );
+    if (current)
+        return glXMakeContextCurrent (that->m_dpy, that->m_win, that->m_win, that->m_glContext);
+    else
+        return glXMakeContextCurrent (that->m_dpy, None, None, NULL);
+#endif
+}
+
+void* RenderAPI_OpenGLCoreES::get_proc_address(void* /*data*/, const char* procname)
+{
+#if UNITY_LINUX
+    void* p =  (void*)glXGetProcAddressARB ((const GLubyte *)procname);
+    DEBUG("get_proc_address %s %p", procname, p);
+    return p;
+#endif
+}
 
 void RenderAPI_OpenGLCoreES::create_fbo(void* data, size_t width, size_t height)
 {
@@ -151,10 +173,15 @@ void RenderAPI_OpenGLCoreES::render_fbo(void* data, bool enter)
     }
 }
 
+
+
 void RenderAPI_OpenGLCoreES::setVlcContext(libvlc_media_player_t *mp, void* textureHandle)
 {
 #if UNITY_LINUX
-    libvlc_video_set_glx_opengl_context(mp, m_dpy, m_glContext, (GLuint)(size_t)textureHandle);
+    DEBUG("setVlcContext %p", this);
+    libvlc_video_set_opengl_callbacks(mp, create_fbo, destroy_fbo, make_current, get_proc_address, render_fbo, this);
+    //libvlc_video_set_glx_opengl_context(mp, m_dpy, m_glContext,
+    //    create_fbo, destroy_fbo, render_fbo, this);
 #elif UNITY_WIN
     DEBUG("setVlcContext %p", this);
     libvlc_video_set_wgl_opengl_context(mp, m_hdc, m_glContext,
@@ -167,9 +194,92 @@ void RenderAPI_OpenGLCoreES::ProcessDeviceEvent(UnityGfxDeviceEventType type, IU
 {
 	if (type == kUnityGfxDeviceEventInitialize)
 	{
+        DEBUG("kUnityGfxDeviceEventInitialize");
 #if UNITY_LINUX
+
+#  if 0
         m_dpy = glXGetCurrentDisplay();
         m_glContext = glXGetCurrentContext();
+#  else
+        /* Initialize GLX display */
+        m_dpy = glXGetCurrentDisplay();
+
+        GLXContext context = glXGetCurrentContext();
+        if (m_dpy == NULL)
+            return;
+
+        //if (!CheckGLX (obj, dpy))
+        //    goto error;
+
+        const int snum = XDefaultScreen(m_dpy);
+        const VisualID visual = XDefaultVisual(m_dpy, snum)->visualid;
+
+        static const int attr[] = {
+            GLX_RED_SIZE, 5,
+            GLX_GREEN_SIZE, 5,
+            GLX_BLUE_SIZE, 5,
+            GLX_DOUBLEBUFFER, True,
+            GLX_X_RENDERABLE, True,
+            GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+            None
+        };
+
+        int nelem;
+        GLXFBConfig *confs = glXChooseFBConfig (m_dpy, snum, attr, &nelem);
+        if (confs == NULL)
+        {
+            DEBUG("cannot choose GLX frame buffer configurations");
+            return;
+        }
+
+        GLXFBConfig conf;
+        bool found = false;
+        for (int i = 0; i < nelem && !found; i++)
+        {
+            conf = confs[i];
+
+            XVisualInfo *vi = glXGetVisualFromFBConfig (m_dpy, conf);
+            if (vi == NULL)
+                continue;
+
+            if (vi->visualid == visual)
+                found = true;
+            XFree (vi);
+        }
+        XFree (confs);
+
+        if (!found)
+        {
+            DEBUG("cannot match GLX frame buffer configuration");
+            XCloseDisplay (m_dpy);
+            return;
+        }
+
+        /* Create a drawing surface */
+        int pBufferAttribs[] = {
+            GLX_PBUFFER_WIDTH, (int)1024,
+            GLX_PBUFFER_HEIGHT, (int)1024,
+            None
+        };
+        m_win = glXCreatePbuffer(m_dpy, conf, pBufferAttribs);
+        if (m_win == None)
+        {
+            DEBUG("cannot create GLX window");
+            return;
+        }
+
+        /* Create an OpenGL context */
+
+        m_glContext = glXCreateNewContext (m_dpy, conf, GLX_RGBA_TYPE, context, True);
+        if (m_glContext == NULL)
+        {
+            glXDestroyWindow (m_dpy, m_win);
+            DEBUG("cannot create GLX context");
+            return;
+        }
+#  endif
+
+
 #elif UNITY_WIN
         //HWND hwnd = GetForegroundWindow(); // Any window will do - we don't render to it
         //if(!hwnd) { OutputDebugString("InitOpenGL error 1"); return; }
@@ -179,7 +289,6 @@ void RenderAPI_OpenGLCoreES::ProcessDeviceEvent(UnityGfxDeviceEventType type, IU
         HGLRC glContext = wglGetCurrentContext();
 
         DEBUG("wglGetCurrentDC %p wglGetCurrentContext %p", m_hdc, glContext);
-
 
         wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>(wglGetProcAddress("wglCreateContextAttribsARB"));
         if ( wglCreateContextAttribsARB )
