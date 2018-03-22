@@ -33,8 +33,15 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 #	if SUPPORT_OPENGL_UNIFIED
 	if (apiType == kUnityGfxRendererOpenGLCore || apiType == kUnityGfxRendererOpenGLES20 || apiType == kUnityGfxRendererOpenGLES30)
 	{
-		extern RenderAPI* CreateRenderAPI_OpenGLCoreES(UnityGfxRenderer apiType);
-		return CreateRenderAPI_OpenGLCoreES(apiType);
+#if UNITY_LINUX
+		extern RenderAPI* CreateRenderAPI_OpenGLX(UnityGfxRenderer apiType);
+		return CreateRenderAPI_OpenGLX(apiType);
+#elif UNITY_WIN
+		extern RenderAPI* CreateRenderAPI_OpenWGL(UnityGfxRenderer apiType);
+		return CreateRenderAPI_OpenWGL(apiType);
+#else
+        return NULL;
+#endif
 	}
 #	endif // if SUPPORT_OPENGL_UNIFIED
 

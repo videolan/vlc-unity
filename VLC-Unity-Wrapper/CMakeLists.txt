@@ -14,17 +14,19 @@ pkg_search_module(LIBVLC REQUIRED libvlc)
 
 if (WIN32)
   set(RENDER_SRC
-    "src/RenderAPI_OpenGLCoreES.cpp"
-    "src/RenderAPI_D3D11.cpp"
+	"src/RenderAPI_OpenGLBase.h"
+	"src/RenderAPI_OpenGLBase.cpp"
+	"src/RenderAPI_OpenGLWgl.cpp"
 	"src/GLEW/glew.c"
-    #"src/RenderAPI_D3D12.cpp"
-    #"src/RenderAPI_D3D9.cpp"
+    "src/RenderAPI_D3D11.cpp"
     )
 
   add_definitions("-DGLEW_STATIC")
 elseif(UNIX)
   set(RENDER_SRC
-    "src/RenderAPI_OpenGLCoreES.cpp"
+    "src/RenderAPI_OpenGLBase.h"
+	"src/RenderAPI_OpenGLBase.cpp"
+	"src/RenderAPI_OpenGLGlx.cpp"
     )
   find_package(GLEW REQUIRED)
   find_package(X11 REQUIRED)
