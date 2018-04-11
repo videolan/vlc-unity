@@ -69,26 +69,38 @@ public class UseRenderingPlugin : MonoBehaviour
 	[DllImport (dllname)]
 	public static extern IntPtr getVideoFrameVLC (out bool updated);
 
-
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport ("__Internal")]
     private static extern void RegisterPlugin ();
 #endif
 
+
+    static UseRenderingPlugin()
+    {
+        var currentPath = Environment.GetEnvironmentVariable("PATH",
+            EnvironmentVariableTarget.Process);
+        Debug.Log ("current path is" + currentPath);
+
+    }
+
     public void OnMenuClick (int index)
     {
         string movieURL;
 
+
         switch (index) {
         case 1:
-            movieURL = "file:///home/pierre/Videos/Night.mp4";
+            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_vp8_1280x720_30fps.webm";
             break;
         case 2:
-            movieURL = "file:///home/pierre/Videos/sintel_trailer-720p.mp4";
+            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_858x480_30fps.mkv";
             break;
         case 3:
+            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_1920x1080_30fps.mkv";
+            break;
+        case 4:
         default:
-            movieURL = "file:///C:/Users/VLC/Videos/big_buck_bunny_480p_h264.mov";
+            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_3860x2160_30fps.mkv";
             break;
         }
 
@@ -159,7 +171,7 @@ public class UseRenderingPlugin : MonoBehaviour
                 uint i_videoWidth = getVideoWidthVLC();
                 bool updated;
                 IntPtr texptr = getVideoFrameVLC(out updated);
-                Debug.Log("Get video size : h:" + videoHeight + ", w:" + videoWidth);
+                //Debug.Log("Get video size : h:" + videoHeight + ", w:" + videoWidth);
 
                 if (i_videoWidth != 0 && i_videoHeight != 0 && updated)
                 {
@@ -177,12 +189,12 @@ public class UseRenderingPlugin : MonoBehaviour
                 IntPtr texptr = getVideoFrameVLC(out updated);
                 if (updated)
                 {
-                    Debug.Log("Update texture");
+                    //Debug.Log("Update texture");
                     tex.UpdateExternalTexture(texptr);
                 }
                 else
                 {
-                    Debug.Log("texture not updated");
+                    //Debug.Log("texture not updated");
                 }
             }
 
