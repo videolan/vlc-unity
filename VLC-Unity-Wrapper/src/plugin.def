@@ -1,0 +1,14 @@
+EXPORTS
+GetRenderEventFunc
+UnityPluginLoad
+UnityPluginUnload
+getLengthVLC
+getTimeVLC
+getVideoFrameVLC
+getVideoHeightVLC
+getVideoWidthVLC
+launchVLC
+pauseVLC
+playPauseVLC
+setTimeVLC
+stopVLC
