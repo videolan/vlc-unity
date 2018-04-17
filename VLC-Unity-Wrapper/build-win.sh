@@ -3,8 +3,9 @@
 ARCH=x86_64
 HOST=win64
 TRIPLET=x86_64-w64-mingw32
+VERSION=3.0.2
 
-while getopts "a:" opt; do
+while getopts "sa:" opt; do
     case "$opt" in
     a)
         if [ "x$OPTARG" = "xx86_64" -o "x$OPTARG" = "xwin64" -o "x$OPTARG" = "xw64" ]
@@ -19,6 +20,9 @@ while getopts "a:" opt; do
 			TRIPLET=i686-w64-mingw32
 		fi
         ;;
+	s)
+		SHELL="yes"
+		;;
     esac
 done
 
@@ -33,7 +37,12 @@ DOCKER_OPT="--mount type=bind,source=$(pwd)/vlc,target=/vlc/ \
     -e PKG_CONFIG_LIBDIR=/vlc/contrib/${TRIPLET}/lib/pkgconfig/ \
     "
 
-#docker run -it -w /vlc/extras/tools ${DOCKER_OPT} ${DOCKER_REP} /bin/bash
+if [ "$SHELL" = "yes" ]
+then
+	docker run -ti -w /unity/ ${DOCKER_OPT} ${DOCKER_REP} /bin/bash
+	exit 0
+fi
+
 
 echo "BUILD extra tools"
 
@@ -51,6 +60,8 @@ docker run -t -w /${CONTRIB_BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} ../bootstrap 
 docker run -t -w /${CONTRIB_BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} make -j$JOBS
 
 BUILD_DIR=vlc/build-${TRIPLET}
+
+if [ ! -e ./${BUILD_DIR}/config.h ]; then
 mkdir -p ./${BUILD_DIR}
 docker run -t -w /${BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} ../extras/package/win32/configure.sh \
     --host=$TRIPLET \
@@ -58,11 +69,11 @@ docker run -t -w /${BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} ../extras/package/win
     --disable-qt \
     --disable-update-check \
     --disable-skins2
+fi
 
 echo "BUILD libvlc for ${TRIPLET}"
 
-docker run -t -w /${BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} make package-win-common -j$JOBS
-docker run -t -w /${BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} make -j$JOBS
+docker run -t -w /${BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} make package-win-strip -j$JOBS
 
 echo "BUILD vlc-unity for ${TRIPLET}"
 
@@ -75,3 +86,5 @@ docker run -t -w /unity/build-${TRIPLET} ${DOCKER_OPT} ${DOCKER_REP} make
 
 mkdir -p Plugins/${ARCH}
 cp build-${TRIPLET}/VlcUnityWrapper.dll Plugins/${ARCH}/
+mkdir -p libvlc/${ARCH}
+rsync -Pa --include "*/" --include="*.dll" --exclude="*" vlc/build-${TRIPLET}/vlc-${VERSION}/ libvlc/${ARCH}/

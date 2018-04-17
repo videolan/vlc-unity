@@ -75,7 +75,9 @@ launchVLC (char *videoURL)
     }
 
     const char *args[] = {
-        "--verbose=4"
+        "--verbose=4",
+        "--codec=mediacodec_ndk,all",
+        "--no-lua"
     };
 
     // Create an instance of LibVLC

@@ -27,18 +27,18 @@ public:
 	RenderAPI_OpenGLBase(UnityGfxRenderer apiType);
 	virtual ~RenderAPI_OpenGLBase() { }
 
-    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) = 0;
+    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) override = 0 ;
 
-    static void create_fbo(void* data, size_t width, size_t height);
+    static void create_fbo(void* data, size_t width, size_t height) ;
     static void destroy_fbo(void* data);
     static void render_fbo(void* data, bool lock);
 
 
-	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
+	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override = 0;
 	virtual void* BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch) override;
 	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr) override;
 
-    void* getVideoFrame(bool* out_updated);
+    void* getVideoFrame(bool* out_updated) override;
 
 private:
 	UnityGfxRenderer m_APIType;

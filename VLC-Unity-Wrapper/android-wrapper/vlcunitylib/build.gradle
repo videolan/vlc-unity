@@ -1,0 +1,68 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 26
+	//	buildToolsVersion "26.0.1"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+
+		//testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++11"
+                arguments "-DCMAKE_PREFIX_PATH=/vlc-android/install-armeabi-v7a/"
+            }
+        }
+
+    }
+
+	sourceSets {
+	main {
+		jni.srcDirs = [] // Prevent gradle from building native code with ndk; we have our own Makefile for it.
+        jniLibs.srcDirs = [ '/vlc-android/libvlc/jni/libs' ] // Where generated .so files are placed.
+		manifest.srcFile 'AndroidManifest.xml'
+        java.srcDirs = ['/vlc-android/libvlc/src']
+        resources.srcDirs = ['/vlc-android/libvlc/src']
+        aidl.srcDirs = ['/vlc-android/libvlc/src']
+        renderscript.srcDirs = ['/vlc-android/libvlc/src']
+        res.srcDirs = ['/vlc-android/libvlc/res']
+        assets.srcDirs = ['/vlc-android/libvlc/assets' ]
+	}
+	}
+
+    lintOptions {
+      abortOnError false
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "../../CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.so'])
+
+    implementation 'com.android.support:appcompat-v7:26.+'
+
+//    testImplementation 'junit:junit:4.12'
+//    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+//    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+}

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.6)
 project(VlcUnityWrapper)
 
 set (CMAKE_CXX_STANDARD 11)
@@ -29,12 +29,16 @@ if (WIN32)
 	"src/RenderAPI_OpenGLWgl.cpp"
 	"src/GLEW/glew.c"
     "src/RenderAPI_D3D11.cpp"
+	"src/plugin.def"
     )
 
   list(APPEND RENDER_LIBS
 	${OPENGL_LIBRARIES}
 	)
-elseif(CMAKE_ANDROID_NDK)
+
+  list(APPEND CMAKE_CXX_FLAGS -Wl,--enable-stdcall-fixup)
+
+elseif(CMAKE_ANDROID_NDK OR ANDROID_NDK)
   find_package(OpenGLES2 REQUIRED)
 
   add_definitions("-DUNITY_ANDROID")
