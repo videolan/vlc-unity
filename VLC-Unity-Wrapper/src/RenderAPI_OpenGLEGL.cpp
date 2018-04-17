@@ -1,85 +1,5 @@
-#include "RenderAPI_OpenGLBase.h"
-#include "PlatformBase.h"
+#include "RenderAPI_OpenGLEGL.h"
 #include "Log.h"
-#include <EGL/egl.h>
-
-#if UNITY_ANDROID
-#include <dlfcn.h>
-
-#include <jni.h>
-
-static JNIEnv* jni_env = 0;
-static void *handle;
-typedef jint (*JNI_OnLoad_pf)(JavaVM *, void*);
-
-extern "C" int VLCJNI_OnLoad(JavaVM *, JNIEnv*);
-
-jint JNI_OnLoad(JavaVM* vm, void* reserved)
-{
-    jni_env = 0;
-    if (vm->GetEnv(reinterpret_cast<void**>(&jni_env), JNI_VERSION_1_6) != JNI_OK) {
-        return -1;
-    }
-    vm->AttachCurrentThread(&jni_env, 0);
-
-    handle = dlopen("libvlcjni.so", RTLD_LAZY);
-    if (!handle)
-    {
-        DEBUG("could not link libvlcjni.so");
-        return -1;
-    }
-
-
-    if ( VLCJNI_OnLoad(vm, jni_env) != 0 )
-    {
-        DEBUG("VLCJNI_OnLoad failed");
-    }
-
-    JNI_OnLoad_pf load;
-    load = (JNI_OnLoad_pf) dlsym(handle, "JNI_OnLoad");
-    if (!load || load(vm, jni_env) < 0)
-    {
-        if (!load)
-            DEBUG("could not find VLCJNI_OnLoad");
-        else
-            DEBUG("VLC JNI_OnLoad failed");
-        return -1;
-    }
-
-    DEBUG("[EGL] initialize jni env %p", jni_env);
-    return JNI_VERSION_1_6;
-}
-
-
-
-#endif
-
-class RenderAPI_OpenEGL : public RenderAPI_OpenGLBase
-{
-public:
-	RenderAPI_OpenEGL(UnityGfxRenderer apiType);
-	virtual ~RenderAPI_OpenEGL() { }
-
-    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) override;
-	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
-
-    static bool  make_current(void* data, bool current);
-    static void* get_proc_address(void* /*data*/, const char* current);
-
-private:
-	UnityGfxRenderer m_APIType;
-
-    EGLDisplay m_display;
-    EGLSurface m_surface;
-    EGLContext m_context;
-
-#if UNITY_ANDROID
-private:
-    void* createWindowSurface();
-
-    void* m_awindow;
-#endif
-};
 
 RenderAPI* CreateRenderAPI_OpenEGL(UnityGfxRenderer apiType)
 {
@@ -115,24 +35,9 @@ void* RenderAPI_OpenEGL::get_proc_address(void* /*data*/, const char* procname)
     return p;
 }
 
-#if UNITY_ANDROID
-void* RenderAPI_OpenEGL::createWindowSurface()
-{
-    jclass cls_JavaClass = jni_env->FindClass("org/videolan/libvlc/AWindow");         // find class definition
-    jmethodID mid_JavaClass = jni_env->GetMethodID (cls_JavaClass, "<init>", "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");      // find constructor method
-    jobject obj_JavaClass = jni_env->NewObject(cls_JavaClass, mid_JavaClass, nullptr);     // create object instance
-    return jni_env->NewGlobalRef(obj_JavaClass);                      // return object with a global reference
-}
-#endif
-
 void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp, void* textureHandle)
 {
     DEBUG("[EGL] setVlcContext %p", this);
-#if UNITY_ANDROID
-    m_awindow = createWindowSurface();
-    DEBUG("[EGL] createWindowSurface %p", m_awindow);
-    libvlc_media_player_set_android_context(mp, m_awindow);
-#endif
     libvlc_video_set_opengl_callbacks(mp, create_fbo, destroy_fbo, make_current, get_proc_address, render_fbo, this);
 }
 

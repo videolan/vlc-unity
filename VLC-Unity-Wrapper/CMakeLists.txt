@@ -45,6 +45,8 @@ elseif(CMAKE_ANDROID_NDK OR ANDROID_NDK)
 
   list(APPEND RENDER_SRC
 	"src/RenderAPI_OpenGLEGL.cpp"
+	"src/RenderAPI_OpenGLEGL.h"
+	"src/RenderAPI_Android.cpp"
     )
 
   list(APPEND RENDER_LIBS

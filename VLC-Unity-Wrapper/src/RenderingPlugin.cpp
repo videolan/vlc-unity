@@ -76,7 +76,9 @@ launchVLC (char *videoURL)
 
     const char *args[] = {
         "--verbose=4",
+#if UNITY_ANDROID
         "--codec=mediacodec_ndk,all",
+#endif
         "--no-lua"
     };
 

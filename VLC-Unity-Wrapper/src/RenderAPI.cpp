@@ -40,8 +40,8 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 		extern RenderAPI* CreateRenderAPI_OpenWGL(UnityGfxRenderer apiType);
 		return CreateRenderAPI_OpenWGL(apiType);
 #elif UNITY_ANDROID
-        extern RenderAPI* CreateRenderAPI_OpenEGL(UnityGfxRenderer apiType);
-		return CreateRenderAPI_OpenEGL(apiType);
+        extern RenderAPI* CreateRenderAPI_Android(UnityGfxRenderer apiType);
+		return CreateRenderAPI_Android(apiType);
 #else
         return NULL;
 #endif
