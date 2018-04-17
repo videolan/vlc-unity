@@ -27,7 +27,7 @@ public:
 	RenderAPI_OpenGLBase(UnityGfxRenderer apiType);
 	virtual ~RenderAPI_OpenGLBase() { }
 
-    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) override = 0 ;
+    virtual void setVlcContext(libvlc_media_player_t *mp) override = 0 ;
 
     static void create_fbo(void* data, size_t width, size_t height) ;
     static void destroy_fbo(void* data);

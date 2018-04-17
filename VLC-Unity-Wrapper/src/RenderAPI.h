@@ -24,7 +24,7 @@ public:
 	// End modifying texture data.
 	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr) = 0;
 
-    virtual void setVlcContext(libvlc_media_player_t *mp, void*  textureHandle) {}
+    virtual void setVlcContext(libvlc_media_player_t *mp) {}
 
     virtual void* getVideoFrame(bool* out_updated) {
         if (out_updated)

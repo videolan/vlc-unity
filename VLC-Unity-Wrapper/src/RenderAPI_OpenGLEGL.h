@@ -11,7 +11,7 @@ public:
 	RenderAPI_OpenEGL(UnityGfxRenderer apiType);
 	virtual ~RenderAPI_OpenEGL() { }
 
-    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) override;
+    virtual void setVlcContext(libvlc_media_player_t *mp) override;
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
 
     static bool  make_current(void* data, bool current);

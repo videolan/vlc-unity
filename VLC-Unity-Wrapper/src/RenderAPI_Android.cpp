@@ -73,7 +73,7 @@ public:
 	RenderAPI_Android(UnityGfxRenderer apiType);
 	virtual ~RenderAPI_Android();
 
-    virtual void setVlcContext(libvlc_media_player_t *mp, void* textureHandle) override;
+    virtual void setVlcContext(libvlc_media_player_t *mp) override;
 
 private:
     jobject createWindowSurface();
@@ -115,7 +115,7 @@ void RenderAPI_Android::destroyWindowSurface(jobject obj)
         jni_env->DeleteGlobalRef(obj);
 }
 
-void RenderAPI_Android::setVlcContext(libvlc_media_player_t *mp, void* textureHandle)
+void RenderAPI_Android::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[Android] setVlcContext %p", this);
     if (m_awindow == nullptr)
@@ -126,5 +126,5 @@ void RenderAPI_Android::setVlcContext(libvlc_media_player_t *mp, void* textureHa
     else
         DEBUG("[Android] can't create window surface for media codec");
 
-    RenderAPI_OpenEGL::setVlcContext(mp, textureHandle);
+    RenderAPI_OpenEGL::setVlcContext(mp);
 }

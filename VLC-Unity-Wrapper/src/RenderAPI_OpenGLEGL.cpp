@@ -35,7 +35,7 @@ void* RenderAPI_OpenEGL::get_proc_address(void* /*data*/, const char* procname)
     return p;
 }
 
-void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp, void* textureHandle)
+void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[EGL] setVlcContext %p", this);
     libvlc_video_set_opengl_callbacks(mp, create_fbo, destroy_fbo, make_current, get_proc_address, render_fbo, this);

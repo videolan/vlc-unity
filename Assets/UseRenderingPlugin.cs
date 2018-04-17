@@ -33,12 +33,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
 	private Texture2D tex = null;
 
-    // We'll also pass native pointer to a texture in Unity.
-    // The plugin will fill texture data from native code.
-
-    [DllImport (dllname)]
-    private static extern void SetTextureFromUnity (System.IntPtr texture, int w, int h);
-
     [DllImport (dllname)]
     private static extern IntPtr GetRenderEventFunc ();
 

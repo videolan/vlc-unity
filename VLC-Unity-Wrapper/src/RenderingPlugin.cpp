@@ -19,20 +19,6 @@ static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 static int   g_TextureWidth  = 0;
 static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
-static void* g_TextureHandle = NULL;
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-SetTextureFromUnity (void* textureHandle, int w, int h)
-{
-    DEBUG("SetTexture from Unity");
-
-    // A script calls this at initialization time; just remember the texture pointer here.
-    // Will update texture pixels each frame from the plugin rendering event (texture update
-    // needs to happen on the rendering thread).
-    g_TextureHandle = textureHandle;
-    g_TextureWidth = w;
-    g_TextureHeight = h;
-}
 
 libvlc_instance_t * inst;
 libvlc_media_player_t *mp;
@@ -106,8 +92,8 @@ launchVLC (char *videoURL)
         goto err;
     }
 
-    DEBUG("setVlcContext s_CurrentAPI=%p mp=%p g_TextureHandle=%p", s_CurrentAPI, mp, g_TextureHandle);
-    s_CurrentAPI->setVlcContext(mp, g_TextureHandle);
+    DEBUG("setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
+    s_CurrentAPI->setVlcContext(mp);
 
     DEBUG("play");
 
@@ -297,8 +283,6 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         DEBUG("OnRenderEvent no API");
         return;
     }
-
-    //s_CurrentAPI->BeginModifyTexture(g_TextureHandle, g_TextureWidth, g_TextureHeight, &g_TextureRowPitch);
 }
 
 
