@@ -84,7 +84,12 @@ public class UseRenderingPlugin : MonoBehaviour
 
         switch (index) {
         case 1:
-            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_vp8_1280x720_30fps.webm";
+            string text = UniClipboard.GetText ();
+            Uri uri = new Uri (text);
+            if ( uri.IsWellFormedOriginalString() )
+                movieURL = text;
+            else
+                return;
             break;
         case 2:
             movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_858x480_30fps.mkv";
