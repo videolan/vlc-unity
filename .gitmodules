@@ -1,0 +1,6 @@
+[submodule "VLC-Unity-Wrapper/vlc-android"]
+	path = VLC-Unity-Wrapper/vlc-android
+	url = https://code.videolan.org/videolan/vlc-android.git
+[submodule "VLC-Unity-Wrapper/vlc"]
+	path = VLC-Unity-Wrapper/vlc
+	url = git@gitlab.com:videolabs/vlc.git
