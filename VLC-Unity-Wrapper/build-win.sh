@@ -55,7 +55,8 @@ CONTRIB_BUILD_DIR=vlc/contrib/contrib-${TRIPLET}
 mkdir -p ./${CONTRIB_BUILD_DIR}
 docker run -t -w /${CONTRIB_BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} ../bootstrap \
     --host=${TRIPLET} \
-    --disable-qt
+    --disable-qt \
+    --disable-qtsvg
 
 docker run -t -w /${CONTRIB_BUILD_DIR} ${DOCKER_OPT} ${DOCKER_REP} make -j$JOBS
 
