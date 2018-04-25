@@ -50,9 +50,56 @@ stopVLC () {
     DEBUG("VLC STOPPED");
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+initVLC(const char** psz_extra_options, int i_extra_options)
+{
+    const char *psz_default_options[] = {
+#if UNITY_ANDROID
+        "--codec=mediacodec_ndk,all",
+#endif
+        "--no-lua"
+    };
+    int i_defaults_options = sizeof(psz_default_options) / sizeof(*psz_default_options);
+
+    int i_all_options = i_defaults_options + i_extra_options;
+    const char** psz_all_options = (const char**)malloc( i_all_options * sizeof(char**) );
+
+    for (int i = 0 ; i < i_defaults_options; i++)
+        psz_all_options[i] = psz_default_options[i];
+    for (int i = 0 ; i < i_extra_options; i++)
+        psz_all_options[i_defaults_options + i] = psz_extra_options[i];
+
+    // Create an instance of LibVLC
+    DEBUG("Instantiating LibLVC : %s...", libvlc_get_version());
+
+    if (!inst)
+    {
+        for (int i = 0 ; i < i_all_options; i++)
+            DEBUG("VLC options: %s", psz_all_options[i]);
+
+        inst = libvlc_new(i_all_options, psz_all_options);
+    }
+
+    if (inst == NULL) {
+        DEBUG("Error instantiating LibVLC");
+        return;
+    }
+}
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-launchVLC (char *videoURL)
+disposeVLC(const char* psz_options, int i_options)
+{
+    DEBUG("Dispose LibVLC");
+    stopVLC();
+    if ( inst )
+    {
+        libvlc_release( inst );
+        inst = nullptr;
+    }
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+playVLC (char *videoURL)
 {
     DEBUG("LAUNCH");
     if (!s_CurrentAPI) {
@@ -60,22 +107,9 @@ launchVLC (char *videoURL)
         return;
     }
 
-    const char *args[] = {
-        "--verbose=4",
-#if UNITY_ANDROID
-        "--codec=mediacodec_ndk,all",
-#endif
-        "--no-lua"
-    };
-
-    // Create an instance of LibVLC
-    DEBUG("Instantiating LibLVC : %s...", libvlc_get_version());
-    if (!inst)
-        inst = libvlc_new(sizeof(args) / sizeof(*args), args);
-
     if (inst == NULL) {
-        DEBUG("Error instantiating LibVLC");
-        goto err;
+        DEBUG("LibVLC is not instanciated");
+        return;
     }
 
     // Create a new item

@@ -36,8 +36,14 @@ public class UseRenderingPlugin : MonoBehaviour
     [DllImport (dllname)]
     private static extern IntPtr GetRenderEventFunc ();
 
+    [DllImport (dllname, CharSet=CharSet.Ansi)]
+    private static extern void initVLC ([In] string[] extraOptions, int nbExtraOptions);
+
     [DllImport (dllname)]
-    private static extern void launchVLC (string videoURL);
+    private static extern void disposeVLC ();
+
+    [DllImport (dllname)]
+    private static extern void playVLC (string videoURL);
 
     [DllImport (dllname)]
     private static extern void stopVLC ();
@@ -74,7 +80,15 @@ public class UseRenderingPlugin : MonoBehaviour
         var currentPath = Environment.GetEnvironmentVariable("PATH",
             EnvironmentVariableTarget.Process);
         Debug.Log ("current path is" + currentPath);
+    }
 
+    void OnEnable() {
+        string[] extra_opt = { "--verbose=4", "--vgl-force-no-projection" };
+        initVLC (extra_opt, extra_opt.Length);
+    }
+
+    void OnDisable() {
+        disposeVLC ();
     }
 
     public void OnMenuClick (int index)
@@ -106,7 +120,7 @@ public class UseRenderingPlugin : MonoBehaviour
         menuVideoSelector.SetActive (false);
         videoWidth = 0;
         videoHeight = 0;
-        launchVLC (movieURL);
+        playVLC (movieURL);
         rtd.setPlaying (true);
         StartCoroutine ("CallPluginAtEndOfFrames");
     }

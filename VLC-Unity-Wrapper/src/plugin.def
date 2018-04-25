@@ -2,13 +2,15 @@ EXPORTS
 GetRenderEventFunc
 UnityPluginLoad
 UnityPluginUnload
+disposeVLC
 getLengthVLC
 getTimeVLC
 getVideoFrameVLC
 getVideoHeightVLC
 getVideoWidthVLC
-launchVLC
+initVLC
 pauseVLC
 playPauseVLC
+playVLC
 setTimeVLC
 stopVLC
