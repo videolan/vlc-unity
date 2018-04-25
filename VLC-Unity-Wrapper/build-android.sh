@@ -20,7 +20,7 @@ done
 
 DOCKER_REP="registry.videolan.org:5000/vlc-debian-android"
 DOCKER_OPT="--mount type=bind,source=$(pwd)/vlc-android,target=/vlc-android/ \
-			--mount type=bind,source=$(pwd)/vlc,target=/vlc-android/vlc/ \
+			--mount type=bind,source=$(pwd)/vlc,target=/vlc/ \
 			--mount type=bind,source=$(pwd),target=/unity/ \
            -e ANDROID_SDK=/sdk/android-sdk-linux/ \
            -e ANDROID_NDK=/sdk/android-ndk/ \
@@ -34,8 +34,9 @@ fi
 
 echo "patch vlc-android"
 
-#we need to package wdummy
-sed -e "/\.dummy/ d" -i ./vlc-android/compile-libvlc.sh
+#we need to package wdummy, not needed anymode as we use android window
+#sed -e "/\.dummy/ d" -i ./vlc-android/compile-libvlc.sh
+ln -s /vlc ./vlc-android/vlc
 
 echo "BUILD libvlc for ${TRIPLET}"
 
