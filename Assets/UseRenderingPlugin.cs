@@ -108,14 +108,14 @@ public class UseRenderingPlugin : MonoBehaviour
                 return;
             break;
         case 2:
-            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_858x480_30fps.mkv";
+            movieURL = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
             break;
         case 3:
-            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_1920x1080_30fps.mkv";
+            movieURL = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
             break;
         case 4:
         default:
-            movieURL = "https://streams.videolan.org/benchmark/ducks_take_off_h264_8bit_3860x2160_30fps.mkv";
+            movieURL = "https://streams.videolan.org/benchmark/57_in_to_tree_V_MPEGH-ISO-HEVC_12bits_3860x2160_30_000fps.mkv";
             break;
         }
 
