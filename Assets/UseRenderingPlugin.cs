@@ -83,7 +83,9 @@ public class UseRenderingPlugin : MonoBehaviour
     }
 
     void OnEnable() {
-        string[] extra_opt = { "--verbose=4", "--vgl-force-no-projection" };
+        string[] extra_opt = { "--verbose=4",
+                               //"--vgl-force-no-projection" //FIXME unavailable on VLC 4.x master
+                             };
         initVLC (extra_opt, extra_opt.Length);
     }
 
