@@ -29,9 +29,10 @@ public:
 
     virtual void setVlcContext(libvlc_media_player_t *mp) override = 0 ;
 
-    static void create_fbo(void* data, size_t width, size_t height) ;
-    static void destroy_fbo(void* data);
-    static void render_fbo(void* data, bool lock);
+    static bool setup(void* data) ;
+    static void cleanup(void* data);
+    static void resize(void* data, unsigned width, unsigned height);
+    static void swap(void* data);
 
 
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override = 0;
@@ -44,6 +45,8 @@ private:
 	UnityGfxRenderer m_APIType;
 
     std::mutex text_lock;
+    unsigned width = 0;
+    unsigned height = 0;
     GLuint tex[3];
     GLuint fbo[3];
     size_t idx_render = 0;

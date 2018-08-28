@@ -15,10 +15,35 @@ RenderAPI_OpenGLBase::RenderAPI_OpenGLBase(UnityGfxRenderer apiType)
     glGetError();
 }
 
-void RenderAPI_OpenGLBase::create_fbo(void* data, size_t width, size_t height)
+
+bool RenderAPI_OpenGLBase::setup(void* data)
+{
+    RenderAPI_OpenGLBase* that = static_cast<RenderAPI_OpenGLBase*>(data);
+    that->width = 0;
+    that->height = 0;
+    return true;
+}
+
+void RenderAPI_OpenGLBase::cleanup(void* data)
+{
+    DEBUG("destroy_fbo");
+    RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(data);
+    if (that->width == 0 && that->height == 0)
+        return;
+
+    glDeleteTextures(3, that->tex);
+    glDeleteFramebuffers(3, that->fbo);
+}
+
+
+void RenderAPI_OpenGLBase::resize(void* data, unsigned width, unsigned height)
 {
     DEBUG("create_fbo %p, %lu x %lu", data, width, height);
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(data);
+
+    if (width != that->width || height != that->height)
+        cleanup(data);
+
     glGenTextures(3, that->tex);
     glGenFramebuffers(3, that->fbo);
 
@@ -44,31 +69,20 @@ void RenderAPI_OpenGLBase::create_fbo(void* data, size_t width, size_t height)
         DEBUG("failed to create the FBO");
         return;
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    that->width = width;
+    that->height = height;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }
 
-void RenderAPI_OpenGLBase::destroy_fbo(void* data)
-{
-    DEBUG("destroy_fbo");
-    RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(data);
-    glDeleteTextures(3, that->tex);
-    glDeleteFramebuffers(3, that->fbo);
-}
-
-void RenderAPI_OpenGLBase::render_fbo(void* data, bool enter)
+void RenderAPI_OpenGLBase::swap(void* data)
 {
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(data);
-    //DEBUG("Render FBO : %s %u", enter? "enter": "leave", that->tex[that->idx_render] );
-    if (enter) {
-        glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
-    } else {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        {
-            std::lock_guard<std::mutex> lock(that->text_lock);
-            that->updated = true;
-            std::swap(that->idx_swap, that->idx_render);
-        }
-    }
+    std::lock_guard<std::mutex> lock(that->text_lock);
+    that->updated = true;
+    std::swap(that->idx_swap, that->idx_render);
+    glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }
 
 void* RenderAPI_OpenGLBase::getVideoFrame(bool* out_updated)

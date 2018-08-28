@@ -184,7 +184,7 @@ setTimeVLC (int pos)
     if (! mp)
         return;
 
-    libvlc_media_player_set_time (mp, pos);
+    libvlc_media_player_set_time (mp, pos, false);
 }
 
 extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
