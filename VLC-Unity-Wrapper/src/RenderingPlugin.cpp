@@ -22,7 +22,6 @@ static int   g_TextureRowPitch = 0;
 
 libvlc_instance_t * inst;
 libvlc_media_player_t *mp;
-libvlc_media_t *m;
 
 /** LibVLC's API function exported to Unity
  *
@@ -31,26 +30,7 @@ libvlc_media_t *m;
  * UNITY_INTERFACE_EXPORT and UNITY_INTERFACE_API
  */
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-stopVLC () {
-    if ( mp ) {
-        // Stop playing
-        libvlc_media_player_stop (mp);
-
-        // Free the media_player
-        libvlc_media_player_release (mp);
-        mp = NULL;
-    }
-
-    if (m) {
-        libvlc_media_release( m );
-        m = NULL;
-    }
-
-    DEBUG("VLC STOPPED");
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+extern "C" libvlc_instance_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 initVLC(const char** psz_extra_options, int i_extra_options)
 {
     const char *psz_default_options[] = {
@@ -82,45 +62,28 @@ initVLC(const char** psz_extra_options, int i_extra_options)
 
     if (inst == NULL) {
         DEBUG("Error instantiating LibVLC");
-        return;
+        return NULL;
     }
+
+    return inst;
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-disposeVLC(const char* psz_options, int i_options)
-{
-    DEBUG("Dispose LibVLC");
-    stopVLC();
-    if ( inst )
-    {
-        libvlc_release( inst );
-        inst = nullptr;
-    }
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-playVLC (char *videoURL)
+extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+CreateAndInitMediaPlayer()
 {
     DEBUG("LAUNCH");
     if (!s_CurrentAPI) {
         DEBUG("Error, no Render API");
-        return;
+        return NULL;
     }
 
     if (inst == NULL) {
         DEBUG("LibVLC is not instanciated");
-        return;
+        return NULL;
     }
 
-    // Create a new item
-    DEBUG("Video url : %s", videoURL);
-    m = libvlc_media_new_location (inst, videoURL);
-    if (m == NULL) {
-        DEBUG("Error initializing media");
-        goto err;
-    }
+    mp = libvlc_media_player_new(inst);
 
-    mp = libvlc_media_player_new_from_media (m);
     if (mp == NULL) {
         DEBUG("Error initializing media player");
         goto err;
@@ -129,90 +92,18 @@ playVLC (char *videoURL)
     DEBUG("setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
     s_CurrentAPI->setVlcContext(mp);
 
-    DEBUG("play");
-
-    // Play the media
-    libvlc_media_player_play (mp);
-    return;
-
+    return mp;
 err:
-    stopVLC();
+    if ( mp ) {
+        // Stop playing
+        libvlc_media_player_stop (mp);
+
+        // Free the media_player
+        libvlc_media_player_release (mp);
+        mp = NULL;
+    }    
+    return NULL;
 }
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-playPauseVLC ()
-{
-    if (! mp)
-        return ;
-
-    // Pause playing
-    libvlc_media_player_pause (mp);
-    DEBUG("VLC PAUSE TOGGLED");
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-pauseVLC ()
-{
-    if (! mp)
-        return ;
-
-    // Paused playing
-    libvlc_media_player_pause (mp);
-    DEBUG("VLC PAUSED");
-}
-
-extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getLengthVLC ()
-{
-    if (! mp)
-        return -1;
-    DEBUG( "Length %d", (int) libvlc_media_player_get_length (mp));
-    return (int) libvlc_media_player_get_length (mp);
-}
-
-extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getTimeVLC ()
-{
-    if (! mp)
-        return -1;
-    return (int) libvlc_media_player_get_time (mp);
-}
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-setTimeVLC (int pos)
-{
-    if (! mp)
-        return;
-
-    libvlc_media_player_set_time (mp, pos, false);
-}
-
-extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getVideoHeightVLC ()
-{
-    if (! mp)
-        return -1;
-
-    unsigned int w, h;
-    if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
-        return 0;
-    DEBUG("getVideoHeightVLC %u", h);
-    return h;
-}
-
-extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getVideoWidthVLC ()
-{
-    if (! mp)
-        return -1;
-
-    unsigned int w, h;
-    if(libvlc_video_get_size (mp, 0, &w, &h) == -1)
-        return 0;
-    DEBUG("getVideoWidthVLC %u", w);
-    return w;
-}
-
 
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoFrameVLC (bool * updated)
