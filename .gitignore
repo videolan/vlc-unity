@@ -43,3 +43,8 @@ sysinfo.txt
 # Emacs stuf
 *~
 \#*\#
+
+*.aar
+*.dll
+*.cache
+*.txt
