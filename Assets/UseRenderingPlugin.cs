@@ -36,18 +36,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
     private Texture2D tex = null;
 
-    [DllImport(dllname)]
-    private static extern IntPtr GetRenderEventFunc();
-
-    [DllImport(dllname, CharSet = CharSet.Ansi)]
-    private static extern IntPtr initVLC([In] string[] extraOptions, int nbExtraOptions);
-
-    [DllImport(dllname)]
-    private static extern IntPtr CreateAndInitMediaPlayer(IntPtr libvlc);
-    
-    [DllImport(dllname)]
-    public static extern IntPtr getVideoFrameVLC(out bool updated);
-
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport ("__Internal")]
     private static extern void RegisterPlugin ();
@@ -71,8 +59,7 @@ public class UseRenderingPlugin : MonoBehaviour
         try
         {
             LibVLC = new LibVLC(new[] { "--verbose=4" });
-            var mpPtr = CreateAndInitMediaPlayer(LibVLC.NativeReference);
-            MediaPlayer = new MediaPlayer(mpPtr);
+            MediaPlayer = MediaPlayer.Create(LibVLC);
         }
         catch (Exception ex)
         {
@@ -122,6 +109,7 @@ public class UseRenderingPlugin : MonoBehaviour
         {
             InitLibVLC();
         }
+
         var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
         Debug.Log(r ? "Play successful" : "Play NOT successful");
         rtd.setPlaying (true);
@@ -187,7 +175,7 @@ public class UseRenderingPlugin : MonoBehaviour
                 uint i_videoWidth = 0;
                 MediaPlayer?.Size(0, ref i_videoWidth, ref i_videoHeight);
                 bool updated;
-                IntPtr texptr = getVideoFrameVLC(out updated);
+                IntPtr texptr = MediaPlayer.GetFrame(out updated);
 
                 if (i_videoWidth != 0 && i_videoHeight != 0 && updated)
                 {
@@ -202,7 +190,7 @@ public class UseRenderingPlugin : MonoBehaviour
             else if (tex != null)
             {
                 bool updated;
-                IntPtr texptr = getVideoFrameVLC(out updated);
+                IntPtr texptr = MediaPlayer.GetFrame(out updated);
                 if (updated)
                 {
                     //Debug.Log("Update texture");
@@ -215,7 +203,8 @@ public class UseRenderingPlugin : MonoBehaviour
             }
 
             // Issue a plugin rendering event with arbitrary integer identifier.
-            GL.IssuePluginEvent (GetRenderEventFunc (), 1);
+            //TODO: Remove or implement
+            //GL.IssuePluginEvent (GetRenderEventFunc (), 1);
         }
     }
 }
