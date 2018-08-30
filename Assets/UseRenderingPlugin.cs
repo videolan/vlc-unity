@@ -2,7 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections;
 using System.Runtime.InteropServices;
-
+using LibVLCSharp.Shared;
 
 public class UseRenderingPlugin : MonoBehaviour
 {
@@ -11,6 +11,9 @@ public class UseRenderingPlugin : MonoBehaviour
 #else
     private const string dllname = "VlcUnityWrapper";
 #endif
+
+    public LibVLC LibVLC { get; private set; }
+    public MediaPlayer MediaPlayer { get; private set; }
 
     // Native plugin rendering events are only called if a plugin is used
     // by some script. This means we have to DllImport at least
@@ -31,73 +34,71 @@ public class UseRenderingPlugin : MonoBehaviour
     private uint videoHeight = 0;
     private uint videoWidth = 0;
 
-	private Texture2D tex = null;
+    private Texture2D tex = null;
 
-    [DllImport (dllname)]
-    private static extern IntPtr GetRenderEventFunc ();
+    [DllImport(dllname)]
+    private static extern IntPtr GetRenderEventFunc();
 
-    [DllImport (dllname, CharSet=CharSet.Ansi)]
-    private static extern void initVLC ([In] string[] extraOptions, int nbExtraOptions);
+    [DllImport(dllname, CharSet = CharSet.Ansi)]
+    private static extern IntPtr initVLC([In] string[] extraOptions, int nbExtraOptions);
 
-    [DllImport (dllname)]
-    private static extern void disposeVLC ();
-
-    [DllImport (dllname)]
-    private static extern void playVLC (string videoURL);
-
-    [DllImport (dllname)]
-    private static extern void stopVLC ();
-
-    [DllImport (dllname)]
-    public static extern void playPauseVLC ();
-
-    [DllImport (dllname)]
-    public static extern int getLengthVLC ();
-
-    [DllImport (dllname)]
-    public static extern int getTimeVLC ();
-
-    [DllImport (dllname)]
-    public static extern void setTimeVLC (int pos);
-
-    [DllImport (dllname)]
-    public static extern uint getVideoWidthVLC ();
-
-    [DllImport (dllname)]
-    public static extern uint getVideoHeightVLC ();
-
-	[DllImport (dllname)]
-	public static extern IntPtr getVideoFrameVLC (out bool updated);
+    [DllImport(dllname)]
+    private static extern IntPtr CreateAndInitMediaPlayer();
+    
+    [DllImport(dllname)]
+    public static extern IntPtr getVideoFrameVLC(out bool updated);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport ("__Internal")]
     private static extern void RegisterPlugin ();
 #endif
 
-
     static UseRenderingPlugin()
     {
-        var currentPath = Environment.GetEnvironmentVariable("PATH",
+        Debug.Log("UseRenderingCalled");
+       var currentPath = Environment.GetEnvironmentVariable("PATH",
             EnvironmentVariableTarget.Process);
-        Debug.Log ("current path is" + currentPath);
+        Debug.Log ($"current path is: " + currentPath);
     }
-
-    void OnEnable() {
-        string[] extra_opt = { "--verbose=4",
-                               //"--vgl-force-no-projection" //FIXME unavailable on VLC 4.x master
+    
+    void OnEnable()
+    {
+        var extra_opt = new[] { "--verbose=4",
+        //                       "--vgl-force-no-projection" //FIXME unavailable on VLC 4.x master
                              };
-        initVLC (extra_opt, extra_opt.Length);
+        try
+        {
+            var libvlcPtr = initVLC(extra_opt, extra_opt.Length);
+            LibVLC = new LibVLC(libvlcPtr);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log(ex);
+        }
+        try
+        {
+            var mpPtr = CreateAndInitMediaPlayer();
+            MediaPlayer = new MediaPlayer(mpPtr);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log(ex);
+        }
     }
 
     void OnDisable() {
-        disposeVLC ();
+        MediaPlayer?.Stop();
+        MediaPlayer?.Dispose();
+        MediaPlayer = null;
+
+        LibVLC?.Dispose();
+        LibVLC = null;
     }
 
     public void OnMenuClick (int index)
     {
         string movieURL;
-
-
+        
         switch (index) {
         case 1:
             string text = UniClipboard.GetText ();
@@ -122,15 +123,20 @@ public class UseRenderingPlugin : MonoBehaviour
         menuVideoSelector.SetActive (false);
         videoWidth = 0;
         videoHeight = 0;
-        playVLC (movieURL);
+
+        var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
+        Debug.Log(r ? "Play successful" : "Play NOT successful");
         rtd.setPlaying (true);
         StartCoroutine ("CallPluginAtEndOfFrames");
     }
 
-    public void playPause ()
+    public void playPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
-        playPauseVLC ();
+        if (MediaPlayer == null) return;
+        if (MediaPlayer.IsPlaying)
+            MediaPlayer.Pause();
+        else MediaPlayer.Play();
     }
 
     public void stop ()
@@ -138,29 +144,27 @@ public class UseRenderingPlugin : MonoBehaviour
         Debug.Log ("[VLC] Stopping Player !");
         rtd.setPlaying (false);
         StopCoroutine ("CallPluginAtEndOfFrames");
-        stopVLC ();
+        MediaPlayer?.Stop();
+        MediaPlayer?.Dispose();
+        MediaPlayer = null;
         tex = null;
         GetComponent<Renderer> ().material.mainTexture = null;
         menuVideoSelector.SetActive (true);
-
-
     }
 
-    public void seekForward ()
+    public void seekForward()
     {
         Debug.Log ("[VLC] Seeking forward !");
-        int pos = getTimeVLC ();
-        setTimeVLC (pos + seekTimeDelta);
+        MediaPlayer.Time += seekTimeDelta;
     }
 
-    public void seekBackward ()
+    public void seekBackward()
     {
         Debug.Log ("[VLC] Seeking backward !");
-        int pos = getTimeVLC ();
-        setTimeVLC (Math.Max (0, pos - seekTimeDelta));
+        MediaPlayer.Time -= seekTimeDelta;
     }
 
-    void Start ()
+    void Start()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         RegisterPlugin();
@@ -171,22 +175,21 @@ public class UseRenderingPlugin : MonoBehaviour
         transform.localScale = scale;
     }
 
-    private IEnumerator CallPluginAtEndOfFrames ()
+    private IEnumerator CallPluginAtEndOfFrames()
     {
         while (true) {
             // Wait until all frame rendering is done
             yield return new WaitForEndOfFrame ();
 
-            // We may not receive video size the first time
-            
+            // We may not receive video size the first time           
             if (tex == null)
             {
                 // If received size is not null, it and scale the texture
-                uint i_videoHeight = getVideoHeightVLC();
-                uint i_videoWidth = getVideoWidthVLC();
+                uint i_videoHeight = 0;
+                uint i_videoWidth = 0;
+                MediaPlayer?.Size(0, ref i_videoWidth, ref i_videoHeight);
                 bool updated;
                 IntPtr texptr = getVideoFrameVLC(out updated);
-                //Debug.Log("Get video size : h:" + videoHeight + ", w:" + videoWidth);
 
                 if (i_videoWidth != 0 && i_videoHeight != 0 && updated)
                 {

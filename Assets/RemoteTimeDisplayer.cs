@@ -45,12 +45,14 @@ public class RemoteTimeDisplayer : MonoBehaviour
   
 	// We may not receive length the first time
 	if (length == formatMsToStr (0)) { 
-	    length = formatMsToStr (UseRenderingPlugin.getLengthVLC ());
+            // FIXME
+	  //  length = formatMsToStr (UseRenderingPlugin.getLengthVLC ());
 	}
 
-	// Format actual time and concate it to length
-	string pos = formatMsToStr (UseRenderingPlugin.getTimeVLC ());
-
-	txt.text = pos + "\n" + length;
+        // Format actual time and concate it to length
+        // FIXME
+        //	string pos = formatMsToStr (UseRenderingPlugin.getTimeVLC ());
+        // FIXME
+        //txt.text = pos + "\n" + length;
     }
 }
