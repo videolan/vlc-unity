@@ -44,7 +44,7 @@ if [ "$RELEASE" = 1 ]; then
 	VLC_ANDROID_EXTRA_OPTS="${VLC_ANDROID_EXTRA_OPTS} --release"
 fi
 
-docker run -t -w /vlc-android/ ${DOCKER_OPT} ${DOCKER_REP} ./compile-libvlc.sh -a ${ARCH} --no-ml ${VLC_ANDROID_EXTRA_OPTS}
+docker run -t -w /vlc-android/ ${DOCKER_OPT} ${DOCKER_REP} ./compile.sh -l -a ${ARCH} ${VLC_ANDROID_EXTRA_OPTS}
 
 INST_DIR=./vlc-android/install-${ARCH}
 mkdir -p ${INST_DIR}/include
