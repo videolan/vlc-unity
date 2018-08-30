@@ -43,7 +43,7 @@ public class UseRenderingPlugin : MonoBehaviour
     private static extern IntPtr initVLC([In] string[] extraOptions, int nbExtraOptions);
 
     [DllImport(dllname)]
-    private static extern IntPtr CreateAndInitMediaPlayer();
+    private static extern IntPtr CreateAndInitMediaPlayer(IntPtr libvlc);
     
     [DllImport(dllname)]
     public static extern IntPtr getVideoFrameVLC(out bool updated);
@@ -63,21 +63,15 @@ public class UseRenderingPlugin : MonoBehaviour
     
     void OnEnable()
     {
-        var extra_opt = new[] { "--verbose=4",
-        //                       "--vgl-force-no-projection" //FIXME unavailable on VLC 4.x master
-                             };
+        InitLibVLC();
+    }
+
+    void InitLibVLC()
+    {
         try
         {
-            var libvlcPtr = initVLC(extra_opt, extra_opt.Length);
-            LibVLC = new LibVLC(libvlcPtr);
-        }
-        catch (Exception ex)
-        {
-            Debug.Log(ex);
-        }
-        try
-        {
-            var mpPtr = CreateAndInitMediaPlayer();
+            LibVLC = new LibVLC(new[] { "--verbose=4" });
+            var mpPtr = CreateAndInitMediaPlayer(LibVLC.NativeReference);
             MediaPlayer = new MediaPlayer(mpPtr);
         }
         catch (Exception ex)
@@ -124,6 +118,10 @@ public class UseRenderingPlugin : MonoBehaviour
         videoWidth = 0;
         videoHeight = 0;
 
+        if(MediaPlayer == null)
+        {
+            InitLibVLC();
+        }
         var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
         Debug.Log(r ? "Play successful" : "Play NOT successful");
         rtd.setPlaying (true);
