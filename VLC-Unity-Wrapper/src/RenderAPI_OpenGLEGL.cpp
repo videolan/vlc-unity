@@ -67,7 +67,7 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
         };
 
         const EGLint ctx_attr[] = {
-            EGL_CONTEXT_CLIENT_VERSION, 3,
+            EGL_CONTEXT_CLIENT_VERSION, 2,
             EGL_NONE
         };
 
