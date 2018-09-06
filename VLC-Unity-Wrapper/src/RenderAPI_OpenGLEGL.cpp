@@ -45,6 +45,8 @@ void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp)
         this);
 }
 
+EGLContext current_ctx;
+
 void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
 	if (type == kUnityGfxDeviceEventInitialize) {
@@ -75,6 +77,7 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
         EGLint num_configs;
 
         m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+
         if (m_display == EGL_NO_DISPLAY || eglGetError() != EGL_SUCCESS) {
             DEBUG("[EGL] eglGetCurrentDisplay() returned error %x", eglGetError());
             return;
@@ -90,10 +93,18 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             return;
         }
 
-        EGLContext current_ctx = eglGetCurrentContext();
-        if (eglGetError() != EGL_SUCCESS) {
-            DEBUG("[EGL] eglGetCurrentContext() returned error %x", eglGetError());
-            return;
+        if(current_ctx == NULL){
+            current_ctx = eglGetCurrentContext();
+        }
+
+        if(current_ctx == NULL) {
+            if (eglGetError() != EGL_SUCCESS) {
+                DEBUG("[EGL] eglGetCurrentContext() returned error %x", eglGetError());
+                return;
+            }
+        }
+        else {
+            DEBUG("[EGL] eglGetCurrentContext() returned context %p", current_ctx);
         }
 
         m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);

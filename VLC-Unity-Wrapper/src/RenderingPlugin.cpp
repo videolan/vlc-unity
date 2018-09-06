@@ -3,6 +3,7 @@
 #include "PlatformBase.h"
 #include "RenderAPI.h"
 #include "Log.h"
+#include <map>
 
 extern "C"
 {
@@ -13,7 +14,6 @@ extern "C"
 
 }
 
-static RenderAPI* s_CurrentAPI = NULL;
 static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
 static int   g_TextureWidth  = 0;
@@ -21,7 +21,10 @@ static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
 
 libvlc_instance_t * inst;
-libvlc_media_player_t *mp;
+
+static IUnityGraphics* s_Graphics = NULL;
+static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
+static IUnityInterfaces* s_UnityInterfaces = NULL;
 
 /** LibVLC's API function exported to Unity
  *
@@ -42,25 +45,30 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
     inst = libvlc;
 
     DEBUG("LAUNCH");
-    if (!s_CurrentAPI) {
-        DEBUG("Error, no Render API");
-        return NULL;
-    }
 
     if (inst == NULL) {
         DEBUG("LibVLC is not instanciated");
         return NULL;
     }
 
-    mp = libvlc_media_player_new(inst);
+    libvlc_media_player_t *mp = libvlc_media_player_new(inst);
+    RenderAPI* s_CurrentAPI;
 
     if (mp == NULL) {
         DEBUG("Error initializing media player");
         goto err;
     }
 
+    DEBUG("Initialize Render API");
+
+    s_DeviceType = s_Graphics->GetRenderer();
+    s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+    s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
+
     DEBUG("setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
     s_CurrentAPI->setVlcContext(mp);
+
+    contexts[mp] = s_CurrentAPI;
 
     return mp;
 err:
@@ -76,8 +84,13 @@ err:
 }
 
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getVideoFrameVLC (bool * updated)
+getVideoFrameVLC (libvlc_media_player_t* mp, bool * updated)
 {
+    if(mp == NULL)
+        return nullptr;
+
+    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+
     if (!s_CurrentAPI) {
         DEBUG("Error, no Render API");
         if (updated)
@@ -99,8 +112,6 @@ getVideoFrameVLC (bool * updated)
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
-static IUnityInterfaces* s_UnityInterfaces = NULL;
-static IUnityGraphics* s_Graphics = NULL;
 
 extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
@@ -130,36 +141,47 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API RegisterPlugin()
 }
 #endif
 
-
+static RenderAPI* EarlyRenderAPI = NULL;
 // --------------------------------------------------------------------------
 // GraphicsDeviceEvent
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 {
     // Create graphics API implementation upon initialization
-    if (eventType == kUnityGfxDeviceEventInitialize) {
-        DEBUG("Initialise Render API");
-        if (s_CurrentAPI != NULL) {
-            DEBUG("*** s_CurrentAPI != NULL while initialising ***");
-            return;
-        }
+       if (eventType == kUnityGfxDeviceEventInitialize) {
+            DEBUG("Initialise Render API");
+            if (EarlyRenderAPI != NULL) {
+                DEBUG("*** EarlyRenderAPI != NULL while initialising ***");
+                return;
+            }
+
         s_DeviceType = s_Graphics->GetRenderer();
-        s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+        EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
     }
 
-    // Let the implementation process the device related events
-    if (s_CurrentAPI) {
-        s_CurrentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
+    if(EarlyRenderAPI){
+        EarlyRenderAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
     } else {
         DEBUG("Unable to process event, no Render API");
     }
 
     // Cleanup graphics API implementation upon shutdown
-    if (eventType == kUnityGfxDeviceEventShutdown) {
+/*    if (eventType == kUnityGfxDeviceEventShutdown) {
         DEBUG("Destroy Render API");
         delete s_CurrentAPI;
-        s_CurrentAPI = NULL;
+        EarlyRenderAPI= NULL;
         s_DeviceType = kUnityGfxRendererNull;
+    } */
+
+    // Let the implementation process the device related events
+    std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+
+    for(it = contexts.begin(); it != contexts.end(); it++)
+    {
+        RenderAPI* currentAPI = it->second;
+        if(currentAPI) {
+            currentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
+        }
     }
 }
 
@@ -174,10 +196,10 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
 
     // Unknown / unsupported graphics device type? Do nothing
-    if (s_CurrentAPI == NULL) {
+    /* if (s_CurrentAPI == NULL) {
         DEBUG("OnRenderEvent no API");
         return;
-    }
+    } */
 }
 
 
