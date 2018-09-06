@@ -48,7 +48,8 @@ public class UseRenderingPlugin2 : MonoBehaviour
     private uint videoHeight = 0;
     private uint videoWidth = 0;
 
-    private Texture2D tex1 = null;
+    private Texture2D tex = null;
+
     private LibVLC LibVLC;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -74,11 +75,6 @@ public class UseRenderingPlugin2 : MonoBehaviour
         try
         {
             LibVLC = LibVLCFactory.Get();
-            MediaPlayer = MediaPlayer.Create(LibVLC);
-            var movieURL = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
-            var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
-            Debug.Log(r ? "Play succeeded" : "Play failed");
-            StartCoroutine("CallPluginAtEndOfFrames");
         }
         catch (Exception ex)
         {
@@ -97,6 +93,49 @@ public class UseRenderingPlugin2 : MonoBehaviour
         transform.localScale = scale;
     }
 
+    public void OnMenuClick(int index)
+    {
+        Debug.Log("OnMenuClick2");
+        string movieURL;
+
+        switch (index)
+        {
+            case 1:
+                string text = UniClipboard.GetText();
+                Uri uri = new Uri(text);
+                if (uri.IsWellFormedOriginalString())
+                    movieURL = text;
+                else
+                    return;
+                break;
+            case 2:
+                movieURL = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
+                break;
+            case 3:
+                movieURL = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
+                break;
+            case 4:
+            default:
+                movieURL = "https://streams.videolan.org/benchmark/35_ducks_take_off_V_VP9_3860x2160_25_000fps.mkv";
+                //movieURL = "https://streams.videolan.org/benchmark/57_in_to_tree_V_MPEGH-ISO-HEVC_12bits_3860x2160_30_000fps.mkv";
+                break;
+        }
+        
+        menuVideoSelector.SetActive(false);
+        videoWidth = 0;
+        videoHeight = 0;
+
+        if (MediaPlayer == null)
+        {
+            MediaPlayer = MediaPlayer.Create(LibVLC);
+        }
+
+        var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
+        Debug.Log(r ? "Play successful" : "Play NOT successful");
+        //    rtd.setPlaying (true);
+        StartCoroutine("CallPluginAtEndOfFrames");
+    }
+
     private IEnumerator CallPluginAtEndOfFrames()
     {
         while (true)
@@ -105,7 +144,7 @@ public class UseRenderingPlugin2 : MonoBehaviour
             yield return new WaitForEndOfFrame();
 
             // We may not receive video size the first time           
-            if (tex1 == null)
+            if (tex == null)
             {
                 // If received size is not null, it and scale the texture
                 uint i_videoHeight = 0;
@@ -118,20 +157,20 @@ public class UseRenderingPlugin2 : MonoBehaviour
                 {
                     videoWidth = i_videoWidth;
                     videoHeight = i_videoHeight;
-                    tex1 = Texture2D.CreateExternalTexture((int)videoWidth, (int)videoHeight, TextureFormat.RGBA32, false, true, texptr);
-                    tex1.filterMode = FilterMode.Point;
-                    tex1.Apply();
-                    GetComponent<Renderer>().material.mainTexture = tex1;
+                    tex = Texture2D.CreateExternalTexture((int)videoWidth, (int)videoHeight, TextureFormat.RGBA32, false, true, texptr);
+                    tex.filterMode = FilterMode.Point;
+                    tex.Apply();
+                    GetComponent<Renderer>().material.mainTexture = tex;
                 }
             }
-            else if (tex1 != null)
+            else if (tex != null)
             {
                 bool updated;
                 IntPtr texptr = MediaPlayer.GetFrame(out updated);
                 if (updated)
                 {
                     //Debug.Log("Update texture");
-                    tex1.UpdateExternalTexture(texptr);
+                    tex.UpdateExternalTexture(texptr);
                 }
                 else
                 {

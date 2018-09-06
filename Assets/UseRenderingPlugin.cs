@@ -91,7 +91,8 @@ public class UseRenderingPlugin : MonoBehaviour
             break;
         case 4:
         default:
-            movieURL = "https://streams.videolan.org/benchmark/57_in_to_tree_V_MPEGH-ISO-HEVC_12bits_3860x2160_30_000fps.mkv";
+                //   movieURL = "https://streams.videolan.org/benchmark/57_in_to_tree_V_MPEGH-ISO-HEVC_12bits_3860x2160_30_000fps.mkv";
+            movieURL = "https://streams.videolan.org/benchmark/35_ducks_take_off_V_VP9_3860x2160_25_000fps.mkv";
             break;
         }
 
