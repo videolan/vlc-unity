@@ -10,16 +10,17 @@ android {
         versionCode 1
         versionName "1.0"
 
-        ndk {
-            abiFilters 'armeabi-v7a'
+         ndk {
+            abiFilters 'armeabi-v7a' // 'x86'
         }
 
 		//testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
-        externalNativeBuild {
+         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++11"
-                arguments "-DCMAKE_PREFIX_PATH=/vlc-android/install-armeabi-v7a/"
+                //arguments "-DCMAKE_PREFIX_PATH=/vlc-android/install-x86/"
+               arguments "-DCMAKE_PREFIX_PATH=/vlc-android/install-armeabi-v7a/"
             }
         }
 
