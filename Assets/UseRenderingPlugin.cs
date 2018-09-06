@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using System.Collections;
-using System.Runtime.InteropServices;
 using LibVLCSharp.Shared;
 
 public class UseRenderingPlugin : MonoBehaviour
@@ -12,8 +11,8 @@ public class UseRenderingPlugin : MonoBehaviour
     private const string dllname = "VlcUnityWrapper";
 #endif
 
-    public LibVLC LibVLC { get; private set; }
-    public MediaPlayer MediaPlayer { get; private set; }
+    private LibVLC LibVLC { get; set; }
+    private MediaPlayer MediaPlayer { get; set; }
 
     // Native plugin rendering events are only called if a plugin is used
     // by some script. This means we have to DllImport at least
@@ -26,10 +25,6 @@ public class UseRenderingPlugin : MonoBehaviour
     public RemoteTimeDisplayer rtd;
 
     public int seekTimeDelta = 2000;
-    // In ms
-
-    private uint screenHeight = 720;
-    private uint screenWidth = 1280;
 
     private uint videoHeight = 0;
     private uint videoWidth = 0;
@@ -58,8 +53,7 @@ public class UseRenderingPlugin : MonoBehaviour
     {
         try
         {
-            LibVLC = new LibVLC(new[] { "--verbose=4" });
-            MediaPlayer = MediaPlayer.Create(LibVLC);
+            LibVLC = LibVLCFactory.Get();
         }
         catch (Exception ex)
         {
@@ -101,18 +95,19 @@ public class UseRenderingPlugin : MonoBehaviour
             break;
         }
 
+
         menuVideoSelector.SetActive (false);
         videoWidth = 0;
         videoHeight = 0;
 
         if(MediaPlayer == null)
         {
-            InitLibVLC();
+            MediaPlayer = MediaPlayer.Create(LibVLC);
         }
 
         var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
         Debug.Log(r ? "Play successful" : "Play NOT successful");
-        rtd.setPlaying (true);
+    //    rtd.setPlaying (true);
         StartCoroutine ("CallPluginAtEndOfFrames");
     }
 
@@ -176,7 +171,6 @@ public class UseRenderingPlugin : MonoBehaviour
                 MediaPlayer?.Size(0, ref i_videoWidth, ref i_videoHeight);
                 bool updated;
                 IntPtr texptr = MediaPlayer.GetFrame(out updated);
-
                 if (i_videoWidth != 0 && i_videoHeight != 0 && updated)
                 {
                     videoWidth = i_videoWidth;
