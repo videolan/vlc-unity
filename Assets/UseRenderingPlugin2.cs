@@ -24,6 +24,13 @@ public static class LibVLCFactory
     }
 }
 
+public static class Constants
+{
+    public const string Movie480p = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
+    public const string Movie1080p = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
+    public const string Movie2160p = "http://streams.videolan.org/benchmark/29_ducks_take_off_V_VP8_3860x2160_30_068fps.webm";
+}
+
 public class UseRenderingPlugin2 : MonoBehaviour
 {
 #if (UNITY_IPHONE || UNITY_WEBGL) && !UNITY_EDITOR
@@ -109,16 +116,15 @@ public class UseRenderingPlugin2 : MonoBehaviour
                     return;
                 break;
             case 2:
-                movieURL = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
+                movieURL = Constants.Movie480p;
                 break;
             case 3:
-                movieURL = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
+                movieURL = Constants.Movie1080p;
                 break;
             case 4:
             default:
-                movieURL = "https://streams.videolan.org/benchmark/35_ducks_take_off_V_VP9_3860x2160_25_000fps.mkv";
-                //movieURL = "https://streams.videolan.org/benchmark/57_in_to_tree_V_MPEGH-ISO-HEVC_12bits_3860x2160_30_000fps.mkv";
-                break;
+                movieURL = Constants.Movie2160p;
+            break;
         }
         
         menuVideoSelector.SetActive(false);
@@ -127,7 +133,7 @@ public class UseRenderingPlugin2 : MonoBehaviour
 
         if (MediaPlayer == null)
         {
-            MediaPlayer = MediaPlayer.Create(LibVLC);
+            MediaPlayer = new MediaPlayer(LibVLC);
         }
 
         var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
