@@ -27,6 +27,8 @@ echo "Applying opengl patches"
 
 git apply ../opengl1.patch ../opengl2.patch
 
+cd ..
+
 DOCKER_REP="registry.videolan.org:5000/vlc-debian-android"
 DOCKER_OPT="--mount type=bind,source=$(pwd)/vlc-android,target=/vlc-android/ \
 			--mount type=bind,source=$(pwd)/vlc,target=/vlc/ \
