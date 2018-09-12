@@ -18,6 +18,15 @@ while getopts "rsa:" opt; do
 	esac
 done
 
+git clone https://code.videolan.org/videolan/vlc-android
+git clone https://github.com/videolan/vlc-3.0/ vlc
+cd vlc
+git checkout tags/3.0.3
+
+echo "Applying opengl patches"
+
+git apply ../opengl1.patch ../opengl2.patch
+
 DOCKER_REP="registry.videolan.org:5000/vlc-debian-android"
 DOCKER_OPT="--mount type=bind,source=$(pwd)/vlc-android,target=/vlc-android/ \
 			--mount type=bind,source=$(pwd)/vlc,target=/vlc/ \

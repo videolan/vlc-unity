@@ -1,0 +1,206 @@
+From 31d24092a4e2e4f3d8ae014d135f756cd9e7ed36 Mon Sep 17 00:00:00 2001
+From: Pierre Lamot <pierre@videolabs.io>
+Date: Wed, 25 Jul 2018 15:41:08 +0200
+Subject: [PATCH] vgl: expose opengl callbacks through libvlc
+
+Signed-off-by: Thomas Guillem <thomas@gllm.fr>
+---
+ include/vlc/libvlc_media_player.h | 97 +++++++++++++++++++++++++++++++
+ lib/libvlc.sym                    |  1 +
+ lib/media_player.c                | 49 ++++++++++++++++
+ 3 files changed, 147 insertions(+)
+
+diff --git a/include/vlc/libvlc_media_player.h b/include/vlc/libvlc_media_player.h
+index 87d3368bf33..73dadda3ba2 100644
+--- a/include/vlc/libvlc_media_player.h
++++ b/include/vlc/libvlc_media_player.h
+@@ -421,6 +421,103 @@ void libvlc_video_set_callbacks( libvlc_media_player_t *mp,
+                                  libvlc_video_display_cb display,
+                                  void *opaque );
+ 
++
++/**
++ * Callback prototype called to initialize user data.
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \return true on success
++ * \version LibVLC 4.0.0 or later
++ */
++typedef bool (*libvlc_gl_setup_cb)(void* opaque);
++
++
++/**
++ * Callback prototype called to release user data
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \version LibVLC 4.0.0 or later
++ */
++typedef void (*libvlc_gl_cleanup_cb)(void* opaque);
++
++/**
++ * Callback prototype called on video size changes
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \param width video width in pixel [IN]
++ * \param height video height in pixel [IN]
++ * \version LibVLC 4.0.0 or later
++ */
++typedef void (*libvlc_gl_resize_cb)(void* opaque, unsigned width, unsigned height);
++
++
++/**
++ * Callback prototype called after performing drawing calls.
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \version LibVLC 4.0.0 or later
++ */
++typedef void (*libvlc_gl_swap_cb)(void* opaque);
++
++/**
++ * Callback prototype to set up the OpenGL context for rendering
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \param enter true to set the context as current, false to unset it [IN]
++ * \return true on success
++ * \version LibVLC 4.0.0 or later
++ */
++typedef bool (*libvlc_gl_makeCurrent_cb)(void* opaque, bool enter);
++
++/**
++ * Callback prototype to load opengl functions
++ *
++ * \param opaque private pointer passed to the @a libvlc_video_set_opengl_callbacks() [IN]
++ * \param fct_name name of the opengl function to load
++ * \return a pointer to the named OpenGL function the NULL otherwise
++ * \version LibVLC 4.0.0 or later
++ */
++typedef void* (*libvlc_gl_getProcAddress_cb)(void* opaque, const char* fct_name);
++
++/**
++ * Enumeration of the OpenGL engine to be used
++ * can be passed to @a libvlc_video_set_opengl_callbacks
++ */
++typedef enum libvlc_gl_engine_t {
++    libvlc_gl_engine_opengl,
++    libvlc_gl_engine_gles2
++} libvlc_gl_engine_t;
++
++/**
++ * Set callbacks and data to render decoded video to a custom OpenGL texture
++ *
++ * \warning VLC will perform video rendering in its own thread and at its own rate,
++ * You need to provide your own synchronisation mechanism.
++ *
++ * OpenGL context need to be created before playing a media.
++ *
++ * \param mp the media player
++ * \param gl_engine the OpenGL engine to use
++ * \param setup_cb callback called to initialize user data
++ * \param cleanup_cb callback called to clean up user data
++ * \param resize_cb callback called to get the size of the video
++ * \param swap_cb callback called after rendering a video frame (cannot be NULL)
++ * \param makeCurrent_cb callback called to enter/leave the opengl context (cannot be NULL)
++ * \param getProcAddress_cb opengl function loading callback (cannot be NULL)
++ * \param opaque private pointer passed to callbacks
++ * \version LibVLC 4.0.0 or later
++ */
++LIBVLC_API
++void libvlc_video_set_opengl_callbacks( libvlc_media_player_t *mp,
++                                        libvlc_gl_engine_t gl_engine,
++                                        libvlc_gl_setup_cb setup_cb,
++                                        libvlc_gl_cleanup_cb cleanup_cb,
++                                        libvlc_gl_resize_cb resize_cb,
++                                        libvlc_gl_swap_cb swap_cb,
++                                        libvlc_gl_makeCurrent_cb makeCurrent_cb,
++                                        libvlc_gl_getProcAddress_cb getProcAddress_cb,
++                                        void* opaque );
++
+ /**
+  * Set decoded video chroma and dimensions.
+  * This only works in combination with libvlc_video_set_callbacks(),
+diff --git a/lib/libvlc.sym b/lib/libvlc.sym
+index cfa588be01f..9a896ce7b21 100644
+--- a/lib/libvlc.sym
++++ b/lib/libvlc.sym
+@@ -243,6 +243,7 @@ libvlc_video_set_crop_geometry
+ libvlc_video_set_deinterlace
+ libvlc_video_set_format
+ libvlc_video_set_format_callbacks
++libvlc_video_set_opengl_callbacks
+ libvlc_video_set_key_input
+ libvlc_video_set_logo_int
+ libvlc_video_set_logo_string
+diff --git a/lib/media_player.c b/lib/media_player.c
+index 72955bc3dda..c397242a741 100644
+--- a/lib/media_player.c
++++ b/lib/media_player.c
+@@ -625,6 +625,8 @@ libvlc_media_player_new( libvlc_instance_t *instance )
+     /* Video */
+     var_Create (mp, "vout", VLC_VAR_STRING|VLC_VAR_DOINHERIT);
+     var_Create (mp, "window", VLC_VAR_STRING);
++    var_Create (mp, "gl", VLC_VAR_STRING);
++    var_Create (mp, "gles2", VLC_VAR_STRING);
+     var_Create (mp, "vmem-lock", VLC_VAR_ADDRESS);
+     var_Create (mp, "vmem-unlock", VLC_VAR_ADDRESS);
+     var_Create (mp, "vmem-display", VLC_VAR_ADDRESS);
+@@ -635,6 +637,15 @@ libvlc_media_player_new( libvlc_instance_t *instance )
+     var_Create (mp, "vmem-width", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
+     var_Create (mp, "vmem-height", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
+     var_Create (mp, "vmem-pitch", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
++
++    var_Create( mp, "vgl-opaque", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-setup-cb", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-cleanup-cb", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-resize-cb", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-swap-cb", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-get-proc-address-cb", VLC_VAR_ADDRESS );
++    var_Create( mp, "vgl-make-current-cb", VLC_VAR_ADDRESS );
++
+     var_Create (mp, "avcodec-hw", VLC_VAR_STRING);
+     var_Create (mp, "drawable-xid", VLC_VAR_INTEGER);
+ #if defined (_WIN32) || defined (__OS2__)
+@@ -1148,6 +1159,44 @@ void libvlc_video_set_format( libvlc_media_player_t *mp, const char *chroma,
+     var_SetInteger( mp, "vmem-pitch", pitch );
+ }
+ 
++void libvlc_video_set_opengl_callbacks( libvlc_media_player_t *mp,
++                                        libvlc_gl_engine_t gl_engine,
++                                        libvlc_gl_setup_cb setup_cb,
++                                        libvlc_gl_cleanup_cb cleanup_cb,
++                                        libvlc_gl_resize_cb resize_cb,
++                                        libvlc_gl_swap_cb swap_cb,
++                                        libvlc_gl_makeCurrent_cb makeCurrent_cb,
++                                        libvlc_gl_getProcAddress_cb getProcAddress_cb,
++                                        void* opaque )
++{
++#ifdef __ANDROID__
++    //use the default android window
++    var_SetString( mp, "window", "");
++#else
++    var_SetString( mp, "window", "wdummy");
++#endif
++
++    if( gl_engine == libvlc_gl_engine_gles2 )
++    {
++        var_SetString ( mp, "vout", "gles2" );
++        var_SetString ( mp, "gles2", "vgl" );
++    }
++    else
++    {
++        var_SetString ( mp, "vout", "gl" );
++        var_SetString ( mp, "gl", "vgl");
++    }
++
++    var_SetAddress( mp, "vgl-opaque", opaque );
++    var_SetAddress( mp, "vgl-setup-cb", setup_cb );
++    var_SetAddress( mp, "vgl-cleanup-cb", cleanup_cb );
++    var_SetAddress( mp, "vgl-resize-cb", resize_cb );
++    var_SetAddress( mp, "vgl-swap-cb", swap_cb );
++    var_SetAddress( mp, "vgl-get-proc-address-cb", getProcAddress_cb );
++    var_SetAddress( mp, "vgl-make-current-cb", makeCurrent_cb );
++}
++
++
+ /**************************************************************************
+  * set_nsobject
+  **************************************************************************/

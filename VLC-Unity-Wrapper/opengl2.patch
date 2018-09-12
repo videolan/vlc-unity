@@ -1,0 +1,221 @@
+From c411eddf0f2622712f18b0fca739d8c7c0ec8bf7 Mon Sep 17 00:00:00 2001
+From: Pierre Lamot <pierre@videolabs.io>
+Date: Mon, 30 Jul 2018 15:07:30 +0200
+Subject: [PATCH] vgl: provide a module to allow rendering in a user defined
+ opengl context
+
+This module aims to provide the same kind of functionnality as vmem but for
+  opengl rendering.
+
+  Users will have to provide different callbacks:
+
+  * vgl-setup-cb to setup resources
+  * vgl-cleanup-cb to release resources
+  * vgl-resize-cb will be called when video size changes
+  * vgl-swap-cb that will be called once the current frame has been rendered
+  * vgl-make-current-cb to enter/leave the opengl context
+  * vgl-get-proc-address-cb to provide opengl functions
+
+  Note that users will have to ensure synchronisation on their side since
+  VLC will run and render OpenGL in its own thread.
+
+---
+ modules/video_output/Makefile.am |   2 +
+ modules/video_output/vgl.c       | 166 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 168 insertions(+)
+ create mode 100644 modules/video_output/vgl.c
+
+diff --git a/modules/video_output/Makefile.am b/modules/video_output/Makefile.am
+index 3f55fafaba..28cbd8374c 100644
+--- a/modules/video_output/Makefile.am
++++ b/modules/video_output/Makefile.am
+@@ -446,11 +446,13 @@ libflaschen_plugin_la_LIBADD = $(SOCKET_LIBS)
+ libvdummy_plugin_la_SOURCES = video_output/vdummy.c
+ libvmem_plugin_la_SOURCES = video_output/vmem.c
+ libyuv_plugin_la_SOURCES = video_output/yuv.c
++libvgl_plugin_la_SOURCES = video_output/vgl.c
+ 
+ vout_LTLIBRARIES += \
+ 	libflaschen_plugin.la \
+ 	libvdummy_plugin.la \
+ 	libvmem_plugin.la \
++	libvgl_plugin.la \
+ 	libyuv_plugin.la
+ 
+ libevent_thread_la_SOURCES = \
+diff --git a/modules/video_output/vgl.c b/modules/video_output/vgl.c
+new file mode 100644
+index 0000000000..1ef9be59c2
+--- /dev/null
++++ b/modules/video_output/vgl.c
+@@ -0,0 +1,166 @@
++/*****************************************************************************
++ * vgl.c: virtual LibVLC OpenGL extension
++ *****************************************************************************
++ * Copyright (c) 2018 VLC authors and VideoLAN
++ *
++ * Authors: Pierre Lamot <pierre@videolabs.io>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation; either version 2.1 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this program; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
++ *****************************************************************************/
++#ifdef HAVE_CONFIG_H
++# include "config.h"
++#endif
++
++#include <vlc_common.h>
++#include <vlc_plugin.h>
++#include <vlc_vout_display.h>
++#include <vlc_opengl.h>
++
++
++struct vout_display_sys_t
++{
++    vlc_gl_t              *gl;
++
++    void (*cleanupCb)(void* opaque);
++    bool (*setupCb)(void* opaque);
++    void (*resizeCb)(void* opaque, unsigned, unsigned);
++    void (*swapCb)(void* opaque);
++    bool (*makeCurrentCb)(void* opaque, bool);
++    void* (*getProcAddressCb)(void* opaque, const char *name);
++
++    void* opaque;
++    unsigned width;
++    unsigned height;
++};
++
++
++static void *OurGetProcAddress(vlc_gl_t *gl, const char *name)
++{
++    vout_display_sys_t *sys = gl->sys;
++    return sys->getProcAddressCb(sys->opaque, name);
++}
++
++static int MakeCurrent(vlc_gl_t *gl)
++{
++    vout_display_sys_t *sys = gl->sys;
++    bool success = sys->makeCurrentCb(sys->opaque, true);
++    return success ? VLC_SUCCESS : VLC_EGENERIC;
++}
++
++static void ReleaseCurrent(vlc_gl_t *gl)
++{
++    vout_display_sys_t *sys = gl->sys;
++    sys->makeCurrentCb(sys->opaque, false);
++}
++
++static void SwapBuffers(vlc_gl_t *gl)
++{
++    vout_display_sys_t *sys = gl->sys;
++    sys->swapCb(sys->opaque);
++}
++
++static void Resize(vlc_gl_t * gl, unsigned w, unsigned h)
++{
++    vout_display_sys_t *sys = gl->sys;
++    if( sys->width == w && sys->height == h )
++        return;
++
++    if( !sys->resizeCb )
++        return;
++
++    MakeCurrent(gl);
++    sys->resizeCb(sys->opaque, w, h);
++    ReleaseCurrent(gl);
++    sys->width = w;
++    sys->height = h;
++}
++
++static void Close(vlc_object_t *object)
++{
++    vlc_gl_t *gl = (vlc_gl_t *)object;
++    vout_display_sys_t *sys = gl->sys;
++    if( sys->cleanupCb )
++        sys->cleanupCb(sys->opaque);
++}
++
++
++#define SET_CALLBACK_ADDR(var, varname) \
++    do {                                                           \
++        var = var_InheritAddress(gl, varname);                     \
++        if( !var ) {                                               \
++            msg_Err( gl, "%s address is missing", varname );       \
++            goto error;                                            \
++        }                                                          \
++    } while( 0 )
++
++static int Open(vlc_object_t *object)
++{
++    vlc_gl_t *gl = (vlc_gl_t *)object;
++    vout_display_sys_t * sys;
++
++    /* Allocate structure */
++    gl->sys = sys = vlc_obj_calloc(object, 1, sizeof(*sys));
++    if( !sys )
++        return VLC_ENOMEM;
++
++    sys->opaque = var_InheritAddress(gl, "vgl-opaque");
++    sys->setupCb = var_InheritAddress(gl, "vgl-setup-cb");
++    sys->cleanupCb = var_InheritAddress(gl, "vgl-cleanup-cb");
++    sys->resizeCb = var_InheritAddress(gl, "vgl-resize-cb");
++    SET_CALLBACK_ADDR(sys->swapCb, "vgl-swap-cb");
++    SET_CALLBACK_ADDR(sys->makeCurrentCb, "vgl-make-current-cb");
++    SET_CALLBACK_ADDR(sys->getProcAddressCb, "vgl-get-proc-address-cb");
++
++    gl->makeCurrent = MakeCurrent;
++    gl->releaseCurrent = ReleaseCurrent;
++    gl->resize = Resize;
++    gl->swap = SwapBuffers;
++    gl->getProcAddress = OurGetProcAddress;
++
++    if( sys->setupCb )
++        if( !sys->setupCb(sys->opaque) )
++        {
++            msg_Err( gl, "user setup failed" );
++            goto error;
++        }
++
++    return VLC_SUCCESS;
++
++error:
++    Close(object);
++    return VLC_EGENERIC;
++}
++
++#undef SET_CALLBACK_ADDR
++
++/*****************************************************************************
++ * Module descriptor
++ *****************************************************************************/
++
++vlc_module_begin()
++    set_shortname("GL texture")
++    set_description("GL texture output")
++    set_category(CAT_VIDEO)
++    set_subcategory(SUBCAT_VIDEO_VOUT)
++
++    set_capability("opengl", 0)
++    set_callbacks(Open, Close)
++    add_shortcut("vglmem")
++
++    add_submodule()
++    set_capability("opengl es2", 0)
++    set_callbacks(Open, Close)
++    add_shortcut("vglmem")
++vlc_module_end()
+\ No newline at end of file
+-- 
+2.15.1.windows.2
+
