@@ -18,14 +18,13 @@ while getopts "rsa:" opt; do
 	esac
 done
 
-git clone https://code.videolan.org/videolan/vlc-android
-git clone https://github.com/videolan/vlc-3.0/ vlc
+git submodule update --recursive
 cd vlc
-git checkout tags/3.0.3
+git checkout tags/3.0.4
 
 echo "Applying opengl patches"
 
-git apply ../opengl1.patch ../opengl2.patch
+git am ../patches/*.patch
 
 cd ..
 
@@ -55,7 +54,7 @@ if [ "$RELEASE" = 1 ]; then
 	VLC_ANDROID_EXTRA_OPTS="${VLC_ANDROID_EXTRA_OPTS} --release"
 fi
 
-docker run -t -w /vlc-android/ ${DOCKER_OPT} ${DOCKER_REP} ./compile.sh -l -a ${ARCH} ${VLC_ANDROID_EXTRA_OPTS}
+docker run -t -w /vlc-android/ ${DOCKER_OPT} ${DOCKER_REP} ./compile-libvlc.sh -a ${ARCH} --no-ml ${VLC_ANDROID_EXTRA_OPTS}
 
 INST_DIR=./vlc-android/install-${ARCH}
 mkdir -p ${INST_DIR}/include
