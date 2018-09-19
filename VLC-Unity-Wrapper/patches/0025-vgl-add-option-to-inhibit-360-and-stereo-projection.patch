@@ -1,0 +1,115 @@
+From 3d867fd81f9b6321742182b51b9510e0a916126c Mon Sep 17 00:00:00 2001
+From: Pierre Lamot <pierre@videolabs.io>
+Date: Wed, 25 Jul 2018 14:15:11 +0200
+Subject: [PATCH] vgl: add option to inhibit 360 and stereo projection
+
+---
+ include/vlc_opengl.h                      |  2 ++
+ modules/video_output/opengl/vout_helper.c | 21 ++++++++++++++++-----
+ modules/video_output/vgl.c                |  7 +++++++
+ 3 files changed, 25 insertions(+), 5 deletions(-)
+
+diff --git a/include/vlc_opengl.h b/include/vlc_opengl.h
+index fdebfeb2e1..af71a01c05 100644
+--- a/include/vlc_opengl.h
++++ b/include/vlc_opengl.h
+@@ -45,6 +45,8 @@ struct vlc_gl_t
+     module_t *module;
+     void *sys;
+ 
++    bool b_force_no_projection;
++
+     int  (*makeCurrent)(vlc_gl_t *);
+     void (*releaseCurrent)(vlc_gl_t *);
+     void (*resize)(vlc_gl_t *, unsigned, unsigned);
+diff --git a/modules/video_output/opengl/vout_helper.c b/modules/video_output/opengl/vout_helper.c
+index 4ff70adce9..df00d0413a 100644
+--- a/modules/video_output/opengl/vout_helper.c
++++ b/modules/video_output/opengl/vout_helper.c
+@@ -268,8 +268,10 @@ static void getViewpointMatrixes(vout_display_opengl_t *vgl,
+                                  video_projection_mode_t projection_mode,
+                                  struct prgm *prgm)
+ {
+-    if (projection_mode == PROJECTION_MODE_EQUIRECTANGULAR
+-        || projection_mode == PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD)
++    if ( !(vgl->gl->b_force_no_projection)
++         && (projection_mode == PROJECTION_MODE_EQUIRECTANGULAR
++             || projection_mode == PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD
++             ))
+     {
+         float sar = (float) vgl->f_sar;
+         getProjectionMatrix(sar, vgl->f_fovy, prgm->var.ProjectionMatrix);
+@@ -970,7 +972,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
+     vgl->pool = NULL;
+ 
+     if (vgl->fmt.projection_mode != PROJECTION_MODE_RECTANGULAR
+-     && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
++        && !vgl->gl->b_force_no_projection
++        && (vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS) )
+     {
+         vout_display_opengl_Delete(vgl);
+         return NULL;
+@@ -1516,7 +1519,11 @@ static int SetupCoords(vout_display_opengl_t *vgl,
+     unsigned nbVertices, nbIndices;
+ 
+     int i_ret;
+-    switch (vgl->fmt.projection_mode)
++    video_projection_mode_t projection_mode = vgl->gl->b_force_no_projection
++        ? PROJECTION_MODE_RECTANGULAR
++        : vgl->fmt.projection_mode;
++
++    switch (projection_mode)
+     {
+     case PROJECTION_MODE_RECTANGULAR:
+         i_ret = BuildRectangle(vgl->prgm->tc->tex_count,
+@@ -1635,7 +1642,11 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
+     float stereoCoefs[2];
+     float stereoOffsets[2];
+ 
+-    switch (vgl->fmt.multiview_mode)
++    video_multiview_mode_t multiview_mode = vgl->gl->b_force_no_projection
++        ? MULTIVIEW_2D
++        : vgl->fmt.multiview_mode;
++
++    switch (multiview_mode)
+     {
+     case MULTIVIEW_STEREO_TB:
+         // Display only the left eye.
+diff --git a/modules/video_output/vgl.c b/modules/video_output/vgl.c
+index d3252b7ae3..57d9b2fad3 100644
+--- a/modules/video_output/vgl.c
++++ b/modules/video_output/vgl.c
+@@ -129,6 +129,8 @@ static int Open(vlc_object_t *object)
+     gl->swap = SwapBuffers;
+     gl->getProcAddress = OurGetProcAddress;
+ 
++    gl->b_force_no_projection =  var_InheritBool(gl, "vgl-force-no-projection");
++
+     if( sys->setupCb )
+         if( !sys->setupCb(sys->opaque) )
+         {
+@@ -149,6 +151,9 @@ error:
+  * Module descriptor
+  *****************************************************************************/
+ 
++#define FORCE_NO_PROJ_TEXT N_("Disable 360 and stereo projection")
++#define FORCE_NO_PROJ_LONGTEXT N_("Disable 360 and stereo projection")
++
+ vlc_module_begin()
+     set_shortname(N_("GL texture"))
+     set_description(N_("GL texture output"))
+@@ -158,9 +163,11 @@ vlc_module_begin()
+     set_capability("opengl", 0)
+     set_callbacks(Open, Close)
+     add_shortcut("vglmem")
++    add_bool("vgl-force-no-projection", false, FORCE_NO_PROJ_TEXT, FORCE_NO_PROJ_LONGTEXT, false)
+ 
+     add_submodule()
+     set_capability("opengl es2", 0)
+     set_callbacks(Open, Close)
+     add_shortcut("vglmem")
++    add_bool("vgl-force-no-projection", false, FORCE_NO_PROJ_TEXT, FORCE_NO_PROJ_LONGTEXT, false)
+ vlc_module_end()
+-- 
+2.17.1
+

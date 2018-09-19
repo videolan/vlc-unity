@@ -4,5 +4,4 @@
 	branch = 3.0.x
 [submodule "VLC-Unity-Wrapper/vlc"]
 	path = VLC-Unity-Wrapper/vlc
-	url = git@gitlab.com:videolabs/vlc.git
-	branch = dev/pierre/libvlc_opengl
+	url = https://github.com/videolan/vlc-3.0

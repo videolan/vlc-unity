@@ -1,10 +1,10 @@
-From c411eddf0f2622712f18b0fca739d8c7c0ec8bf7 Mon Sep 17 00:00:00 2001
+From 43efe759ee165a4aad75575d32d1b8f49bae1da6 Mon Sep 17 00:00:00 2001
 From: Pierre Lamot <pierre@videolabs.io>
-Date: Mon, 30 Jul 2018 15:07:30 +0200
-Subject: [PATCH] vgl: provide a module to allow rendering in a user defined
- opengl context
+Date: Tue, 3 Jul 2018 10:55:47 +0200
+Subject: [PATCH 2/3] vgl: provide a module to allow rendering in a user
+ defined opengl context
 
-This module aims to provide the same kind of functionnality as vmem but for
+  This module aims to provide the same kind of functionnality as vmem but for
   opengl rendering.
 
   Users will have to provide different callbacks:
@@ -18,20 +18,20 @@ This module aims to provide the same kind of functionnality as vmem but for
 
   Note that users will have to ensure synchronisation on their side since
   VLC will run and render OpenGL in its own thread.
-
 ---
  modules/video_output/Makefile.am |   2 +
- modules/video_output/vgl.c       | 166 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 168 insertions(+)
+ modules/video_output/vgl.c       | 166 +++++++++++++++++++++++++++++++
+ po/POTFILES.in                   |   1 +
+ 3 files changed, 169 insertions(+)
  create mode 100644 modules/video_output/vgl.c
 
 diff --git a/modules/video_output/Makefile.am b/modules/video_output/Makefile.am
-index 3f55fafaba..28cbd8374c 100644
+index 760fe36b8f..a7cfa9d4f0 100644
 --- a/modules/video_output/Makefile.am
 +++ b/modules/video_output/Makefile.am
-@@ -446,11 +446,13 @@ libflaschen_plugin_la_LIBADD = $(SOCKET_LIBS)
- libvdummy_plugin_la_SOURCES = video_output/vdummy.c
+@@ -447,12 +447,14 @@ libvdummy_plugin_la_SOURCES = video_output/vdummy.c
  libvmem_plugin_la_SOURCES = video_output/vmem.c
+ libwdummy_plugin_la_SOURCES = video_output/wdummy.c
  libyuv_plugin_la_SOURCES = video_output/yuv.c
 +libvgl_plugin_la_SOURCES = video_output/vgl.c
  
@@ -39,13 +39,14 @@ index 3f55fafaba..28cbd8374c 100644
  	libflaschen_plugin.la \
  	libvdummy_plugin.la \
  	libvmem_plugin.la \
+ 	libwdummy_plugin.la \
 +	libvgl_plugin.la \
  	libyuv_plugin.la
  
  libevent_thread_la_SOURCES = \
 diff --git a/modules/video_output/vgl.c b/modules/video_output/vgl.c
 new file mode 100644
-index 0000000000..1ef9be59c2
+index 0000000000..d3252b7ae3
 --- /dev/null
 +++ b/modules/video_output/vgl.c
 @@ -0,0 +1,166 @@
@@ -190,7 +191,7 @@ index 0000000000..1ef9be59c2
 +    return VLC_SUCCESS;
 +
 +error:
-+    Close(object);
++    Close(gl);
 +    return VLC_EGENERIC;
 +}
 +
@@ -201,8 +202,8 @@ index 0000000000..1ef9be59c2
 + *****************************************************************************/
 +
 +vlc_module_begin()
-+    set_shortname("GL texture")
-+    set_description("GL texture output")
++    set_shortname(N_("GL texture"))
++    set_description(N_("GL texture output"))
 +    set_category(CAT_VIDEO)
 +    set_subcategory(SUBCAT_VIDEO_VOUT)
 +
@@ -215,7 +216,18 @@ index 0000000000..1ef9be59c2
 +    set_callbacks(Open, Close)
 +    add_shortcut("vglmem")
 +vlc_module_end()
-\ No newline at end of file
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index fd35c8935c..b76676418e 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -1185,6 +1185,7 @@ modules/video_output/win32/glwin32.c
+ modules/video_output/win32/wingdi.c
+ modules/video_output/win32/wgl.c
+ modules/video_output/vdummy.c
++modules/video_output/vgl.c
+ modules/video_output/vmem.c
+ modules/video_output/wayland/shell.c
+ modules/video_output/wayland/shm.c
 -- 
-2.15.1.windows.2
+2.17.1
 
