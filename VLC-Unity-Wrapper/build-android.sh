@@ -18,7 +18,7 @@ while getopts "rsa:" opt; do
 	esac
 done
 
-git submodule update --recursive
+git submodule update --init -f
 cd vlc
 git checkout tags/3.0.4
 
