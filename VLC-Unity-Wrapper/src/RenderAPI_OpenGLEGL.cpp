@@ -68,11 +68,6 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             EGL_NONE
         };
 
-        const EGLint ctx_attr[] = {
-            EGL_CONTEXT_CLIENT_VERSION, 2,
-            EGL_NONE
-        };
-
         EGLConfig config;
         EGLint num_configs;
 
@@ -96,6 +91,18 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
         if(current_ctx == NULL){
             current_ctx = eglGetCurrentContext();
         }
+
+        EGLint egl_version;
+        if (!eglQueryContext(m_display, current_ctx, EGL_CONTEXT_CLIENT_VERSION, &egl_version)) {
+            DEBUG("[EGL] failed to retrieve EGL_CONTEXT_CLIENT_VERSION");
+            DEBUG("[EGL] eglQueryContext() returned error %x", eglGetError());
+            return;
+        }
+
+        const EGLint ctx_attr[] = {
+            EGL_CONTEXT_CLIENT_VERSION, egl_version,
+            EGL_NONE
+        };
 
         if(current_ctx == NULL) {
             if (eglGetError() != EGL_SUCCESS) {
