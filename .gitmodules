@@ -1,7 +1,0 @@
-[submodule "VLC-Unity-Wrapper/vlc-android"]
-	path = VLC-Unity-Wrapper/vlc-android
-	url = https://code.videolan.org/videolan/vlc-android.git
-	branch = 3.0.x
-[submodule "VLC-Unity-Wrapper/vlc"]
-	path = VLC-Unity-Wrapper/vlc
-	url = https://github.com/videolan/vlc-3.0

@@ -3,6 +3,8 @@
 ARCH=armeabi-v7a
 SHELL=0
 RELEASE=0
+VLC_VERSION=3.0.4
+VLC_ANDROID_BRANCH=3.0.x
 
 while getopts "rsa:" opt; do
 	case "$opt" in
@@ -18,13 +20,23 @@ while getopts "rsa:" opt; do
 	esac
 done
 
-git submodule update --init -f
+if [ ! -d "vlc" ] ; then
+    git clone https://github.com/videolan/vlc-3.0/ vlc
+fi
 cd vlc
-git checkout tags/3.0.4
+git checkout tags/$VLC_VERSION
 
 echo "Applying opengl patches"
 
 git am ../patches/*.patch
+
+cd ..
+
+if [ ! -d "vlc-android" ] ; then
+    git clone https://github.com/videolan/vlc-android
+fi
+cd vlc-android
+git checkout $VLC_ANDROID_BRANCH
 
 cd ..
 
