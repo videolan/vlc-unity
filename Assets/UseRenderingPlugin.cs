@@ -53,7 +53,10 @@ public class UseRenderingPlugin : MonoBehaviour
     {
         try
         {
-            LibVLC = LibVLCFactory.Get();
+            LibVLC = new LibVLC(new[] 
+            {
+                /*"--verbose=4" */ // uncomment for libvlc logs
+                "--codec=mediacodec_ndk,all", "--no-lua" });
         }
         catch (Exception ex)
         {
@@ -107,7 +110,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
         var r = MediaPlayer.Play(new Media(LibVLC, movieURL, Media.FromType.FromLocation));
         Debug.Log(r ? "Play successful" : "Play NOT successful");
-    //    rtd.setPlaying (true);
         StartCoroutine ("CallPluginAtEndOfFrames");
     }
 
@@ -187,18 +189,20 @@ public class UseRenderingPlugin : MonoBehaviour
                 IntPtr texptr = MediaPlayer.GetFrame(out updated);
                 if (updated)
                 {
-                    //Debug.Log("Update texture");
                     tex.UpdateExternalTexture(texptr);
-                }
-                else
-                {
-                    //Debug.Log("texture not updated");
                 }
             }
 
             // Issue a plugin rendering event with arbitrary integer identifier.
-            //TODO: Remove or implement
+            // TODO: Remove or implement
             //GL.IssuePluginEvent (GetRenderEventFunc (), 1);
         }
     }
+}
+
+public static class Constants
+{
+    public const string Movie480p = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
+    public const string Movie1080p = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
+    public const string Movie2160p = "http://streams.videolan.org/benchmark/29_ducks_take_off_V_VP8_3860x2160_30_068fps.webm";
 }
