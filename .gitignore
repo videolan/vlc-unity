@@ -1,6 +1,7 @@
 # Windows
 Thumbs.db
 Desktop.ini
+.vs/*
 
 # macOS
 .DS_Store
@@ -17,3 +18,15 @@ Desktop.ini
 /Plugin/*.so
 /Plugin/*.dll
 /Plugin/*.bundle
+
+obj/** 
+*.so
+*.suo
+*.lock
+*.ide
+*.meta
+*.dll
+*.log
+*.cache
+*.pdb
+*.txt
