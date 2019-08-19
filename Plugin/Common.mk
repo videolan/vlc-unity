@@ -6,20 +6,8 @@ OBJS = $(SRCS:.cpp=.o)
 CXXFLAGS = -O2 -Wall -std=c++11
 LDFLAGS = -shared
 
-ifeq ($(PLATFORM), Windows)
-    BIN_PREFIX = x86_64-w64-mingw32
-    OUTPUT = $(TARGET).dll
-else
-    BIN_PREFIX =
-    CXXFLAGS += -fPIC
-    LDFLAGS += -rdynamic -fPIC
-    ifeq ($(PLATFORM), MacOS)
-        OUTPUT = $(TARGET).bundle
-	NOSTRIP = true
-    else
-        OUTPUT = lib$(TARGET).so
-    endif
-endif
+BIN_PREFIX = x86_64-w64-mingw32
+OUTPUT = $(TARGET).dll
 
 CXX = $(BIN_PREFIX)-c++
 STRIP = $(BIN_PREFIX)-strip
