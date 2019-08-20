@@ -1,5 +1,9 @@
 #include "IUnityInterface.h"
 
+extern "C"{
+#include <vlc/vlc.h>
+}
+
 namespace
 {
     int mandelbrot(int px, int py, int width, int height)

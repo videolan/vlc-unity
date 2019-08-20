@@ -3,7 +3,7 @@ TARGET = TestPlugin
 SRCS = Test.cpp
 OBJS = $(SRCS:.cpp=.o)
 
-CXXFLAGS = -O2 -Wall -std=c++11
+CXXFLAGS = -O2 -Wall -std=c++11 -I./include/
 LDFLAGS = -shared
 
 BIN_PREFIX = x86_64-w64-mingw32
