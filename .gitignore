@@ -18,7 +18,7 @@ Desktop.ini
 /Plugin/*.so
 /Plugin/*.dll
 /Plugin/*.bundle
-
+/Plugin/vlc-4.0.0-dev/*
 obj/** 
 *.so
 *.suo
