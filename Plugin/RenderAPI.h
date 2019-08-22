@@ -18,12 +18,6 @@ public:
 	// Process general event like initialization, shutdown, device loss/reset etc.
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
 
-	// Begin modifying texture data.
-	// Returns pointer into the data buffer to write into (or NULL on failure), and pitch in bytes of a single texture row.
-	virtual void* BeginModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int* outRowPitch) = 0;
-	// End modifying texture data.
-	virtual void EndModifyTexture(void* textureHandle, int textureWidth, int textureHeight, int rowPitch, void* dataPtr) = 0;
-
     virtual void setVlcContext(libvlc_media_player_t *mp) {}
 
     virtual void* getVideoFrame(bool* out_updated) {
