@@ -10,7 +10,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include "Unity/IUnityGraphicsD3D11.h"
-
+#include "Log.h"
 
 #define SCREEN_WIDTH  1500
 #define SCREEN_HEIGHT  900
@@ -96,6 +96,8 @@ struct render_context
     unsigned width, height;
     void (*ReportSize)(void *ReportOpaque, unsigned width, unsigned height);
     void *ReportOpaque;
+
+    bool updated = false;
 };
 
 class RenderAPI_D3D11 : public RenderAPI
@@ -103,23 +105,29 @@ class RenderAPI_D3D11 : public RenderAPI
 public:
 	RenderAPI_D3D11();
 	virtual ~RenderAPI_D3D11() { }
-
+    virtual void setVlcContext(libvlc_media_player_t *mp) override;
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces);
+    void* getVideoFrame(bool* out_updated) override;
 
 private:
 	void CreateResources(struct render_context *ctx);
-	void ReleaseResources();
+	void ReleaseResources(struct render_context *ctx);
+
+    // d3d11 callbacks
+    static bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out );
+    static void Swap_cb( void* opaque );
+    static void EndRender(struct render_context *ctx);
+    static bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 );
+    static bool SelectPlane_cb( void *opaque, size_t plane );
+    static bool Setup_cb( void **opaque, const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out );
+    static void Cleanup_cb( void *opaque );
+    static void Resize_cb( void *opaque,
+                        void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
+                        void *report_opaque );
 
 private:
 	ID3D11Device* m_Device;
-	// ID3D11Buffer* m_VB; // vertex buffer
-	// ID3D11Buffer* m_CB; // constant buffer
-	// ID3D11VertexShader* m_VertexShader;
-	// ID3D11PixelShader* m_PixelShader;
-	// ID3D11InputLayout* m_InputLayout;
-	// ID3D11RasterizerState* m_RasterState;
-	// ID3D11BlendState* m_BlendState;
-	// ID3D11DepthStencilState* m_DepthState;
+    render_context Context;
 };
 
 
@@ -130,33 +138,45 @@ RenderAPI* CreateRenderAPI_D3D11()
 
 RenderAPI_D3D11::RenderAPI_D3D11()
 	: m_Device(NULL)
-	// , m_VB(NULL)
-	// , m_CB(NULL)
-	// , m_VertexShader(NULL)
-	// , m_PixelShader(NULL)
-	// , m_InputLayout(NULL)
-	// , m_RasterState(NULL)
-	// , m_BlendState(NULL)
-	// , m_DepthState(NULL)
 {
+}
+
+void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
+{
+    DEBUG("[D3D11] setVlcContext %p", this);
+
+    libvlc_video_direct3d_set_callbacks( mp, libvlc_video_direct3d_engine_d3d11,
+                                    Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
+                                    Swap_cb, StartRendering_cb, SelectPlane_cb,
+                                    &Context );
 }
 
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
 	switch (type)
 	{
-	case kUnityGfxDeviceEventInitialize:
-	{
-		IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
-		m_Device = d3d->GetDevice();
-		struct render_context Context = { 0 };
-		CreateResources(&Context);
-		break;
-	}
-	case kUnityGfxDeviceEventShutdown:
-		ReleaseResources();
-		break;
-	}
+        case kUnityGfxDeviceEventInitialize:
+        {
+            IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
+            // m_Device = d3d->GetDevice();
+            Context.d3device = d3d->GetDevice();
+            CreateResources(&Context);
+            break;
+        }
+        case kUnityGfxDeviceEventShutdown:
+        {
+            ReleaseResources(&Context);
+            break;
+        }
+        case kUnityGfxDeviceEventAfterReset:
+        {
+            break;
+        }
+        case kUnityGfxDeviceEventBeforeReset:
+        {
+            break;
+        }
+    }
 }
 
 
@@ -270,20 +290,25 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
 }
 
 
-void RenderAPI_D3D11::ReleaseResources()
+void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
 {
-	// SAFE_RELEASE(m_VB);
-	// SAFE_RELEASE(m_CB);
-	// SAFE_RELEASE(m_VertexShader);
-	// SAFE_RELEASE(m_PixelShader);
-	// SAFE_RELEASE(m_InputLayout);
-	// SAFE_RELEASE(m_RasterState);
-	// SAFE_RELEASE(m_BlendState);
-	// SAFE_RELEASE(m_DepthState);
+	ctx->samplerState->Release();
+    ctx->textureRenderTarget->Release();
+    ctx->textureShaderInput->Release();
+    ctx->texture->Release();
+    ctx->pShadersInputLayout->Release();
+    ctx->pVS->Release();
+    ctx->pPS->Release();
+    ctx->pIndexBuffer->Release();
+    ctx->pVertexBuffer->Release();
+    ctx->swapchain->Release();
+    ctx->swapchainRenderTarget->Release();
+    ctx->d3dctx->Release();
+    ctx->d3device->Release();
 }
 
 
-static bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
+bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
 {
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
 
@@ -348,13 +373,14 @@ static bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cf
     return true;
 }
 
-static void Swap_cb( void* opaque )
+void RenderAPI_D3D11::Swap_cb( void* opaque )
 {
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     ctx->swapchain->Present( 0, 0 );
+    ctx->updated = true;
 }
 
-static void EndRender(struct render_context *ctx)
+void RenderAPI_D3D11::EndRender(struct render_context *ctx)
 {
     /* render into the swapchain */
     static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
@@ -393,7 +419,7 @@ static void EndRender(struct render_context *ctx)
     ctx->d3dctx->DrawIndexed(ctx->quadIndexCount, 0, 0);
 }
 
-static bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 )
+bool RenderAPI_D3D11::StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 )
 {
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     if ( enter )
@@ -414,7 +440,7 @@ static bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_dire
     return true;
 }
 
-static bool SelectPlane_cb( void *opaque, size_t plane )
+bool RenderAPI_D3D11::SelectPlane_cb( void *opaque, size_t plane )
 {
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
@@ -423,20 +449,20 @@ static bool SelectPlane_cb( void *opaque, size_t plane )
     return true;
 }
 
-static bool Setup_cb( void **opaque, const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out )
+bool RenderAPI_D3D11::Setup_cb( void **opaque, const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out )
 {
     struct render_context *ctx = static_cast<struct render_context *>(*opaque);
     out->device_context = ctx->d3dctx;
     return true;
 }
 
-static void Cleanup_cb( void *opaque )
+void RenderAPI_D3D11::Cleanup_cb( void *opaque )
 {
     // here we can release all things Direct3D11 for good (if playing only one file)
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
 }
 
-static void Resize_cb( void *opaque,
+void RenderAPI_D3D11::Resize_cb( void *opaque,
                        void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
                        void *report_opaque )
 {
@@ -451,6 +477,24 @@ static void Resize_cb( void *opaque,
         ctx->ReportSize(ctx->ReportOpaque, ctx->width, ctx->height);
     }
     LeaveCriticalSection(&ctx->sizeLock);
+}
+
+void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
+{
+    return (void*)Context.texture;
+
+    // return nullptr;
+
+    // std::lock_guard<std::mutex> lock(text_lock);
+    // if (out_updated)
+    //     *out_updated = updated;
+    // if (updated)
+    // {
+    //     std::swap(idx_swap, idx_display);
+    //     updated = false;
+    // }
+    // //DEBUG("get Video Frame %u", tex[idx_display]);
+    // return (void*)(size_t)tex[idx_display];
 }
 
 #endif // #if SUPPORT_D3D11
