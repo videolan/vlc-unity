@@ -2,6 +2,7 @@
 #include "RenderAPI.h"
 #include "Log.h"
 #include <map>
+#include <windows.h>
 
 extern "C" {
 #include <stdlib.h>
@@ -21,6 +22,10 @@ libvlc_instance_t * inst;
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
 static IUnityInterfaces* s_UnityInterfaces = NULL;
+
+static int Width;
+static int Height;
+static void* Hwnd;
 
 /** LibVLC's API function exported to Unity
  *
@@ -59,6 +64,7 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
 
     s_DeviceType = s_Graphics->GetRenderer();
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+    s_CurrentAPI->SetupTextureInfo(Width, Height, Hwnd);
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
 
     DEBUG("setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
@@ -79,10 +85,28 @@ err:
     return NULL;
 }
 
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+SetupTextureInfo(int width, int height, void* hwnd)
+{
+    if(width < 1)
+        DEBUG("Invalid WIDTH");
+    if(height < 1)
+        DEBUG("Invalid HEIGHT");
+    if(hwnd == NULL)
+        DEBUG("HWND is NULL");
+    
+    DEBUG("width: %u Height: %u Hwnd: %u", width, height, hwnd);
+
+    Width = width;
+    Height = height;
+    Hwnd = hwnd;
+}
+
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoFrameVLC (libvlc_media_player_t* mp, bool * updated)
 {
-    if(mp == NULL)
+     if(mp == NULL)
         return nullptr;
 
     RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
@@ -96,7 +120,6 @@ getVideoFrameVLC (libvlc_media_player_t* mp, bool * updated)
 
     return s_CurrentAPI->getVideoFrame(updated);
 }
-
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 

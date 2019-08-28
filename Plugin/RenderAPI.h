@@ -25,6 +25,8 @@ public:
             *out_updated = false;
         return nullptr;
     }
+
+    void SetupTextureInfo(int width, int height, void* hwnd) {}
 };
 
 
