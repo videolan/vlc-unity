@@ -1,13 +1,13 @@
 TARGET = RenderingPlugin
 
-# SRCS := $(wildcard *.cpp)
 SRCS = RenderingPlugin.cpp RenderAPI.cpp RenderAPI_D3D11.cpp Log.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
-CXXFLAGS = -O2 -Wall -std=c++11 -I./include/
-LDFLAGS = -shared
-LIBS = -L./vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47
+CXXFLAGS = -O2 -Wall -I./include/
+# LDFLAGS = -shared -m64
+LDFLAGS = -static-libgcc -static-libstdc++ -shared
+LIBS = -L./vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
 
 BIN_PREFIX = x86_64-w64-mingw32
 OUTPUT = $(TARGET).dll
@@ -30,4 +30,4 @@ $(OUTPUT): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJS) $(LIBS)
 
 .cpp.o:
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -m64 -c -o $@ $<
