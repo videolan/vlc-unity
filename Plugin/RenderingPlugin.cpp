@@ -23,8 +23,8 @@ static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
 static IUnityInterfaces* s_UnityInterfaces = NULL;
 
-static int Width;
-static int Height;
+static UINT Width;
+static UINT Height;
 static void* Hwnd;
 
 /** LibVLC's API function exported to Unity
@@ -87,12 +87,8 @@ err:
 
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-SetupTextureInfo(int width, int height, void* hwnd)
+SetupTextureInfo(UINT width, UINT height, void* hwnd)
 {
-    if(width < 1)
-        DEBUG("Invalid WIDTH");
-    if(height < 1)
-        DEBUG("Invalid HEIGHT");
     if(hwnd == NULL)
         DEBUG("HWND is NULL");
     
@@ -153,6 +149,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 
         s_DeviceType = s_Graphics->GetRenderer();
         EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
+        return;
     }
 
     if(EarlyRenderAPI){
