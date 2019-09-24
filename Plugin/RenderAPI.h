@@ -26,7 +26,7 @@ public:
         return nullptr;
     }
 
-    void SetupTextureInfo(int width, int height, void* hwnd) {}
+    virtual void SetupTextureInfo(unsigned int width, unsigned int height, void* hwnd) = 0;
 };
 
 

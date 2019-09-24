@@ -16,8 +16,8 @@
 #include <dxgi1_2.h>
 #include <comdef.h>
 
-#define SCREEN_WIDTH  1500
-#define SCREEN_HEIGHT  900
+#define SCREEN_WIDTH  1024
+#define SCREEN_HEIGHT  768
 #define BORDER_LEFT    (-0.95f)
 #define BORDER_RIGHT   ( 0.85f)
 #define BORDER_TOP     ( 0.95f)
@@ -133,10 +133,10 @@ private:
 private:
 	ID3D11Device* m_Device;
     render_context Context;
-    const UINT Width = 1024;
-    const UINT Height = 768;
+    const UINT Width = 858;
+    const UINT Height = 482;
     // HWND Hwnd;
-    void* Hwnd;
+    void* Hwnd = (void*)424242;
     bool initialized;
 };
 
@@ -208,23 +208,14 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
  	HRESULT hr;
     DXGI_SWAP_CHAIN_DESC scd = { 0 };
 
-    if(Hwnd == nullptr)
+    if(Hwnd == nullptr )
     {
-        DEBUG("ERROR: Hwnd == nullptr is true \n");
+        DEBUG("ERROR: Hwnd is NULL \n");
         DEBUG("Exiting CreateResources \n");
         return;
     } 
     else{
-        DEBUG("Hwnd == nullptr is false \n");
-        DEBUG("Continuing... \n");
-    }
-    if(Hwnd == NULL){
-        DEBUG("ERROR: Hwnd == NULL is true \n");
-        DEBUG("Exiting CreateResources \n");
-        return;
-    }
-    else{
-        DEBUG("Hwnd == NULL is false \n");
+        DEBUG("Hwnd is NOT NULL \n");
         DEBUG("Continuing... \n");
     }
 
@@ -244,18 +235,29 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
     // Width = 1024;
     // Height = 768;
     
+    assert(ctx != nullptr);
+    
+    ZeroMemory(ctx, sizeof(*ctx));
+
+    InitializeCriticalSection(&ctx->sizeLock);
+
     ctx->width = Width;
     ctx->height = Height;
+
+    // if (ctx->ReportSize != nullptr)
+    //     ctx->ReportSize(ctx->ReportOpaque, ctx->width, ctx->height);
 
     DEBUG("WIDTH: %u \n", Width);
     DEBUG("HEIGHT: %u \n", Height);
     DEBUG("Hwnd: %u \n", Hwnd);
 
+    DEBUG("CreateResources ctx ptr => %p \n", ctx);
+
     scd.BufferCount = 1;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    scd.BufferDesc.Width = Width;
-    scd.BufferDesc.Height = Height;
+    scd.BufferDesc.Width = SCREEN_WIDTH;
+    scd.BufferDesc.Height = SCREEN_HEIGHT;
     scd.OutputWindow = (HWND)Hwnd;
     scd.SampleDesc.Count = 1;
     scd.Windowed = TRUE;
@@ -424,11 +426,16 @@ void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
 
 bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
 {
+    DEBUG("Entering UpdateOutput_cb.\n");
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
+
+    assert(ctx != nullptr);
 
     HRESULT hr;
 
     DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    DEBUG("start releasing d3d objects.\n");
 
     if (ctx->texture)
     {
@@ -446,6 +453,8 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
         ctx->textureRenderTarget = NULL;
     }
 
+    DEBUG("Done releasing d3d objects.\n");
+
     /* interim texture */
     D3D11_TEXTURE2D_DESC texDesc = { 0 };
     texDesc.MipLevels = 1;
@@ -459,8 +468,23 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
     texDesc.Height = cfg->height;
     texDesc.Width  = cfg->width;
 
+    DEBUG("Done setting up texDesc.\n");
+
+    if(ctx->d3device == nullptr)
+    {
+        DEBUG("d3device is NULL \n");
+    }
+
     hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &ctx->texture );
-    if (FAILED(hr)) return false;
+    if (FAILED(hr))
+    {
+        DEBUG("CreateTexture2D FAILED \n");
+        return false;
+    }
+    else
+    {
+        DEBUG("CreateTexture2D SUCCEEDED.\n");
+    }
 
     D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
     ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
@@ -468,21 +492,35 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
     resviewDesc.Texture2D.MipLevels = 1;
     resviewDesc.Format = texDesc.Format;
     hr = ctx->d3device->CreateShaderResourceView(ctx->texture, &resviewDesc, &ctx->textureShaderInput );
-    if (FAILED(hr)) return false;
+    if (FAILED(hr)) 
+    {
+        DEBUG("CreateShaderResourceView FAILED \n");
+        return false;
+    }
+    else
+    {
+        DEBUG("CreateShaderResourceView SUCCEEDED.\n");
+    }
 
-    D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc = {
-        .Format = texDesc.Format,
-        .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
-    };
+    D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
+    ZeroMemory(&renderTargetViewDesc, sizeof(D3D11_RENDER_TARGET_VIEW_DESC));
+    renderTargetViewDesc.Format = texDesc.Format,
+    renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+    
     hr = ctx->d3device->CreateRenderTargetView(ctx->texture, &renderTargetViewDesc, &ctx->textureRenderTarget);
-    if (FAILED(hr)) return false;
-
+    if (FAILED(hr))
+    {
+        DEBUG("CreateRenderTargetView FAILED \n");
+        return false;
+    }
 
     out->surface_format = renderFormat;
     out->full_range     = true;
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
     out->transfer       = libvlc_video_transfer_func_SRGB;
+
+    DEBUG("Exiting UpdateOutput_cb \n");
 
     return true;
 }
@@ -526,8 +564,8 @@ void RenderAPI_D3D11::EndRender(struct render_context *ctx)
     viewport.TopLeftX = 0;
     viewport.TopLeftY = 0;
     // todo: fixme
-    viewport.Width = 1024; //currentRect.right - currentRect.left;
-    viewport.Height = 768; //currentRect.bottom - currentRect.top;
+    viewport.Width = SCREEN_WIDTH; //currentRect.right - currentRect.left;
+    viewport.Height = SCREEN_HEIGHT; //currentRect.bottom - currentRect.top;
 
     ctx->d3dctx->RSSetViewports(1, &viewport);
 
@@ -582,7 +620,10 @@ void RenderAPI_D3D11::Resize_cb( void *opaque,
                        void *report_opaque )
 {
     DEBUG("Resize_cb called \n");
+    DEBUG("YOLO \n");
+
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
+    DEBUG("ctx ptr => %p \n", ctx);
     EnterCriticalSection(&ctx->sizeLock);
     ctx->ReportSize = report_size_change;
     ctx->ReportOpaque = report_opaque;
@@ -602,7 +643,23 @@ void RenderAPI_D3D11::Resize_cb( void *opaque,
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
-     return (void*)Context.textureShaderInput;
+
+    if(Context.updated)
+    {
+        DEBUG("Context.updated is true \n");
+    }
+    else
+    {
+        DEBUG("Context.updated is false \n");
+    }
+
+    // DEBUG("getVideoFrame ctx ptr => %p \n", Context);
+    DEBUG("(void*)Context.textureShaderInput => %p \n", (void*)Context.textureShaderInput);
+
+    *out_updated = Context.updated;
+
+    // return (void*)Context.texture;
+    return (void*)Context.textureShaderInput;
 
     //return nullptr;
 
