@@ -30,3 +30,5 @@ obj/**
 *.cache
 *.pdb
 *.txt
+*.csproj
+*.h
