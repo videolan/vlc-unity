@@ -133,8 +133,8 @@ private:
 private:
 	ID3D11Device* m_Device;
     render_context Context;
-    const UINT Width = 858;
-    const UINT Height = 482;
+    const UINT Width = SCREEN_WIDTH;
+    const UINT Height = SCREEN_HEIGHT;
     // HWND Hwnd;
     void* Hwnd = (void*)424242;
     bool initialized;
@@ -527,6 +527,8 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
 
 void RenderAPI_D3D11::Swap_cb( void* opaque )
 {
+    DEBUG("SWAP");
+
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     ctx->swapchain->Present( 0, 0 );
     ctx->updated = true;
