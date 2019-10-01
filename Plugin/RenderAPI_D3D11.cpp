@@ -3,7 +3,7 @@
 
 // Direct3D 11 implementation of RenderAPI.
 
-#if SUPPORT_D3D11
+// #if SUPPORT_D3D11
 
 #include <assert.h>
 #include <tchar.h>
@@ -16,8 +16,8 @@
 #include <dxgi1_2.h>
 #include <comdef.h>
 
-#define SCREEN_WIDTH  1024
-#define SCREEN_HEIGHT  768
+#define SCREEN_WIDTH  100
+#define SCREEN_HEIGHT  100
 #define BORDER_LEFT    (-0.95f)
 #define BORDER_RIGHT   ( 0.85f)
 #define BORDER_TOP     ( 0.95f)
@@ -75,9 +75,6 @@ struct render_context
     ID3D11Device        *d3device;
     ID3D11DeviceContext *d3dctx;
 
-    IDXGISwapChain         *swapchain;
-    ID3D11RenderTargetView *swapchainRenderTarget;
-
     /* our vertex/pixel shader */
     ID3D11VertexShader *pVS;
     ID3D11PixelShader  *pPS;
@@ -132,6 +129,7 @@ private:
 
 private:
 	ID3D11Device* m_Device;
+    ID3D11DeviceContext* m_Context;
     render_context Context;
     const UINT Width = SCREEN_WIDTH;
     const UINT Height = SCREEN_HEIGHT;
@@ -167,7 +165,7 @@ void RenderAPI_D3D11::SetupTextureInfo(UINT width, UINT height, void* hwnd)
 
     // Width = width;
     // Height = height;
-    Hwnd = hwnd;
+  //  Hwnd = hwnd;
 }
 
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
@@ -179,9 +177,25 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
         case kUnityGfxDeviceEventInitialize:
         {
             IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
-            // m_Device = d3d->GetDevice();
+            if(d3d == NULL)
+            {
+                DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
+                return;
+            }
+            m_Device = d3d->GetDevice();
+            if(m_Device == NULL)
+            {
+                DEBUG("Could not retrieve m_Device \n");
+                return;
+            }
+            m_Device->GetImmediateContext(&m_Context);
+            if(m_Context == NULL)
+            {
+                DEBUG("Could not retrieve m_Context \n");
+                return;
+            }
             // struct render_context Context = { 0 };
-            // Context.d3device = d3d->GetDevice();
+            //Context.d3device = d3d->GetDevice();
             CreateResources(&Context);
             break;
         }
@@ -206,35 +220,7 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
     DEBUG("Entering CreateResources \n");
 
  	HRESULT hr;
-    DXGI_SWAP_CHAIN_DESC scd = { 0 };
 
-    if(Hwnd == nullptr )
-    {
-        DEBUG("ERROR: Hwnd is NULL \n");
-        DEBUG("Exiting CreateResources \n");
-        return;
-    } 
-    else{
-        DEBUG("Hwnd is NOT NULL \n");
-        DEBUG("Continuing... \n");
-    }
-
-    // RECT rect;
-    // int width;
-    // int height;
-
-    // if(GetWindowRect(Hwnd, &rect))
-    // {
-    //     width = rect.right - rect.left;
-    //     height = rect.bottom - rect.top;
-    // }
-
-    // Width = width;
-    // Height = height;
-
-    // Width = 1024;
-    // Height = 768;
-    
     assert(ctx != nullptr);
     
     ZeroMemory(ctx, sizeof(*ctx));
@@ -243,53 +229,35 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
 
     ctx->width = Width;
     ctx->height = Height;
+    // ctx->d3device = m_Device;
+    // ctx->d3dctx = m_Context;
 
     // if (ctx->ReportSize != nullptr)
     //     ctx->ReportSize(ctx->ReportOpaque, ctx->width, ctx->height);
 
     DEBUG("WIDTH: %u \n", Width);
     DEBUG("HEIGHT: %u \n", Height);
-    DEBUG("Hwnd: %u \n", Hwnd);
+   // DEBUG("Hwnd: %u \n", Hwnd);
 
-    DEBUG("CreateResources ctx ptr => %p \n", ctx);
-
-    scd.BufferCount = 1;
-    scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    scd.BufferDesc.Width = SCREEN_WIDTH;
-    scd.BufferDesc.Height = SCREEN_HEIGHT;
-    scd.OutputWindow = (HWND)Hwnd;
-    scd.SampleDesc.Count = 1;
-    scd.Windowed = TRUE;
-    scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT; /* needed for hardware decoding */
-// #ifndef NDEBUG
     creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
-// #endif
 
+    D3D_FEATURE_LEVEL featureLevel;
+    hr = D3D11CreateDevice(NULL,
+                        D3D_DRIVER_TYPE_HARDWARE,
+                        NULL,
+                        creationFlags,
+                        NULL,
+                        NULL,
+                        D3D11_SDK_VERSION,
+                        &ctx->d3device,
+                        NULL,
+                        &ctx->d3dctx);
 
- hr = D3D11CreateDeviceAndSwapChain(NULL,
-                                  D3D_DRIVER_TYPE_HARDWARE,
-                                  NULL,
-                                  creationFlags,
-                                  NULL,
-                                  NULL,
-                                  D3D11_SDK_VERSION,
-                                  &scd,
-                                  &ctx->swapchain,
-                                  &ctx->d3device,
-                                  NULL,
-                                  &ctx->d3dctx);
-
-if(FAILED(hr)){
-        _com_error err(hr);
-        LPCTSTR errMsg = err.ErrorMessage();
-        DEBUG("FAILED to D3D11CreateDeviceAndSwapChain \n");
-        DEBUG("HR => %s \n", errMsg);
-    }
-    else{
-        DEBUG("CREATE D3D11CreateDeviceAndSwapChain SUCCEEDED \n");
+    if(FAILED(hr))
+    {
+        DEBUG("FAILED to create d3d11 device and context \n");
+        abort();
     }
 
     /* The ID3D11Device must have multithread protection */
@@ -299,17 +267,6 @@ if(FAILED(hr)){
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
     }
-
-    ID3D11Texture2D *pBackBuffer;
-    hr = ctx->swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer); // this fails!
-    if(FAILED(hr))
-    {
-        DEBUG("Failed to get buffer from swapchain.\n");
-        return;
-    }
-
-    ctx->d3device->CreateRenderTargetView(pBackBuffer, NULL, &ctx->swapchainRenderTarget);
-    pBackBuffer->Release();
 
     DEBUG("Compiling shaders....\n");
 
@@ -417,8 +374,8 @@ void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
     ctx->pPS->Release();
     ctx->pIndexBuffer->Release();
     ctx->pVertexBuffer->Release();
-    ctx->swapchain->Release();
-    ctx->swapchainRenderTarget->Release();
+    // ctx->swapchain->Release();
+    // ctx->swapchainRenderTarget->Release();
     ctx->d3dctx->Release();
     ctx->d3device->Release();
 }
@@ -530,7 +487,7 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     DEBUG("SWAP");
 
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
-    ctx->swapchain->Present( 0, 0 );
+    // ctx->swapchain->Present( 0, 0 );
     ctx->updated = true;
 }
 
@@ -539,8 +496,8 @@ void RenderAPI_D3D11::EndRender(struct render_context *ctx)
     /* render into the swapchain */
     static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
 
-    ctx->d3dctx->OMSetRenderTargets(1, &ctx->swapchainRenderTarget, NULL);
-    ctx->d3dctx->ClearRenderTargetView(ctx->swapchainRenderTarget, orangeRGBA);
+    ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
+    ctx->d3dctx->ClearRenderTargetView(ctx->textureRenderTarget, orangeRGBA);
 
     ctx->d3dctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -557,10 +514,10 @@ void RenderAPI_D3D11::EndRender(struct render_context *ctx)
 
     ctx->d3dctx->PSSetShader(ctx->pPS, 0, 0);
 
-    DXGI_SWAP_CHAIN_DESC scd;
-    ctx->swapchain->GetDesc(&scd);
-    RECT currentRect;
-    GetWindowRect(scd.OutputWindow, &currentRect);
+    // DXGI_SWAP_CHAIN_DESC scd;
+    // ctx->swapchain->GetDesc(&scd);
+    // RECT currentRect;
+    // GetWindowRect(scd.OutputWindow, &currentRect);
 
     D3D11_VIEWPORT viewport = { 0 };
     viewport.TopLeftX = 0;
@@ -655,9 +612,6 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
         DEBUG("Context.updated is false \n");
     }
 
-    // DEBUG("getVideoFrame ctx ptr => %p \n", Context);
-    DEBUG("(void*)Context.textureShaderInput => %p \n", (void*)Context.textureShaderInput);
-
     *out_updated = Context.updated;
 
     // return (void*)Context.texture;
@@ -679,4 +633,4 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 
 
 
-#endif // #if SUPPORT_D3D11
+// #endif // #if SUPPORT_D3D11

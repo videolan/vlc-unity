@@ -60,14 +60,28 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         goto err;
     }
 
-    DEBUG("Initialize Render API");
+    DEBUG("Calling... Initialize Render API \n");
 
     s_DeviceType = s_Graphics->GetRenderer();
+
+    DEBUG("Calling... CreateRenderAPI \n");
+
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+    
+    if(s_CurrentAPI == NULL)
+    {
+        DEBUG("s_CurrentAPI is NULL \n");    
+    }
+    
+    DEBUG("Calling... SetupTextureInfo \n");
+    
     s_CurrentAPI->SetupTextureInfo(Width, Height, Hwnd);
+    
+    DEBUG("Calling... ProcessDeviceEvent \n");
+    
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
 
-    DEBUG("setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
+    DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
     s_CurrentAPI->setVlcContext(mp);
 
     contexts[mp] = s_CurrentAPI;
