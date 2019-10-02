@@ -5,6 +5,7 @@
 
 // #if SUPPORT_D3D11
 
+
 #include <assert.h>
 #include <tchar.h>
 #include <windows.h>
@@ -95,11 +96,12 @@ struct render_context
     ID3D11ShaderResourceView *textureShaderInput;
     ID3D11RenderTargetView   *textureRenderTarget;
 
-    ID3D11Texture2D          *texture2;
+    // ID3D11Texture2D          *texture2;
     ID3D11ShaderResourceView *textureShaderInput2;
-    ID3D11RenderTargetView   *textureRenderTarget2;
+    // ID3D11RenderTargetView   *textureRenderTarget2;
 
     CRITICAL_SECTION sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
+    std::mutex text_lock;
     unsigned width, height;
     void (*ReportSize)(void *ReportOpaque, unsigned width, unsigned height);
     void *ReportOpaque;
@@ -139,7 +141,6 @@ private:
     render_context Context;
     const UINT Width = SCREEN_WIDTH;
     const UINT Height = SCREEN_HEIGHT;
-    std::mutex text_lock;
     void* Hwnd = (void*)424242;
     bool initialized;
 };
@@ -273,18 +274,6 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
     }
-
-    // D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc = {
-    //     .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-    //     .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
-    // };
-
-    // hr = ctx->d3device->CreateRenderTargetView(ctx->texture2, &renderTargetViewDesc, &ctx->textureRenderTarget2);
-    // if (FAILED(hr))
-    // {
-    //     DEBUG("FAILED ctx->d3device->CreateRenderTargetView(ctx->texture, &renderTargetViewDesc, &ctx->textureRenderTarget)");
-    //     abort();
-    // }
 
     DEBUG("Compiling shaders....\n");
 
@@ -502,12 +491,13 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
 
 void RenderAPI_D3D11::Swap_cb( void* opaque )
 {
-    DEBUG("SWAP");
+    DEBUG("libvlc SWAP \n");
 
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
-    // std::swap(ctx->texture2, ctx->texture);
-    
+    //std::lock_guard<std::mutex> lock(ctx->text_lock);
     ctx->updated = true;
+    std::swap(ctx->textureShaderInput2, ctx->textureShaderInput2);   
+   // ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
 }
 
 void RenderAPI_D3D11::EndRender(struct render_context *ctx)
@@ -622,21 +612,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
 
-    if(Context.updated)
-    {
-        DEBUG("Context.updated is true \n");
-    }
-    else
-    {
-        DEBUG("Context.updated is false \n");
-    }
-
-    out_updated = &Context.updated;
-
-    // return (void*)Context.texture;
-    return (void*)Context.textureShaderInput;
-
-    //return nullptr;
+    return (void*)Context.textureShaderInput2;
 
     // std::lock_guard<std::mutex> lock(text_lock);
     // if (out_updated)
