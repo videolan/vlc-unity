@@ -31,4 +31,4 @@ obj/**
 *.pdb
 *.txt
 *.csproj
-*.h
+.h
