@@ -631,7 +631,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
         DEBUG("Context.updated is false \n");
     }
 
-    *out_updated = Context.updated;
+    out_updated = &Context.updated;
 
     // return (void*)Context.texture;
     return (void*)Context.textureShaderInput;
