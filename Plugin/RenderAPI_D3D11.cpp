@@ -13,6 +13,7 @@
 #include "Unity/IUnityGraphicsD3D11.h"
 #include "Log.h"
 
+#include <algorithm>
 #include <dxgi1_2.h>
 #include <comdef.h>
 
@@ -92,6 +93,10 @@ struct render_context
     ID3D11Texture2D          *texture;
     ID3D11ShaderResourceView *textureShaderInput;
     ID3D11RenderTargetView   *textureRenderTarget;
+
+    ID3D11Texture2D          *texture2;
+    ID3D11ShaderResourceView *textureShaderInput2;
+    ID3D11RenderTargetView   *textureRenderTarget2;
 
     CRITICAL_SECTION sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
     unsigned width, height;
@@ -267,6 +272,18 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
     }
+
+    // D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc = {
+    //     .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+    //     .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+    // };
+
+    // hr = ctx->d3device->CreateRenderTargetView(ctx->texture2, &renderTargetViewDesc, &ctx->textureRenderTarget2);
+    // if (FAILED(hr))
+    // {
+    //     DEBUG("FAILED ctx->d3device->CreateRenderTargetView(ctx->texture, &renderTargetViewDesc, &ctx->textureRenderTarget)");
+    //     abort();
+    // }
 
     DEBUG("Compiling shaders....\n");
 
@@ -487,7 +504,8 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     DEBUG("SWAP");
 
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
-    // ctx->swapchain->Present( 0, 0 );
+    // std::swap(ctx->texture2, ctx->texture);
+    
     ctx->updated = true;
 }
 

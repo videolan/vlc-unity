@@ -1,6 +1,7 @@
 #include "PlatformBase.h"
 #include "RenderAPI.h"
 #include "Log.h"
+
 #include <map>
 #include <windows.h>
 
@@ -18,6 +19,7 @@ static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
 
 libvlc_instance_t * inst;
+libvlc_media_player_t * mp;
 
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
@@ -52,7 +54,7 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         return NULL;
     }
 
-    libvlc_media_player_t *mp = libvlc_media_player_new(inst);
+    mp = libvlc_media_player_new(inst);
     RenderAPI* s_CurrentAPI;
 
     if (mp == NULL) {
@@ -99,24 +101,10 @@ err:
     return NULL;
 }
 
-
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-SetupTextureInfo(UINT width, UINT height, void* hwnd)
-{
-    if(hwnd == NULL)
-        DEBUG("HWND is NULL");
-    
-    DEBUG("width: %u Height: %u Hwnd: %u", width, height, hwnd);
-
-    Width = width;
-    Height = height;
-    Hwnd = hwnd;
-}
-
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoFrameVLC (libvlc_media_player_t* mp, bool * updated)
 {
-     if(mp == NULL)
+    if(mp == NULL)
         return nullptr;
 
     RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
@@ -188,7 +176,43 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
 }
 
+void TextureUpdateCallback(int eventID, void* data)
+{
+    auto event = static_cast<UnityRenderingExtEventType>(eventID);
+
+    if (event == kUnityRenderingExtEventUpdateTextureBeginV2)
+    {
+        auto *pParams = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
+
+        if(mp == NULL)
+            return;
+
+        RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+
+        bool* updated;
+
+        if (!s_CurrentAPI) {
+            DEBUG("Error, no Render API");
+            if (updated)
+                *updated = false;
+            return;
+        }
+        void* tex = s_CurrentAPI->getVideoFrame(updated);
+        
+        DEBUG("SWAPPING -===================");
+        std::swap(tex, pParams->texData); 
+    }
+    else if (event == kUnityRenderingExtEventUpdateTextureEndV2)
+    {
+    }
+}
+
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
     return OnRenderEvent;
+}
+
+extern "C" UnityRenderingEventAndData UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetTextureUpdateCallback()
+{
+    return TextureUpdateCallback;
 }
