@@ -4,7 +4,7 @@ SRCS = RenderingPlugin.cpp RenderAPI.cpp RenderAPI_D3D11.cpp Log.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
-CXXFLAGS = -O2 -Wall -I./include/
+CXXFLAGS = -O2 -Wall -I./include/ -I./mingw.thread
 # LDFLAGS = -shared -m64
 LDFLAGS = -static-libgcc -static-libstdc++ -shared
 LIBS = -L./vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi

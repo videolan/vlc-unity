@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <dxgi1_2.h>
 #include <comdef.h>
+#include <mingw.mutex.h>
 
 #define SCREEN_WIDTH  100
 #define SCREEN_HEIGHT  100
@@ -138,7 +139,7 @@ private:
     render_context Context;
     const UINT Width = SCREEN_WIDTH;
     const UINT Height = SCREEN_HEIGHT;
-    // HWND Hwnd;
+    std::mutex text_lock;
     void* Hwnd = (void*)424242;
     bool initialized;
 };
