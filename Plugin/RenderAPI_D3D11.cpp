@@ -496,7 +496,7 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     //std::lock_guard<std::mutex> lock(ctx->text_lock);
     ctx->updated = true;
-    std::swap(ctx->textureShaderInput2, ctx->textureShaderInput2);   
+    std::swap(ctx->textureShaderInput2, ctx->textureShaderInput);   
    // ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
 }
 
