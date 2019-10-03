@@ -69,7 +69,6 @@ private:
     // d3d11 callbacks
     static bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out );
     static void Swap_cb( void* opaque );
-    static void EndRender(struct render_context *ctx);
     static bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 );
     static bool SelectPlane_cb( void *opaque, size_t plane );
     static bool Setup_cb( void **opaque, const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out );
@@ -328,29 +327,6 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     ctx->updated = true;
 }
 
-void RenderAPI_D3D11::EndRender(struct render_context *ctx)
-{
-    ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
-
-    ctx->d3dctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    UINT offset = 0;
-    ctx->d3dctx->IASetVertexBuffers(0, 1, &ctx->pVertexBuffer, &ctx->vertexBufferStride, &offset);
-
-    ctx->d3dctx->PSSetShaderResources(0, 1, &ctx->textureShaderInput);
-
-    D3D11_VIEWPORT viewport = { 0 };
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    // todo: fixme
-    viewport.Width = SCREEN_WIDTH; //currentRect.right - currentRect.left;
-    viewport.Height = SCREEN_HEIGHT; //currentRect.bottom - currentRect.top;
-
-    ctx->d3dctx->RSSetViewports(1, &viewport);
-
-    ctx->d3dctx->DrawIndexed(ctx->quadIndexCount, 0, 0);
-}
-
 bool RenderAPI_D3D11::StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 )
 {
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
@@ -368,7 +344,6 @@ bool RenderAPI_D3D11::StartRendering_cb( void *opaque, bool enter, const libvlc_
         return true;
     }
 
-    EndRender( ctx );
     return true;
 }
 
