@@ -26,62 +26,11 @@
 #define BORDER_TOP     ( 0.95f)
 #define BORDER_BOTTOM  (-0.90f)
 
-
-static const char *shaderStr = "\
-Texture2D shaderTexture;\n\
-SamplerState samplerState;\n\
-struct PS_INPUT\n\
-{\n\
-    float4 position     : SV_POSITION;\n\
-    float4 textureCoord : TEXCOORD0;\n\
-};\n\
-\n\
-float4 PShader(PS_INPUT In) : SV_TARGET\n\
-{\n\
-    return shaderTexture.Sample(samplerState, In.textureCoord);\n\
-}\n\
-\n\
-struct VS_INPUT\n\
-{\n\
-    float4 position     : POSITION;\n\
-    float4 textureCoord : TEXCOORD0;\n\
-};\n\
-\n\
-struct VS_OUTPUT\n\
-{\n\
-    float4 position     : SV_POSITION;\n\
-    float4 textureCoord : TEXCOORD0;\n\
-};\n\
-\n\
-VS_OUTPUT VShader(VS_INPUT In)\n\
-{\n\
-    return In;\n\
-}\n\
-";
-
-struct SHADER_INPUT {
-    struct {
-        FLOAT x;
-        FLOAT y;
-        FLOAT z;
-    } position;
-    struct {
-        FLOAT x;
-        FLOAT y;
-    } texture;
-};
-
-
 struct render_context
 {
     /* Direct3D11 device/context */
     ID3D11Device        *d3device;
     ID3D11DeviceContext *d3dctx;
-
-    /* our vertex/pixel shader */
-    ID3D11VertexShader *pVS;
-    ID3D11PixelShader  *pPS;
-    ID3D11InputLayout  *pShadersInputLayout;
 
     UINT vertexBufferStride;
     ID3D11Buffer *pVertexBuffer;
@@ -96,12 +45,9 @@ struct render_context
     ID3D11ShaderResourceView *textureShaderInput;
     ID3D11RenderTargetView   *textureRenderTarget;
 
-    // ID3D11Texture2D          *texture2;
     ID3D11ShaderResourceView *textureShaderInput2;
-    // ID3D11RenderTargetView   *textureRenderTarget2;
 
     CRITICAL_SECTION sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
-    std::mutex text_lock;
     unsigned width, height;
     void (*ReportSize)(void *ReportOpaque, unsigned width, unsigned height);
     void *ReportOpaque;
@@ -115,7 +61,6 @@ public:
 	RenderAPI_D3D11();
 	virtual ~RenderAPI_D3D11() { }
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
-    void SetupTextureInfo(UINT width, UINT height, void* hwnd);
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces);
     void* getVideoFrame(bool* out_updated) override;
 
@@ -141,8 +86,8 @@ private:
     render_context Context;
     const UINT Width = SCREEN_WIDTH;
     const UINT Height = SCREEN_HEIGHT;
-    void* Hwnd = (void*)424242;
     bool initialized;
+    // const std::mutex text_lock;
 };
 
 
@@ -166,15 +111,6 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
                                     &Context );
 }
 
-void RenderAPI_D3D11::SetupTextureInfo(UINT width, UINT height, void* hwnd)
-{
-    DEBUG("Entering SetupTextureInfo");
-
-    // Width = width;
-    // Height = height;
-  //  Hwnd = hwnd;
-}
-
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
     DEBUG("Entering ProcessDeviceEvent \n");
@@ -184,31 +120,29 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
         case kUnityGfxDeviceEventInitialize:
         {
             IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
-            if(d3d == NULL)
-            {
-                DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
-                return;
-            }
-            m_Device = d3d->GetDevice();
-            if(m_Device == NULL)
-            {
-                DEBUG("Could not retrieve m_Device \n");
-                return;
-            }
-            m_Device->GetImmediateContext(&m_Context);
-            if(m_Context == NULL)
-            {
-                DEBUG("Could not retrieve m_Context \n");
-                return;
-            }
-            // struct render_context Context = { 0 };
-            //Context.d3device = d3d->GetDevice();
+            // if(d3d == NULL)
+            // {
+            //     DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
+            //     return;
+            // }
+            // m_Device = d3d->GetDevice();
+            // if(m_Device == NULL)
+            // {
+            //     DEBUG("Could not retrieve m_Device \n");
+            //     return;
+            // }
+            // m_Device->GetImmediateContext(&m_Context);
+            // if(m_Context == NULL)
+            // {
+            //     DEBUG("Could not retrieve m_Context \n");
+            //     return;
+            // }
             CreateResources(&Context);
             break;
         }
         case kUnityGfxDeviceEventShutdown:
         {
-      //      ReleaseResources(&Context);
+            ReleaseResources(&Context);
             break;
         }
         case kUnityGfxDeviceEventAfterReset:
@@ -236,18 +170,9 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
 
     ctx->width = Width;
     ctx->height = Height;
-    // ctx->d3device = m_Device;
-    // ctx->d3dctx = m_Context;
-
-    // if (ctx->ReportSize != nullptr)
-    //     ctx->ReportSize(ctx->ReportOpaque, ctx->width, ctx->height);
-
-    DEBUG("WIDTH: %u \n", Width);
-    DEBUG("HEIGHT: %u \n", Height);
-   // DEBUG("Hwnd: %u \n", Hwnd);
 
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT; /* needed for hardware decoding */
-    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+    creationFlags |= D3D11_CREATE_DEVICE_DEBUG; //TODO: remove for release mode
 
     D3D_FEATURE_LEVEL featureLevel;
     hr = D3D11CreateDevice(NULL,
@@ -275,59 +200,7 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
         pMultithread->Release();
     }
 
-    DEBUG("Compiling shaders....\n");
-
-    ID3D10Blob *VS, *PS, *pErrBlob;
-    char *err;
-    hr = D3DCompile(shaderStr, strlen(shaderStr),
-                    NULL, NULL, NULL, "VShader", "vs_4_0", 0, 0, &VS, &pErrBlob);
-    err = pErrBlob ? (char*)pErrBlob->GetBufferPointer() : NULL;
-    hr = D3DCompile(shaderStr, strlen(shaderStr),
-                    NULL, NULL, NULL, "PShader", "ps_4_0", 0, 0, &PS, &pErrBlob);
-    err = pErrBlob ? (char*)pErrBlob->GetBufferPointer() : NULL;
-
-    DEBUG("Creating vertex and pixel shaders...\n");
-    ctx->d3device->CreateVertexShader(VS->GetBufferPointer(), VS->GetBufferSize(), NULL, &ctx->pVS);
-    ctx->d3device->CreatePixelShader(PS->GetBufferPointer(), PS->GetBufferSize(), NULL, &ctx->pPS);
-
-    D3D11_INPUT_ELEMENT_DESC ied[] =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-    };
-
-    hr = ctx->d3device->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &ctx->pShadersInputLayout);
-    if(FAILED(hr))
-    {
-        DEBUG("Failed to CreateInputLayout.\n");
-        return;
-    }
-
-    SHADER_INPUT OurVertices[] =
-    {
-        {BORDER_LEFT,  BORDER_BOTTOM, 0.0f,  0.0f, 1.0f},
-        {BORDER_RIGHT, BORDER_BOTTOM, 0.0f,  1.0f, 1.0f},
-        {BORDER_RIGHT, BORDER_TOP,    0.0f,  1.0f, 0.0f},
-        {BORDER_LEFT,  BORDER_TOP,    0.0f,  0.0f, 0.0f},
-    };
-
-    D3D11_BUFFER_DESC bd;
-    ZeroMemory(&bd, sizeof(bd));
-
-    bd.Usage = D3D11_USAGE_DYNAMIC;
-    bd.ByteWidth = sizeof(OurVertices);
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
     DEBUG("Creating buffer from device");
-
-    ctx->d3device->CreateBuffer(&bd, NULL, &ctx->pVertexBuffer);
-    ctx->vertexBufferStride = sizeof(OurVertices[0]);
-
-    D3D11_MAPPED_SUBRESOURCE ms;
-    ctx->d3dctx->Map(ctx->pVertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-    memcpy(ms.pData, OurVertices, sizeof(OurVertices));
-    ctx->d3dctx->Unmap(ctx->pVertexBuffer, NULL);
 
     ctx->quadIndexCount = 6;
     D3D11_BUFFER_DESC quadDesc = { 0 };
@@ -336,17 +209,6 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
     quadDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     quadDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     ctx->d3device->CreateBuffer(&quadDesc, NULL, &ctx->pIndexBuffer);
-
-    ctx->d3dctx->Map(ctx->pIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-    WORD *triangle_pos = static_cast<WORD*>(ms.pData);
-    triangle_pos[0] = 3;
-    triangle_pos[1] = 1;
-    triangle_pos[2] = 0;
-
-    triangle_pos[3] = 2;
-    triangle_pos[4] = 1;
-    triangle_pos[5] = 3;
-    ctx->d3dctx->Unmap(ctx->pIndexBuffer, NULL);
 
     D3D11_SAMPLER_DESC sampDesc;
     ZeroMemory(&sampDesc, sizeof(sampDesc));
@@ -376,13 +238,8 @@ void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
     ctx->textureRenderTarget->Release();
     ctx->textureShaderInput->Release();
     ctx->texture->Release();
-    ctx->pShadersInputLayout->Release();
-    ctx->pVS->Release();
-    ctx->pPS->Release();
     ctx->pIndexBuffer->Release();
     ctx->pVertexBuffer->Release();
-    // ctx->swapchain->Release();
-    // ctx->swapchainRenderTarget->Release();
     ctx->d3dctx->Release();
     ctx->d3device->Release();
 }
@@ -494,9 +351,9 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     DEBUG("libvlc SWAP \n");
 
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
-    //std::lock_guard<std::mutex> lock(ctx->text_lock);
+    // std::lock_guard<std::mutex> lock(text_lock);
     ctx->updated = true;
-    std::swap(ctx->textureShaderInput2, ctx->textureShaderInput);   
+  //  std::swap(ctx->textureShaderInput2, ctx->textureShaderInput);   
    // ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
 }
 
@@ -510,23 +367,13 @@ void RenderAPI_D3D11::EndRender(struct render_context *ctx)
 
     ctx->d3dctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    ctx->d3dctx->IASetInputLayout(ctx->pShadersInputLayout);
     UINT offset = 0;
     ctx->d3dctx->IASetVertexBuffers(0, 1, &ctx->pVertexBuffer, &ctx->vertexBufferStride, &offset);
     ctx->d3dctx->IASetIndexBuffer(ctx->pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-    ctx->d3dctx->VSSetShader(ctx->pVS, 0, 0);
-
     ctx->d3dctx->PSSetSamplers(0, 1, &ctx->samplerState);
 
     ctx->d3dctx->PSSetShaderResources(0, 1, &ctx->textureShaderInput);
-
-    ctx->d3dctx->PSSetShader(ctx->pPS, 0, 0);
-
-    // DXGI_SWAP_CHAIN_DESC scd;
-    // ctx->swapchain->GetDesc(&scd);
-    // RECT currentRect;
-    // GetWindowRect(scd.OutputWindow, &currentRect);
 
     D3D11_VIEWPORT viewport = { 0 };
     viewport.TopLeftX = 0;
@@ -612,7 +459,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
 
-    return (void*)Context.textureShaderInput2;
+    return (void*)Context.textureShaderInput;
 
     // std::lock_guard<std::mutex> lock(text_lock);
     // if (out_updated)

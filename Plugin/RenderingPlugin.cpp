@@ -75,9 +75,9 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         DEBUG("s_CurrentAPI is NULL \n");    
     }
     
-    DEBUG("Calling... SetupTextureInfo \n");
+    // DEBUG("Calling... SetupTextureInfo \n");
     
-    s_CurrentAPI->SetupTextureInfo(Width, Height, Hwnd);
+    // s_CurrentAPI->SetupTextureInfo(Width, Height, Hwnd);
     
     DEBUG("Calling... ProcessDeviceEvent \n");
     
@@ -176,55 +176,57 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
 }
 
-void TextureUpdateCallback(int eventID, void* data)
-{
-    DEBUG("Entering TextureUpdateCallback \n");
-    auto event = static_cast<UnityRenderingExtEventType>(eventID);
+// void TextureUpdateCallback(int eventID, void* data)
+// {
+//     DEBUG("Entering TextureUpdateCallback \n");
+//     auto event = static_cast<UnityRenderingExtEventType>(eventID);
 
-    if (event == kUnityRenderingExtEventUpdateTextureBeginV2)
-    {
-        DEBUG("event is kUnityRenderingExtEventUpdateTextureBeginV2 \n");
+//     if (event == kUnityRenderingExtEventUpdateTextureBeginV2)
+//     {
+//         DEBUG("event is kUnityRenderingExtEventUpdateTextureBeginV2 \n");
 
-        auto *pParams = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
+//         auto *pParams = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
 
-        if(mp == NULL)
-            return;
+//         if(mp == NULL)
+//             return;
 
-        RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+//         RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
 
-        bool* updated;
+//         bool* updated;
 
-        if (!s_CurrentAPI) {
-            DEBUG("Error, no Render API \n");
-            if (updated)
-                *updated = false;
-            return;
-        }
+//         if (!s_CurrentAPI) {
+//             DEBUG("Error, no Render API \n");
+//             if (updated)
+//                 *updated = false;
+//             return;
+//         }
 
-        DEBUG("calling s_CurrentAPI->getVideoFrame(updated) \n");
+//         DEBUG("calling s_CurrentAPI->getVideoFrame(updated) \n");
 
-        void* tex = s_CurrentAPI->getVideoFrame(updated);
+//         void* tex = s_CurrentAPI->getVideoFrame(updated);
         
-        DEBUG("SWAPPING -=================== \n");
-        std::swap(tex, pParams->texData); 
-    }
-    else if (event == kUnityRenderingExtEventUpdateTextureEndV2)
-    {     
-        DEBUG("event is kUnityRenderingExtEventUpdateTextureEndV2 \n");
-        auto *pParams = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
-        if(pParams->texData != nullptr)
-        {
-            pParams->texData = nullptr;
-        }
-    }
-}
+//         DEBUG("SWAPPING -=================== \n");
+//         pParams->format = kUnityRenderingExtFormatR8G8B8A8_UNorm;
+
+//         std::swap(tex, pParams->texData); 
+//     }
+//     else if (event == kUnityRenderingExtEventUpdateTextureEndV2)
+//     {     
+//         DEBUG("event is kUnityRenderingExtEventUpdateTextureEndV2 \n");
+//         auto *pParams = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
+//         if(pParams->texData != nullptr)
+//         {
+//             pParams->texData = nullptr;
+//         }
+//     }
+// }
 
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
     return OnRenderEvent;
 }
 
-extern "C" UnityRenderingEventAndData UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetTextureUpdateCallback()
-{
-    return TextureUpdateCallback;
-}
+// extern "C" UnityRenderingEventAndData UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetTextureUpdateCallback()
+// {
+//     return TextureUpdateCallback;
+// }
