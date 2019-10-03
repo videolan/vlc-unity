@@ -5,7 +5,6 @@
 
 // #if SUPPORT_D3D11
 
-
 #include <assert.h>
 #include <tchar.h>
 #include <windows.h>
@@ -79,7 +78,6 @@ private:
 
 private:
 	ID3D11Device* m_Device;
-    ID3D11DeviceContext* m_Context;
     render_context Context;
     const UINT Width = SCREEN_WIDTH;
     const UINT Height = SCREEN_HEIGHT;
@@ -117,23 +115,17 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
         case kUnityGfxDeviceEventInitialize:
         {
             IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
-            // if(d3d == NULL)
-            // {
-            //     DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
-            //     return;
-            // }
-            // m_Device = d3d->GetDevice();
-            // if(m_Device == NULL)
-            // {
-            //     DEBUG("Could not retrieve m_Device \n");
-            //     return;
-            // }
-            // m_Device->GetImmediateContext(&m_Context);
-            // if(m_Context == NULL)
-            // {
-            //     DEBUG("Could not retrieve m_Context \n");
-            //     return;
-            // }
+            if(d3d == NULL)
+            {
+                DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
+                return;
+            }
+            m_Device = d3d->GetDevice();
+            if(m_Device == NULL)
+            {
+                DEBUG("Could not retrieve m_Device \n");
+                return;
+            }
             CreateResources(&Context);
             break;
         }
@@ -167,6 +159,9 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
 
     ctx->width = Width;
     ctx->height = Height;
+    ctx->d3device = m_Device;
+
+    // m_Device->OpenSharedResource()
 
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT; /* needed for hardware decoding */
     creationFlags |= D3D11_CREATE_DEVICE_DEBUG; //TODO: remove for release mode
@@ -253,7 +248,7 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
     D3D11_TEXTURE2D_DESC texDesc = { 0 };
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
-    texDesc.MiscFlags = 0;
+    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.CPUAccessFlags = 0;
@@ -269,6 +264,7 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
         DEBUG("d3device is NULL \n");
     }
 
+    
     hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &ctx->texture );
     if (FAILED(hr))
     {
@@ -279,6 +275,28 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
     {
         DEBUG("CreateTexture2D SUCCEEDED.\n");
     }
+
+    IDXGIResource1 * sharedResource = NULL;
+    HANDLE* sharedHandle = NULL;
+
+    ctx->texture->QueryInterface(ctx->texture, &IID_IDXGIResource1, (LPVOID*)sharedResource);
+
+    // ctx->texture->QueryInterface(&IID_ID3D11Resource1, (LPVOID*) &sharedResource);
+    
+    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ, NULL, sharedHandle);
+    if(FAILED(hr))
+    {
+        DEBUG("sharedResource->CreateSharedHandle FAILED \n");
+        abort();
+    }
+
+    sharedResource->Release();
+    
+    m_Device->OpenSharedResource1(m_Device, sharedHandle, &IID_ID3D11Resource, (void**)&ctx->texture);
+
+    // ID3D11Device1_OpenSharedResource1(m_Device, sys->sharedHandle, &IID_ID3D11Resource, (void**)&copyTexture);
+
+    // et tu fais ta ID3D11ShaderResourceView a partir de copyTexture
 
     D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
     ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
