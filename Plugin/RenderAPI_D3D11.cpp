@@ -325,19 +325,12 @@ void RenderAPI_D3D11::Swap_cb( void* opaque )
     DEBUG("libvlc SWAP \n");
 
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
-    // std::lock_guard<std::mutex> lock(text_lock);
     ctx->updated = true;
-  //  std::swap(ctx->textureShaderInput2, ctx->textureShaderInput);   
-   // ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
 }
 
 void RenderAPI_D3D11::EndRender(struct render_context *ctx)
 {
-    /* render into the swapchain */
-    static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
-
     ctx->d3dctx->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
-    ctx->d3dctx->ClearRenderTargetView(ctx->textureRenderTarget, orangeRGBA);
 
     ctx->d3dctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
