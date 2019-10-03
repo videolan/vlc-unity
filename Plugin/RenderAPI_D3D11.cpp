@@ -36,9 +36,7 @@ struct render_context
     ID3D11Buffer *pVertexBuffer;
 
     UINT quadIndexCount;
-    ID3D11Buffer *pIndexBuffer;
 
-    ID3D11SamplerState *samplerState;
 
     /* texture VLC renders into */
     ID3D11Texture2D          *texture;
@@ -203,28 +201,6 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx)
     DEBUG("Creating buffer from device");
 
     ctx->quadIndexCount = 6;
-    D3D11_BUFFER_DESC quadDesc = { 0 };
-    quadDesc.Usage = D3D11_USAGE_DYNAMIC;
-    quadDesc.ByteWidth = sizeof(WORD) * ctx->quadIndexCount;
-    quadDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    quadDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    ctx->d3device->CreateBuffer(&quadDesc, NULL, &ctx->pIndexBuffer);
-
-    D3D11_SAMPLER_DESC sampDesc;
-    ZeroMemory(&sampDesc, sizeof(sampDesc));
-    sampDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-    sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-    sampDesc.MinLOD = 0;
-    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-    hr = ctx->d3device->CreateSamplerState(&sampDesc, &ctx->samplerState);
-    if(FAILED(hr))
-    {
-        DEBUG("Failed to CreateSamplerState.\n");
-    }
 
     DEBUG("Exiting CreateResources.\n");
 }
@@ -234,11 +210,9 @@ void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
 {
     DEBUG("Entering ReleaseResources.\n");
 
-	ctx->samplerState->Release();
     ctx->textureRenderTarget->Release();
     ctx->textureShaderInput->Release();
     ctx->texture->Release();
-    ctx->pIndexBuffer->Release();
     ctx->pVertexBuffer->Release();
     ctx->d3dctx->Release();
     ctx->d3device->Release();
@@ -369,9 +343,6 @@ void RenderAPI_D3D11::EndRender(struct render_context *ctx)
 
     UINT offset = 0;
     ctx->d3dctx->IASetVertexBuffers(0, 1, &ctx->pVertexBuffer, &ctx->vertexBufferStride, &offset);
-    ctx->d3dctx->IASetIndexBuffer(ctx->pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-    ctx->d3dctx->PSSetSamplers(0, 1, &ctx->samplerState);
 
     ctx->d3dctx->PSSetShaderResources(0, 1, &ctx->textureShaderInput);
 
