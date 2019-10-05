@@ -7,7 +7,7 @@ OBJS = $(SRCS:.cpp=.o)
 CXXFLAGS = -O2 -Wall -I./include/ -I./mingw.thread
 # LDFLAGS = -shared -m64
 LDFLAGS = -static-libgcc -static-libstdc++ -shared
-LIBS = -L./vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
+LIBS = -L/mnt/d/vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
 
 BIN_PREFIX = x86_64-w64-mingw32
 OUTPUT = $(TARGET).dll

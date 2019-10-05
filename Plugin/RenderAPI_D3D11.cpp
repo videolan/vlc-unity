@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <tchar.h>
 #include <windows.h>
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <d3dcompiler.h>
 #include "Unity/IUnityGraphicsD3D11.h"
 #include "Log.h"
@@ -28,7 +28,7 @@
 struct render_context
 {
     /* Direct3D11 device/context */
-    ID3D11Device        *d3device;
+    ID3D11Device       *d3device;
     ID3D11DeviceContext *d3dctx;
 
     UINT vertexBufferStride;
@@ -276,23 +276,46 @@ bool RenderAPI_D3D11::UpdateOutput_cb( void *opaque, const libvlc_video_direct3d
         DEBUG("CreateTexture2D SUCCEEDED.\n");
     }
 
-    IDXGIResource1 * sharedResource = NULL;
-    HANDLE* sharedHandle = NULL;
+    IDXGIResource1* sharedResource = NULL;
 
-    ctx->texture->QueryInterface(ctx->texture, &IID_IDXGIResource1, (LPVOID*)sharedResource);
+    hr = ctx->texture->QueryInterface(__uuidof(IDXGIResource1), (void **)&sharedResource);
+    if(FAILED(hr))
+    {
+        DEBUG("get IDXGIResource1 FAILED \n");
+        abort();
+    }
 
     // ctx->texture->QueryInterface(&IID_ID3D11Resource1, (LPVOID*) &sharedResource);
     
-    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ, NULL, sharedHandle);
+    HANDLE sharedHandle;
+    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ, NULL, &sharedHandle);
     if(FAILED(hr))
     {
-        DEBUG("sharedResource->CreateSharedHandle FAILED \n");
+        _com_error error(hr);
+        DEBUG("sharedResource->CreateSharedHandle FAILED %s \n", error.ErrorMessage());
         abort();
     }
 
     sharedResource->Release();
+
+    ID3D11Device1* device1;
+    hr = ctx->d3device->QueryInterface(__uuidof(ID3D11Device1), (void**)&device1);
+    if(FAILED(hr))
+    {
+        _com_error error(hr);
+        DEBUG("QueryInterface ID3D11Device1 FAILED %s \n", error.ErrorMessage());
+        abort();
+    }
     
-    m_Device->OpenSharedResource1(m_Device, sharedHandle, &IID_ID3D11Resource, (void**)&ctx->texture);
+    hr = device1->OpenSharedResource1(sharedHandle, __uuidof(ID3D11Resource), (void**)&ctx->texture);
+    if(FAILED(hr))
+    {
+        _com_error error(hr);
+        DEBUG("ctx->d3device->OpenSharedResource FAILED %s \n", error.ErrorMessage());
+        abort();
+    }
+
+    device1->Release();
 
     // ID3D11Device1_OpenSharedResource1(m_Device, sys->sharedHandle, &IID_ID3D11Resource, (void**)&copyTexture);
 
@@ -416,6 +439,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
 
+    *out_updated = Context.updated;
     return (void*)Context.textureShaderInput;
 
     // std::lock_guard<std::mutex> lock(text_lock);

@@ -137,6 +137,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
   s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
 }
 
+
 static RenderAPI* EarlyRenderAPI = NULL;
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
