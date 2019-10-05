@@ -275,7 +275,7 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx, ID3D11Device *
     texDesc.Width  = SCREEN_WIDTH;
 
     for(int i = 0; i < 2; i++) {
-        hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &ctx->swapchain[i] );
+        hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &(ctx->swapchain[i]) );
         if (FAILED(hr))
         {
             _com_error error(hr);
@@ -284,11 +284,7 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx, ID3D11Device *
         }
     }
 
-    ID3D11Resource* swapchainResource;
-
-    ctx->swapchain[0]->QueryInterface(&swapchainResource);
-    
-    ctx->d3device->CreateRenderTargetView(swapchainResource, NULL, &ctx->swapchainRenderTarget);
+    ctx->d3device->CreateRenderTargetView(ctx->swapchain[0], NULL, &ctx->swapchainRenderTarget);
     DEBUG("Compile shaders \n");
 
     ID3D10Blob *VS, *PS, *pErrBlob;
@@ -566,12 +562,14 @@ bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libv
     renderTargetViewDesc.Format = texDesc.Format,
     renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
     
+    DEBUG("Fails here: first parameter is corrumpt \n");
     hr = ctx->d3deviceVLC->CreateRenderTargetView(ctx->textureVLC, &renderTargetViewDesc, &ctx->textureRenderTarget);
     if (FAILED(hr))
     {
         DEBUG("CreateRenderTargetView FAILED \n");
         return false;
     }
+    DEBUG("Done \n");
 
     out->surface_format = renderFormat;
     out->full_range     = true;
@@ -692,10 +690,10 @@ void Resize_cb( void *opaque,
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
-
-    *out_updated = Context.updated;
+    return NULL;
+    /*out_updated = Context.updated;
     return (void*)Context.swapchainRenderTarget;
-
+*/
     // std::lock_guard<std::mutex> lock(text_lock);
     // if (out_updated)
     //     *out_updated = updated;
