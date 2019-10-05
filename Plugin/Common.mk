@@ -4,10 +4,14 @@ SRCS = RenderingPlugin.cpp RenderAPI.cpp RenderAPI_D3D11.cpp Log.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 
-CXXFLAGS = -O2 -Wall -I./include/ -I./mingw.thread
+CXXFLAGS = -O2 -fdebug-prefix-map='/mnt/d/'='d:/' -Wall -I./include/ -I./mingw.thread
 # LDFLAGS = -shared -m64
-LDFLAGS = -static-libgcc -static-libstdc++ -shared
-LIBS = -L/mnt/d/vlc-4.0.0-dev/sdk/lib -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
+# gcc (ubuntu)
+#LDFLAGS = -static-libgcc -static-libstdc++ -shared -L/mnt/d/Projects/vlc/win64/win64/vlc-4.0.0-dev/sdk/lib
+# clang
+LDFLAGS = -static-libgcc -static-libstdc++ -shared -Wl,-pdb= -L/mnt/d/Projects/vlc/win64/win64/vlc-4.0.0-dev/sdk/lib
+
+LIBS = -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
 
 BIN_PREFIX = x86_64-w64-mingw32
 OUTPUT = $(TARGET).dll
