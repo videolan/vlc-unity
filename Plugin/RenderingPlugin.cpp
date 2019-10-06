@@ -39,7 +39,7 @@ static void* Hwnd;
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
 {
-    if(libvlc == NULL)
+    /*if(libvlc == NULL)
     {
         DEBUG("libvlc is NULL, aborting...");
         return NULL;
@@ -54,13 +54,13 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         return NULL;
     }
 
-    mp = libvlc_media_player_new(inst);
+    mp = libvlc_media_player_new(inst);*/
     RenderAPI* s_CurrentAPI;
 
-    if (mp == NULL) {
+    /*if (mp == NULL) {
         DEBUG("Error initializing media player");
         goto err;
-    }
+    }*/
 
     DEBUG("Calling... Initialize Render API \n");
 
@@ -84,11 +84,11 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
 
     DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
-    s_CurrentAPI->setVlcContext(mp);
+    //s_CurrentAPI->setVlcContext(mp);
 
-    contexts[mp] = s_CurrentAPI;
+    contexts[NULL] = s_CurrentAPI;
 
-    return mp;
+    return NULL;
 err:
     if ( mp ) {
         // Stop playing
@@ -104,10 +104,7 @@ err:
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 getVideoFrameVLC (libvlc_media_player_t* mp, bool * updated)
 {
-    if(mp == NULL)
-        return nullptr;
-
-    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+    RenderAPI* s_CurrentAPI = contexts.find(NULL)->second;
 
     if (!s_CurrentAPI) {
         DEBUG("Error, no Render API");
