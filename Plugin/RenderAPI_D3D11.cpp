@@ -519,7 +519,7 @@ bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libv
     sharedResource->Release();
 
     ID3D11Device1* d3d11VLC1;
-    hr = ctx->d3device->QueryInterface(__uuidof(ID3D11Device1), (void**)&d3d11VLC1);
+    hr = ctx->d3deviceVLC->QueryInterface(__uuidof(ID3D11Device1), (void**)&d3d11VLC1);
     if(FAILED(hr))
     {
         _com_error error(hr);
@@ -562,7 +562,6 @@ bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libv
     renderTargetViewDesc.Format = texDesc.Format,
     renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
     
-    DEBUG("Fails here: first parameter is corrumpt \n");
     hr = ctx->d3deviceVLC->CreateRenderTargetView(ctx->textureVLC, &renderTargetViewDesc, &ctx->textureRenderTarget);
     if (FAILED(hr))
     {
@@ -603,7 +602,7 @@ bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hd
         // ctx->d3dctx->PSSetShaderResources(0, 1, &reset);
         //ctx->d3dctx->Flush();
 
-        ctx->d3dctx->ClearRenderTargetView( ctx->textureRenderTarget, blackRGBA);
+        ctx->d3dctxVLC->ClearRenderTargetView( ctx->textureRenderTarget, blackRGBA);
         return true;
     }
 
@@ -646,7 +645,7 @@ bool SelectPlane_cb( void *opaque, size_t plane )
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
-    ctx->d3dctx->OMSetRenderTargets( 1, &ctx->textureRenderTarget, NULL );
+    ctx->d3dctxVLC->OMSetRenderTargets( 1, &ctx->textureRenderTarget, NULL );
     return true;
 }
 
@@ -690,10 +689,10 @@ void Resize_cb( void *opaque,
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     DEBUG("Entering getVideoFrame \n");
-    return NULL;
-    /*out_updated = Context.updated;
-    return (void*)Context.swapchainRenderTarget;
-*/
+    *out_updated = Context.updated;
+    Context.updated = false;
+    return (void*)Context.textureShaderInput;
+
     // std::lock_guard<std::mutex> lock(text_lock);
     // if (out_updated)
     //     *out_updated = updated;
