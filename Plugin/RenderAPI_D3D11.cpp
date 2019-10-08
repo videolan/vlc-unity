@@ -212,7 +212,7 @@ void Update(render_context* ctx, UINT width, UINT height)
     }
 
     // ctx->texture->QueryInterface(&IID_ID3D11Resource1, (LPVOID*) &sharedResource);
-    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ, NULL, &ctx->sharedHandled);
+    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &ctx->sharedHandled);
     if(FAILED(hr))
     {
         _com_error error(hr);
