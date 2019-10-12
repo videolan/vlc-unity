@@ -80,7 +80,7 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
 
     DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
-    // s_CurrentAPI->setVlcContext(mp);
+    s_CurrentAPI->setVlcContext(mp);
 
     contexts[mp] = s_CurrentAPI;
 

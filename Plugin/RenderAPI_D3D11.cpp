@@ -53,6 +53,9 @@ struct render_context
     void *ReportOpaque;
 
     bool updated;
+    
+    CRITICAL_SECTION outputLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
+    ID3D11Texture2D  *outputTexture;
 };
 
 class RenderAPI_D3D11 : public RenderAPI
@@ -72,8 +75,6 @@ private:
 private:
 	ID3D11Device* m_Device;
     render_context Context;
-    const UINT Width = SCREEN_WIDTH;
-    const UINT Height = SCREEN_HEIGHT;
     bool initialized;
     // const std::mutex text_lock;
 };
@@ -160,7 +161,10 @@ void Update(render_context* ctx, UINT width, UINT height)
     DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     HRESULT hr;
     DEBUG("start releasing d3d objects.\n");
+    EnterCriticalSection(&ctx->outputLock);
 
+    ctx->width = width;
+    ctx->height = height;
     if (ctx->texture)
     {
         ctx->texture->Release();
@@ -183,7 +187,6 @@ void Update(render_context* ctx, UINT width, UINT height)
     D3D11_TEXTURE2D_DESC texDesc = { 0 };
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
-    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.CPUAccessFlags = 0;
@@ -191,6 +194,18 @@ void Update(render_context* ctx, UINT width, UINT height)
     texDesc.Format = renderFormat;
     texDesc.Height = height;
     texDesc.Width  = width;
+    
+    hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &ctx->outputTexture );
+    if (FAILED(hr))
+    {
+        DEBUG("Create output Texture2D FAILED \n");
+    }
+    else
+    {
+        DEBUG("Create output Texture2D SUCCEEDED \n");
+    }
+
+    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     
     hr = ctx->d3device->CreateTexture2D( &texDesc, NULL, &ctx->texture );
     if (FAILED(hr))
@@ -250,7 +265,7 @@ void Update(render_context* ctx, UINT width, UINT height)
     resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     resviewDesc.Texture2D.MipLevels = 1;
     resviewDesc.Format = texDesc.Format;
-    hr = ctx->d3device->CreateShaderResourceView(ctx->texture, &resviewDesc, &ctx->textureShaderInput );
+    hr = ctx->d3device->CreateShaderResourceView(ctx->outputTexture, &resviewDesc, &ctx->textureShaderInput );
     if (FAILED(hr)) 
     {
         DEBUG("CreateShaderResourceView FAILED \n");
@@ -280,6 +295,7 @@ void Update(render_context* ctx, UINT width, UINT height)
     {
         DEBUG("CreateRenderTargetView FAILED \n");
     }
+    LeaveCriticalSection(&ctx->outputLock);
 }
 
 void RenderAPI_D3D11::CreateResources(struct render_context *ctx, ID3D11Device *d3device, ID3D11DeviceContext *d3dctx)
@@ -293,9 +309,8 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx, ID3D11Device *
     ZeroMemory(ctx, sizeof(*ctx));
 
     InitializeCriticalSection(&ctx->sizeLock);
+    InitializeCriticalSection(&ctx->outputLock);
 
-    ctx->width = Width;
-    ctx->height = Height;
     ctx->d3device = d3device;
     ctx->d3dctx = d3dctx;
 
@@ -345,6 +360,7 @@ void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
     ctx->textureRenderTarget->Release();
     ctx->textureShaderInput->Release();
     ctx->texture->Release();
+    ctx->outputTexture->Release();
     ctx->pVertexBuffer->Release();
     ctx->d3dctx->Release();
     ctx->d3device->Release();
@@ -374,9 +390,9 @@ bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libv
 
 void Swap_cb( void* opaque )
 {
-    DEBUG("libvlc SWAP \n");
-
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
+    
+    ctx->d3dctxVLC->Flush();
     ctx->updated = true;
 }
 
@@ -385,52 +401,15 @@ bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hd
     struct render_context *ctx = static_cast<struct render_context *>( opaque );
     if ( enter )
     {
-        DEBUG("StartRendering enter ");
-        static const FLOAT blackRGBA[4] = {0.5f, 0.5f, 0.0f, 1.0f};
+        EnterCriticalSection(&ctx->outputLock);
+        static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
 
-        /* force unbinding the input texture, otherwise we get:
-         * OMSetRenderTargets: Resource being set to OM RenderTarget slot 0 is still bound on input! */
-        // ID3D11ShaderResourceView *reset = NULL;
-        // ctx->d3dctx->PSSetShaderResources(0, 1, &reset);
-        //ctx->d3dctx->Flush();
-
-        ctx->d3dctxVLC->ClearRenderTargetView( ctx->textureRenderTarget, blackRGBA);
-        DEBUG("out \n");
+        ctx->d3dctxVLC->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
+        ctx->d3dctxVLC->ClearRenderTargetView( ctx->textureRenderTarget, orangeRGBA);
         return true;
     }
 
-    DEBUG("StartRendering end ");
-    /* render into the swapchain */
-    /*static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
-
-    ctx->d3dctx->OMSetRenderTargets(1, &ctx->swapchainRenderTarget, NULL);
-    ctx->d3dctx->ClearRenderTargetView(ctx->swapchainRenderTarget, orangeRGBA);
-
-    ctx->d3dctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    ctx->d3dctx->IASetInputLayout(ctx->pShadersInputLayout);
-    UINT offset = 0;
-    ctx->d3dctx->IASetVertexBuffers(0, 1, &ctx->pVertexBuffer, &ctx->vertexBufferStride, &offset);
-    ctx->d3dctx->IASetIndexBuffer(ctx->pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-    ctx->d3dctx->VSSetShader(ctx->pVS, 0, 0);
-
-    ctx->d3dctx->PSSetSamplers(0, 1, &ctx->samplerState);
-
-    ctx->d3dctx->PSSetShaderResources(0, 1, &ctx->textureShaderInput);
-
-    ctx->d3dctx->PSSetShader(ctx->pPS, 0, 0);
-
-    D3D11_VIEWPORT viewport = { };
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    viewport.Width = SCREEN_WIDTH;
-    viewport.Height = SCREEN_HEIGHT;
-
-    ctx->d3dctx->RSSetViewports(1, &viewport);
-
-    ctx->d3dctx->DrawIndexed(ctx->quadIndexCount, 0, 0);*/
-    DEBUG("out \n");
+    LeaveCriticalSection(&ctx->outputLock);
     return true;
 }
 
@@ -482,20 +461,25 @@ void Resize_cb( void *opaque,
 
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
-    *out_updated = true;
-    //Context.d3dctx->OMSetRenderTargets(1, &Context.textureRenderTarget, NULL);
-    static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
-    //*
-    Context.d3dctxVLC->OMSetRenderTargets(1, &Context.textureRenderTarget, NULL);
-    Context.d3dctxVLC->ClearRenderTargetView(Context.textureRenderTarget, orangeRGBA);
-    /*/
-    Context.d3dctx->ClearRenderTargetView(Context.textureRenderTarget, orangeRGBA);
-    //*/
-    Context.d3dctxVLC->Flush();
+    EnterCriticalSection(&Context.outputLock);
+    *out_updated = Context.updated;
+    if(!Context.updated)
+    {
+        LeaveCriticalSection(&Context.outputLock);
+        return NULL;
+    }
+    Context.updated = false;
+    D3D11_BOX box = {
+        .top = 0,
+        .bottom = Context.height,
+        .left = 0,
+        .right = Context.width,
+        .back = 1,
+    };
+    Context.d3dctx->CopySubresourceRegion(Context.outputTexture, 0, 0, 0, 0, Context.texture, 0, &box);
+    LeaveCriticalSection(&Context.outputLock);
     return Context.textureShaderInput;
     /*
-    *out_updated = Context.updated;
-    Context.updated = false;
     return (void*)Context.textureShaderInput;*/
 
     // std::lock_guard<std::mutex> lock(text_lock);
