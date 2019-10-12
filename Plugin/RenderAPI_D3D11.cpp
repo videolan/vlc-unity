@@ -491,6 +491,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
     /*/
     Context.d3dctx->ClearRenderTargetView(Context.textureRenderTarget, orangeRGBA);
     //*/
+    Context.d3dctxVLC->Flush();
     return Context.textureShaderInput;
     /*
     *out_updated = Context.updated;
