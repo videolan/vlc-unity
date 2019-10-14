@@ -463,35 +463,21 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     EnterCriticalSection(&Context.outputLock);
     *out_updated = Context.updated;
-    if(!Context.updated)
+    if(Context.updated)
     {
-        LeaveCriticalSection(&Context.outputLock);
-        return NULL;
+        Context.updated = false;
+        D3D11_BOX box = {
+            .top = 0,
+            .bottom = Context.height,
+            .left = 0,
+            .right = Context.width,
+            .back = 1,
+        };
+        Context.d3dctx->CopySubresourceRegion(Context.outputTexture, 0, 0, 0, 0, Context.texture, 0, &box);
     }
-    Context.updated = false;
-    D3D11_BOX box = {
-        .top = 0,
-        .bottom = Context.height,
-        .left = 0,
-        .right = Context.width,
-        .back = 1,
-    };
-    Context.d3dctx->CopySubresourceRegion(Context.outputTexture, 0, 0, 0, 0, Context.texture, 0, &box);
+    
     LeaveCriticalSection(&Context.outputLock);
     return Context.textureShaderInput;
-    /*
-    return (void*)Context.textureShaderInput;*/
-
-    // std::lock_guard<std::mutex> lock(text_lock);
-    // if (out_updated)
-    //     *out_updated = updated;
-    // if (updated)
-    // {
-    //     std::swap(idx_swap, idx_display);
-    //     updated = false;
-    // }
-    // //DEBUG("get Video Frame %u", tex[idx_display]);
-    // return (void*)(size_t)tex[idx_display];
 }
 
 
