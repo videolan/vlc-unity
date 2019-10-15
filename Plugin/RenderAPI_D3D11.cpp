@@ -280,12 +280,6 @@ void Update(render_context* ctx, UINT width, UINT height)
     renderTargetViewDesc.Format = texDesc.Format;
     renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-    ID3D11RenderTargetView* renderTarget;
-    FLOAT blueRGBA[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-    ctx->d3device->CreateRenderTargetView(ctx->texture, &renderTargetViewDesc, &renderTarget);
-    ctx->d3dctx->ClearRenderTargetView(renderTarget, blueRGBA);
-    renderTarget->Release();
-
     //*
     hr = ctx->d3deviceVLC->CreateRenderTargetView(ctx->textureVLC, &renderTargetViewDesc, &ctx->textureRenderTarget);
     /*/
@@ -402,10 +396,10 @@ bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hd
     if ( enter )
     {
         EnterCriticalSection(&ctx->outputLock);
-        static const FLOAT orangeRGBA[4] = {1.0f, 0.5f, 0.0f, 1.0f};
+        static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
         ctx->d3dctxVLC->OMSetRenderTargets(1, &ctx->textureRenderTarget, NULL);
-        ctx->d3dctxVLC->ClearRenderTargetView( ctx->textureRenderTarget, orangeRGBA);
+        ctx->d3dctxVLC->ClearRenderTargetView( ctx->textureRenderTarget, blackRGBA);
         return true;
     }
 
