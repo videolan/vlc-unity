@@ -44,6 +44,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* p
         DEBUG("_putenv_s failed");
     else DEBUG("_putenv_s succeeded");
 }
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
+{
+    DEBUG("PRINTING \n");
+    DEBUG("%s", toPrint);
+}
+
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
 {
@@ -62,6 +69,8 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         return NULL;
     }
 
+    if(mp != NULL)
+        abort();
     mp = libvlc_media_player_new(inst);
     RenderAPI* s_CurrentAPI;
 
@@ -154,7 +163,12 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
                 return;
             }
 
+        DEBUG("s_Graphics->GetRenderer() \n");
+
         s_DeviceType = s_Graphics->GetRenderer();
+
+        DEBUG("CreateRenderAPI(s_DeviceType) \n");
+
         EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
         return;
     }
@@ -172,6 +186,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
     {
         RenderAPI* currentAPI = it->second;
         if(currentAPI) {
+            DEBUG(" currentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces); \n");
             currentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
         }
     }
@@ -184,3 +199,4 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
     return OnRenderEvent;
+}
