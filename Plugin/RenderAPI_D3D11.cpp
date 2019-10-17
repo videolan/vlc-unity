@@ -348,16 +348,26 @@ void RenderAPI_D3D11::CreateResources(struct render_context *ctx, ID3D11Device *
 void RenderAPI_D3D11::ReleaseResources(struct render_context *ctx)
 {
     DEBUG("Entering ReleaseResources.\n");
-    ctx->d3deviceVLC->Release();
-    ctx->d3dctxVLC->Release();
+    if(ctx->d3deviceVLC)
+        ctx->d3deviceVLC->Release();
+    
+    if(ctx->d3dctxVLC)
+        ctx->d3dctxVLC->Release();
 
-    ctx->textureRenderTarget->Release();
-    ctx->textureShaderInput->Release();
-    ctx->texture->Release();
-    ctx->outputTexture->Release();
-    ctx->pVertexBuffer->Release();
-    ctx->d3dctx->Release();
-    ctx->d3device->Release();
+    if(ctx->textureRenderTarget)
+        ctx->textureRenderTarget->Release();
+        
+    if(ctx->textureShaderInput)
+        ctx->textureShaderInput->Release();
+
+    if(ctx->texture)
+        ctx->texture->Release();
+    
+    if(ctx->outputTexture)
+        ctx->outputTexture->Release();
+
+    if(ctx->pVertexBuffer)
+        ctx->pVertexBuffer->Release();
 }
 
 bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
