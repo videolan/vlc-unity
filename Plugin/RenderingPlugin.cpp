@@ -36,6 +36,14 @@ static void* Hwnd;
  * UNITY_INTERFACE_EXPORT and UNITY_INTERFACE_API
  */
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
+{
+    DEBUG("SetPluginPath \n");
+    auto e = _putenv_s("VLC_PLUGIN_PATH", path);
+    if(e != 0)
+        DEBUG("_putenv_s failed");
+    else DEBUG("_putenv_s succeeded");
+}
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
 {
