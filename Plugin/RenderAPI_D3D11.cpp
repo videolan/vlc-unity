@@ -76,7 +76,6 @@ private:
 	ID3D11Device* m_Device;
     render_context Context;
     bool initialized;
-    // const std::mutex text_lock;
 };
 
 // d3d11 callbacks
@@ -226,7 +225,6 @@ void Update(render_context* ctx, UINT width, UINT height)
         abort();
     }
 
-    // ctx->texture->QueryInterface(&IID_ID3D11Resource1, (LPVOID*) &sharedResource);
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &ctx->sharedHandled);
     if(FAILED(hr))
     {
@@ -255,10 +253,6 @@ void Update(render_context* ctx, UINT width, UINT height)
     }
 
     d3d11VLC1->Release();
-
-    // ID3D11Device1_OpenSharedResource1(m_Device, sys->sharedHandle, &IID_ID3D11Resource, (void**)&copyTexture);
-
-    // et tu fais ta ID3D11ShaderResourceView a partir de copyTexture
 
     D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
     ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
