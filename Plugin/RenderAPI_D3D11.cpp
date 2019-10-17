@@ -379,7 +379,7 @@ bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libv
     out->full_range     = true;
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
-    out->transfer       = libvlc_video_transfer_func_SRGB;
+    out->transfer       = libvlc_video_transfer_func_LINEAR;
 
     DEBUG("Exiting UpdateOutput_cb \n");
 
