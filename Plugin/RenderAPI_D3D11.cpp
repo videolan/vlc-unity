@@ -57,7 +57,6 @@ private:
     /* VLC side resources */
     ID3D11Device            *m_d3deviceVLC          = nullptr;
     ID3D11DeviceContext     *m_d3dctxVLC            = nullptr;
-    ID3D11Texture2D         *m_textureVLC           = nullptr; // shared between VLC and the app
     ID3D11RenderTargetView  *m_textureRenderTarget  = nullptr;
 
     CRITICAL_SECTION m_sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
@@ -197,6 +196,11 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
         m_textureRenderTarget->Release();
         m_textureRenderTarget = NULL;
     }
+    if(m_sharedHandle)
+    {
+        CloseHandle(m_sharedHandle);
+        m_sharedHandle = nullptr;
+    }
 
     DEBUG("Done releasing d3d objects.\n");
 
@@ -243,6 +247,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
         abort();
     }
 
+    HANDLE sharedHandle;
+
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
     if(FAILED(hr))
     {
@@ -262,7 +268,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
         abort();
     }
     
-    hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&m_textureVLC);
+    ID3D11Texture2D* textureVLC;
+    hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&textureVLC);
     if(FAILED(hr))
     {
         _com_error error(hr);
@@ -277,8 +284,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     resviewDesc.Texture2D.MipLevels = 1;
     resviewDesc.Format = texDesc.Format;
-    hr = m_d3deviceUnity->CreateShaderResourceView(m_outputTexture, &resviewDesc, &m_textureShaderInput );
-    if (FAILED(hr)) 
+    hr = m_d3deviceUnity->CreateShaderResourceView(m_outputTexture, &resviewDesc, &m_textureShaderInput);
+    if (FAILED(hr))
     {
         DEBUG("CreateShaderResourceView FAILED \n");
     }
@@ -292,11 +299,13 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     renderTargetViewDesc.Format = texDesc.Format;
     renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-    hr = m_d3deviceVLC->CreateRenderTargetView(m_textureVLC, &renderTargetViewDesc, &m_textureRenderTarget);
+    hr = m_d3deviceVLC->CreateRenderTargetView(textureVLC, &renderTargetViewDesc, &m_textureRenderTarget);
     if (FAILED(hr))
     {
         DEBUG("CreateRenderTargetView FAILED \n");
     }
+
+    textureVLC->Release();// No need to keep a reference to that, VLC only writes to the renderTarget
     LeaveCriticalSection(&m_outputLock);
 }
 
@@ -387,6 +396,12 @@ void RenderAPI_D3D11::ReleaseResources()
     {
         m_outputTexture->Release();
         m_outputTexture = nullptr;
+    }
+
+    if(m_sharedHandle)
+    {
+        CloseHandle(m_sharedHandle);
+        m_sharedHandle = nullptr;
     }
 }
 
