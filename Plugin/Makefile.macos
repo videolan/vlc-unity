@@ -1,2 +1,0 @@
-PLATFORM = MacOS
-include Common.mk
