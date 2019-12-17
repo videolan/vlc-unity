@@ -1,0 +1,61 @@
+Welcome to VLC for Unity on Windows!
+
+
+For reference, you need to a bunch of components to get this working:
+- libvlc.dll, libvlccore.dll (and its plugins in /libs folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
+- Custom build of libvlcsharp, the official VideoLAN C# binding to libvlc https://code.videolan.org/videolan/LibVLCSharp
+- RenderingPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/mfkl/vlc-unity
+
+This is all included in this package and it all works automatically for you.
+
+LibVLCSharp docs (not Unity specific) https://code.videolan.org/videolan/LibVLCSharp/blob/3.x/docs/getting_started.md
+
+!! You need to set your Unity target platform to "PC, Mac & Linux Standalone" to target Windows classic. Go for the x86_64 architecture.
+
+The scene from Assets/VLC-Unity-Windows/Scripts/main.unity provides a way to get started quickly.
+
+Regarding the integration code that you need, you will find it in UseRenderingPlugin.cs.
+
+First, to load the libvlc libraries on Windows, you need to do an extra step:
+
+Declare this native call:
+
+```
+[DllImport("RenderingPlugin")]
+static extern void SetPluginPath(string path);
+```
+
+And call it with:
+```
+SetPluginPath(Application.dataPath);
+```
+
+You can then load the libvlc libraries.
+```
+Core.Initialize($"{Application.dataPath}\\Plugins");
+```
+
+You can then create LibVLCSharp objects
+```
+LibVLC = new LibVLC();
+MediaPlayer = new MediaPlayer(LibVLC);
+```
+
+The frame updating is done in a Unity coroutine
+```
+IntPtr texptr = MediaPlayer.GetFrame(out bool updated);
+if (updated)
+{
+    tex.UpdateExternalTexture(texptr);
+}
+```
+
+See UseRenderingPlugin.CallPluginAtEndOfFrames() for more details.
+
+Once that is all setup, you can create a new Media and start playback like so
+```
+MediaPlayer.Play(new Media(LibVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation));
+```
+
+To get up and running easily and quickly, I recommend you load the Assets/VLC-Unity-Windows/Scripts/main.unity scene and get started from there. 
+The few lines of setup code I mentioned above are located in UseRenderingPlugin.cs.
