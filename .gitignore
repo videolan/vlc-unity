@@ -29,6 +29,6 @@ obj/**
 *.log
 *.cache
 *.pdb
-*.txt
+
 *.csproj
 .h
