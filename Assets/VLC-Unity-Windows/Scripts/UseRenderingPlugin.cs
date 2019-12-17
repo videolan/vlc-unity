@@ -41,10 +41,6 @@ public class UseRenderingPlugin : MonoBehaviour
         {
             Core.Initialize($"{Application.dataPath}\\Plugins");
             LibVLC = new LibVLC("--verbose=2");
-            //{
-                /*"--verbose=4" */ // uncomment for libvlc logs
-                                   //"--codec=mediacodec_ndk,all", "--no-lua" 
-            //});
         }
         catch (Exception ex)
         {
