@@ -555,7 +555,7 @@ PlayerSettings:
   metroCertificateNotAfter: 0000000000000000
   metroApplicationDescription: UnityPluginWithWSL
   wsaImages: {}
-  metroTileShortName: 
+  metroTileShortName: VLC-Unity
   metroTileShowName: 0
   metroMediumTileShowName: 0
   metroLargeTileShowName: 0

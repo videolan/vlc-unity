@@ -9,7 +9,7 @@ CXXFLAGS = -O2 -fdebug-prefix-map='/mnt/d/'='d:/' -Wall -I./include/ -I./mingw.t
 # gcc (ubuntu)
 #LDFLAGS = -static-libgcc -static-libstdc++ -shared -L/mnt/d/Projects/vlc/win64/win64/vlc-4.0.0-dev/sdk/lib
 # clang
-LDFLAGS = -static-libgcc -static-libstdc++ -shared -Wl,-pdb= -L/mnt/d/Projects/vlc/win64/win64/vlc-4.0.0-dev/sdk/lib
+LDFLAGS = -static-libgcc -static-libstdc++ -shared -Wl,-pdb= -L/mnt/d/vlc-4.0.0-dev/sdk/lib
 
 LIBS = -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
 
