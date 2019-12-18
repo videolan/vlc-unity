@@ -4,7 +4,7 @@
 
 # VLC for Unity
 
-This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games.
+This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
 
 ## Features
 
@@ -22,6 +22,10 @@ Given that this plugin is using [LibVLCSharp](https://code.videolan.org/videolan
 - Equalizer support
 
 And more.
+
+## Installing
+
+The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979). This also ensures you get commercial support with your build.
 
 ## Building
 
