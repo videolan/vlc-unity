@@ -27,6 +27,10 @@ And more.
 
 The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979). This also ensures you get commercial support with your build.
 
+## Support
+
+Support is provided for paying customers only (i.e. users that installed the plugin from the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979)).
+
 ## Building
 
 ### Windows
