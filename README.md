@@ -27,6 +27,12 @@ And more.
 
 The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979). This also ensures you get commercial support with your build.
 
+## Getting started
+
+There is a quick `documentation.txt` file [included in the package](./Assets/VLC-Unity-Windows/documentation.txt). It gives some context and high level overview of how things work and how to get started.
+
+Since this Unity plugin largely shares the same API than LibVLCSharp, most LibVLCSharp [samples](https://code.videolan.org/mfkl/libvlcsharp-samples) and [documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/3.x/docs) apply, do check those out!
+
 ## Support
 
 Support is provided for paying customers only (i.e. users that installed the plugin from the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979)).
