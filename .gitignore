@@ -14,11 +14,13 @@ Desktop.ini
 /Temp
 /UnityPackageManager
 
-/Plugin/*.o
-/Plugin/*.so
-/Plugin/*.dll
-/Plugin/*.bundle
-/Plugin/vlc-4.0.0-dev/*
+/Assets/VLC-Unity-Windows/Plugins/**/*.o
+/Assets/VLC-Unity-Windows/Plugins/**/*.jar
+/Assets/VLC-Unity-Windows/Plugins/**/*.so
+/Assets/VLC-Unity-Windows/Plugins/**/*.dll
+/Assets/VLC-Unity-Windows/Plugins/**/*.bundle
+/Assets/VLC-Unity-Windows/Plugins/**/vlc-4.0.0-dev/*
+
 obj/** 
 *.so
 *.suo
