@@ -5,62 +5,72 @@ using LibVLCSharp.Shared;
 
 public class UseRenderingPlugin : MonoBehaviour
 {
-    LibVLC LibVLC { get; set; }
-    MediaPlayer MediaPlayer { get; set; }
-    int seekTimeDelta = 2000;
+    LibVLC _libVLC;
+    MediaPlayer _mediaPlayer;
+    const int seekTimeDelta = 2000;
     Texture2D tex = null;
 
     void Awake()
     {
         Core.Initialize(Application.dataPath);
 
-        LibVLC = new LibVLC("--verbose=2");
+        _libVLC = new LibVLC("--verbose=2");
 
-        MediaPlayer = new MediaPlayer(LibVLC);
-
-        MediaPlayer.Play(new Media(LibVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation));
+        _mediaPlayer = new MediaPlayer(_libVLC);
 
         StartCoroutine("CallPluginAtEndOfFrames");
+
+        PlayPause();
     }
 
     public void seekForward()
     {
         Debug.Log("[VLC] Seeking forward !");
-        MediaPlayer.Time += seekTimeDelta;
+        _mediaPlayer.Time += seekTimeDelta;
     }
 
     public void seekBackward()
     {
         Debug.Log("[VLC] Seeking backward !");
-        MediaPlayer.Time -= seekTimeDelta;
+        _mediaPlayer.Time -= seekTimeDelta;
     }
 
     void OnDisable() 
     {
-        MediaPlayer?.Stop();
-        MediaPlayer?.Dispose();
-        MediaPlayer = null;
+        _mediaPlayer?.Stop();
+        _mediaPlayer?.Dispose();
+        _mediaPlayer = null;
 
-        LibVLC?.Dispose();
-        LibVLC = null;
+        _libVLC?.Dispose();
+        _libVLC = null;
     }
 
-    public void playPause()
+    public void PlayPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
-        if (MediaPlayer == null) return;
-        if (MediaPlayer.IsPlaying)
-            MediaPlayer.Pause();
-        else MediaPlayer.Play();
+        if (_mediaPlayer == null) return;
+        if (_mediaPlayer.IsPlaying)
+        {
+            _mediaPlayer.Pause();
+        }
+        else
+        {
+            if(_mediaPlayer.Media == null)
+            {
+                _mediaPlayer.Media = new Media(_libVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation);
+            }
+
+            _mediaPlayer.Play();
+        }
     }
 
     public void stop ()
     {
         Debug.Log ("[VLC] Stopping Player !");
-        StopCoroutine ("CallPluginAtEndOfFrames");
-        MediaPlayer?.Stop();
+
+        _mediaPlayer?.Stop();
         tex = null;
-        GetComponent<Renderer> ().material.mainTexture = null;
+        GetComponent<Renderer>().material.mainTexture = null;
     }
 
     void Start()
@@ -84,8 +94,8 @@ public class UseRenderingPlugin : MonoBehaviour
                 uint i_videoHeight = 0;
                 uint i_videoWidth = 0;
 
-                MediaPlayer.Size(0, ref i_videoWidth, ref i_videoHeight);
-                IntPtr texptr = MediaPlayer.GetTexture(out bool updated);
+                _mediaPlayer.Size(0, ref i_videoWidth, ref i_videoHeight);
+                IntPtr texptr = _mediaPlayer.GetTexture(out bool updated);
                 if (i_videoWidth != 0 && i_videoHeight != 0 && updated && texptr != IntPtr.Zero)
                 {
                     Debug.Log("Creating texture with height " + i_videoHeight + " and width " + i_videoWidth);
@@ -102,7 +112,7 @@ public class UseRenderingPlugin : MonoBehaviour
             }
             else if (tex != null)
             {
-                IntPtr texptr = MediaPlayer.GetTexture(out bool updated);
+                IntPtr texptr = _mediaPlayer.GetTexture(out bool updated);
                 if (updated)
                 {
                     tex.UpdateExternalTexture(texptr);
@@ -110,11 +120,4 @@ public class UseRenderingPlugin : MonoBehaviour
             }
         }
     }
-}
-
-public static class Constants
-{
-    public const string Movie480p = "https://streams.videolan.org/benchmark/23_ducks_take_off_V_MPEG4-ISO-ASP_8bits_858x480_30_000fps.mkv";
-    public const string Movie1080p = "https://streams.videolan.org/benchmark/45_in_to_tree_V_MPEG4-ISO-AVC_8bits_1920x1080_25_000fps.mkv";
-    public const string Movie2160p = "http://streams.videolan.org/benchmark/29_ducks_take_off_V_VP8_3860x2160_30_068fps.webm";
 }
