@@ -1,4 +1,4 @@
-TARGET = RenderingPlugin
+TARGET = VLCUnityPlugin
 
 SRCS = RenderingPlugin.cpp RenderAPI.cpp RenderAPI_D3D11.cpp Log.cpp
 
