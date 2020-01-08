@@ -108,10 +108,6 @@ public class UseRenderingPlugin : MonoBehaviour
                     tex.UpdateExternalTexture(texptr);
                 }
             }
-
-            // Issue a plugin rendering event with arbitrary integer identifier.
-            // TODO: Remove or implement
-            //GL.IssuePluginEvent (GetRenderEventFunc (), 1);
         }
     }
 }
