@@ -23,13 +23,13 @@ public class UseRenderingPlugin : MonoBehaviour
         PlayPause();
     }
 
-    public void seekForward()
+    public void SeekForward()
     {
         Debug.Log("[VLC] Seeking forward !");
         _mediaPlayer.Time += seekTimeDelta;
     }
 
-    public void seekBackward()
+    public void SeekBackward()
     {
         Debug.Log("[VLC] Seeking backward !");
         _mediaPlayer.Time -= seekTimeDelta;
@@ -64,7 +64,7 @@ public class UseRenderingPlugin : MonoBehaviour
         }
     }
 
-    public void stop ()
+    public void Stop ()
     {
         Debug.Log ("[VLC] Stopping Player !");
 
