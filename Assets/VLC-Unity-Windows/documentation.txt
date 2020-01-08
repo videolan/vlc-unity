@@ -4,7 +4,7 @@ Welcome to VLC for Unity on Windows!
 For reference, you need to a bunch of components to get this working:
 - libvlc.dll, libvlccore.dll (and its plugins in /libs folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
 - Custom build of libvlcsharp, the official VideoLAN C# binding to libvlc https://code.videolan.org/videolan/LibVLCSharp
-- RenderingPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/mfkl/vlc-unity
+- VLCUnityPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/mfkl/vlc-unity
 
 This is all included in this package and it all works automatically for you.
 
@@ -16,23 +16,9 @@ The scene from Assets/VLC-Unity-Windows/Scripts/main.unity provides a way to get
 
 Regarding the integration code that you need, you will find it in UseRenderingPlugin.cs.
 
-First, to load the libvlc libraries on Windows, you need to do an extra step:
-
-Declare this native call:
-
+First, you need to load the native libraries:
 ```
-[DllImport("RenderingPlugin")]
-static extern void SetPluginPath(string path);
-```
-
-And call it with:
-```
-SetPluginPath(Application.dataPath);
-```
-
-You can then load the libvlc libraries.
-```
-Core.Initialize($"{Application.dataPath}\\Plugins");
+Core.Initialize(UnityEngine.Application.dataPath);
 ```
 
 You can then create LibVLCSharp objects
