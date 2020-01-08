@@ -1,5 +1,5 @@
 <h3 align="center">
-    <img src="/icons/Social_Media_Image_1200x630.png"/>
+    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="/icons/Social_Media_Image_1200x630.png"/></a>
 </h3>
 
 # VLC for Unity
@@ -47,4 +47,9 @@ Support is provided for paying customers only (i.e. users that installed the plu
 ```
 ./build.sh
 ```
-This will produce a `RenderingPlugin.dll` which you can use with LibVLCSharp in your Unity project
+This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
+
+<br/>
+<h3 align="center">
+    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="icons/Icon_Image_160x160.png"/></a>
+</h3>
