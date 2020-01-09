@@ -1,3 +1,11 @@
+0.0.2:
+- reorganize asset files
+- rename script to convention
+- simplify sample script to strict necessary code
+- fix slow loading of libvlc by adding plugins.dat https://code.videolan.org/mfkl/vlc-unity/issues/5
+- simplify plugin initialization by offloading the logic to libvlcsharp unity builds.
+- improve build script and prepare for win x86 and android releases
+
 0.0.1:
 *** Initial release ***
 - Windows Classic 64bits D3D11 support
