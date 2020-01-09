@@ -40,8 +40,9 @@ done
 
 if [ -z $PLATFORM ] ||  [ -z $ARCH ]
 then
-    echo "Platform and/or Arch undefined... exiting."
-    exit 1;
+    echo "Platform and/or Arch undefined... Building for Windows x64."
+    PLATFORM=win
+    ARCH=x86_64
 fi
 
 echo "Building for OS '$PLATFORM' with target arch '$ARCH'"
