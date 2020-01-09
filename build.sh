@@ -38,9 +38,15 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+if [ -z $PLATFORM ] ||  [ -z $ARCH ]
+then
+    echo "Platform and/or Arch undefined... exiting."
+    exit 1;
+fi
+
 echo "Building for OS '$PLATFORM' with target arch '$ARCH'"
 
-OUTPUT="../$ARCH"
+OUTPUT="../VLC-Unity-Windows/Plugins/$ARCH"
 
-cd Assets/VLC-Unity-Windows/Plugins/Source && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH
+cd Assets/PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH
 mv VLCUnityPlugin.{dll,pdb} $OUTPUT -f
