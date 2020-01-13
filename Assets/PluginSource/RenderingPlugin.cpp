@@ -19,7 +19,6 @@ static int   g_TextureHeight = 0;
 static int   g_TextureRowPitch = 0;
 
 libvlc_instance_t * inst;
-libvlc_media_player_t * mp;
 
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
@@ -69,8 +68,8 @@ CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
         return NULL;
     }
 
-    if(mp != NULL)
-        abort();
+    libvlc_media_player_t * mp;
+
     mp = libvlc_media_player_new(inst);
     RenderAPI* s_CurrentAPI;
 
