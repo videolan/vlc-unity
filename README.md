@@ -6,20 +6,20 @@
 
 This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
 
-## Features
+## LibVLC Features
 
 Given that this plugin is using [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) (which uses LibVLC), it exposes more or less the [same feature set](https://code.videolan.org/videolan/LibVLCSharp#features) and same codecs support than VLC, such as:
 
-- Plays [all formats](https://wiki.videolan.org/VLC_Features_Formats/)
-- Network browsing for distant filesystems (SMB, FTP, SFTP, NFS...).
-- HDMI pass-through for Audio HD codecs, like E-AC3, TrueHD or DTS-HD.
-- Stream to distant renderers, like Chromecast.
-- 360 video and 3D audio playback with viewpoint change.
-- Support for Ambisonics audio and more than 8 audio channels.
-- Subtitles live size modification.
-- Hardware and software decoding on all platforms.
-- DVD playback and menu navigation.
-- Equalizer support
+- Play every media file formats, every codec and every streaming protocols
+- Run on every platform, from desktop (Windows, Linux, Mac) to mobile (Android, iOS) and TVs
+- Hardware and efficient decoding on every platform, up to 8K
+- Network browsing for distant filesystems (SMB, FTP, SFTP, NFS...) and servers (UPnP, DLNA)
+- Playback of Audio CD, DVD and Bluray with menu navigation
+- Support for HDR, including tonemapping for SDR streams
+- Audio passthrough with SPDIF and HDMI, including for Audio HD codecs, like DD+, TrueHD or DTS-HD
+- Support for video and audio filters
+- Support for 360 video and 3D audio playback, including Ambisonics
+- Able to cast and stream to distant renderers, like Chromecast and UPnP renderers.
 
 And more.
 
