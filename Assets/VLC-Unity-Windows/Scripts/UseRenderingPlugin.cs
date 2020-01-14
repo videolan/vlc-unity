@@ -14,7 +14,7 @@ public class UseRenderingPlugin : MonoBehaviour
     {
         Core.Initialize(Application.dataPath);
 
-        _libVLC = new LibVLC("--verbose=2");
+        _libVLC = new LibVLC("--no-osd","--verbose=2");
 
         _mediaPlayer = new MediaPlayer(_libVLC);
 
