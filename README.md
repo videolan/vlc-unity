@@ -6,6 +6,23 @@
 
 This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
 
+- [VLC for Unity](#VLC-for-Unity)
+  - [LibVLC Features](#LibVLC-Features)
+  - [Supported platforms](#Supported-platforms)
+  - [Installation](#Installation)
+  - [Getting started](#Getting-started)
+  - [Documentation](#Documentation)
+  - [Support](#Support)
+  - [Samples](#Samples)
+  - [Roadmap](#Roadmap)
+    - [Platforms support](#Platforms-support)
+    - [Graphics APIs](#Graphics-APIs)
+    - [Other improvements](#Other-improvements)
+  - [Release Notes](#Release-Notes)
+  - [Building](#Building)
+  - [Code of Conduct](#Code-of-Conduct)
+  - [License](#License)
+
 ## LibVLC Features
 
 Given that this plugin is using [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) (which uses LibVLC), it exposes more or less the [same feature set](https://code.videolan.org/videolan/LibVLCSharp#features) and same codecs support than VLC, such as:
@@ -23,7 +40,11 @@ Given that this plugin is using [LibVLCSharp](https://code.videolan.org/videolan
 
 And more.
 
-## Installing
+## Supported platforms
+
+- Windows Classic x64
+
+## Installation
 
 The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979). This also ensures you get commercial support with your build.
 
@@ -41,9 +62,45 @@ There is a quick `documentation.txt` file [included in the package](./Assets/VLC
 
 Since this Unity plugin largely shares the same API than LibVLCSharp, most LibVLCSharp [samples](https://code.videolan.org/mfkl/libvlcsharp-samples) and [documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/3.x/docs) apply, do check those out!
 
+## Documentation
+
+See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/3.x/docs)
+
 ## Support
 
-Support is provided for paying customers only (i.e. users that installed the plugin from the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979)).
+Support is done on a volunteer base, professional support is only available for [paying customers](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
+
+## Samples
+
+A minimal Unity sample is available [here](./Assets/VLC-Unity-Windows/Scripts/UseRenderingPlugin.cs). Additional Unity samples will come soon.
+
+More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libvlcsharp-samples).
+
+## Roadmap
+
+### Platforms support
+
+- Android (prototype working),
+- macOS, iOS, tvOS,
+- Windows 32bit,
+- UWP,
+- Linux.
+
+### Graphics APIs
+
+- OpenGL ES,
+- OpenGL,
+- Metal,
+- Direct3D9.
+
+### Other improvements
+
+- Provide various easy to use, ready-to-run samples and improved documentation.
+- Provide in-Editor MediaPlayer customization, so you can customize LibVLC and playback parameters directly from the Unity Editor.
+
+## Release Notes
+
+Check out the [NEWS](NEWS) file for details about each release.
 
 ## Building
 
@@ -56,6 +113,14 @@ Support is provided for paying customers only (i.e. users that installed the plu
 ./build.sh
 ```
 This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
+
+## Code of Conduct
+
+Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Conduct/).
+
+## License
+
+Licensed under the LGPL 2.1 and prorietary license via [Videolabs](https://videolabs.io/).
 
 <br/>
 <h3 align="center">
