@@ -14,19 +14,11 @@ extern "C" {
 
 static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
-static int   g_TextureWidth  = 0;
-static int   g_TextureHeight = 0;
-static int   g_TextureRowPitch = 0;
-
 libvlc_instance_t * inst;
 
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
 static IUnityInterfaces* s_UnityInterfaces = NULL;
-
-static UINT Width;
-static UINT Height;
-static void* Hwnd;
 
 /** LibVLC's API function exported to Unity
  *

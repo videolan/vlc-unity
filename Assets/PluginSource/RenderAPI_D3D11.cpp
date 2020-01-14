@@ -247,8 +247,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
         abort();
     }
 
-    HANDLE sharedHandle;
-
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
     if(FAILED(hr))
     {
