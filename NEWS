@@ -1,4 +1,11 @@
+0.0.3:
+libvlc: revision 4.0.0-dev-9660-g6324cfa6f1 llvm build
+- Fix editor crash https://code.videolan.org/videolan/vlc-unity/issues/25
+- disable OSD in the sample https://code.videolan.org/videolan/vlc-unity/issues/26
+- build improvements
+
 0.0.2:
+libvlc: revision 4.0.0-dev-9660-g6324cfa6f1 llvm build
 - reorganize asset files
 - rename script to convention
 - simplify sample script to strict necessary code
@@ -7,5 +14,6 @@
 - improve build script and prepare for win x86 and android releases
 
 0.0.1:
+libvlc: revision 4.0.0-dev-9660-g6324cfa6f1 llvm build
 *** Initial release ***
 - Windows Classic 64bits D3D11 support
