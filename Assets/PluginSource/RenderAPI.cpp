@@ -5,11 +5,11 @@
 
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 {
-	// if (apiType == kUnityGfxRendererD3D11)
-	// {
-		extern RenderAPI* CreateRenderAPI_D3D11();
-		return CreateRenderAPI_D3D11();
-	// }
+    // if (apiType == kUnityGfxRendererD3D11)
+    // {
+        extern RenderAPI* CreateRenderAPI_D3D11();
+        return CreateRenderAPI_D3D11();
+    // }
 
 // #	if SUPPORT_D3D9
 // 	if (apiType == kUnityGfxRendererD3D9)
@@ -46,6 +46,6 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 // 	}
 // #	endif // if SUPPORT_OPENGL_UNIFIED
 
-	// Unknown or unsupported graphics API
-	return NULL;
+    // Unknown or unsupported graphics API
+    return NULL;
 }

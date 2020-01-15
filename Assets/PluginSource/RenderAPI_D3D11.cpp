@@ -29,7 +29,7 @@ class RenderAPI_D3D11 : public RenderAPI
 {
 public:
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
-	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
+    virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(bool* out_updated) override;
 
     /* VLC callbacks */
@@ -42,14 +42,14 @@ public:
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
 
 private:
-	void CreateResources(ID3D11Device *d3device, ID3D11DeviceContext *d3dctx);
-	void ReleaseResources();
+    void CreateResources(ID3D11Device *d3device, ID3D11DeviceContext *d3dctx);
+    void ReleaseResources();
     void DebugInUnity(LPCSTR message);
     void Update(UINT width, UINT height);
 
     /* Unity side resources */
-	ID3D11Device             *m_d3deviceUnity       = nullptr;
-	ID3D11DeviceContext      *m_d3dctxUnity         = nullptr;
+    ID3D11Device             *m_d3deviceUnity       = nullptr;
+    ID3D11DeviceContext      *m_d3dctxUnity         = nullptr;
     ID3D11Texture2D          *m_textureUnity        = nullptr;
     ID3D11ShaderResourceView *m_textureShaderInput  = nullptr;
     HANDLE                   m_sharedHandle         = nullptr; // handle of the texture used by VLC and the app
@@ -113,7 +113,7 @@ void Resize_cb( void *opaque,
 
 RenderAPI* CreateRenderAPI_D3D11()
 {
-	return new RenderAPI_D3D11();
+    return new RenderAPI_D3D11();
 }
 
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
@@ -130,8 +130,8 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
 {
     DEBUG("Entering ProcessDeviceEvent \n");
 
-	switch (type)
-	{
+    switch (type)
+    {
         case kUnityGfxDeviceEventInitialize:
         {
             IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
@@ -311,7 +311,7 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
 {
     DEBUG("Entering CreateResources \n");
 
- 	HRESULT hr;
+     HRESULT hr;
 
     ZeroMemory(&m_sizeLock, sizeof(CRITICAL_SECTION));
     InitializeCriticalSection(&m_sizeLock);

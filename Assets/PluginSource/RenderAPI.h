@@ -13,10 +13,10 @@ struct IUnityInterfaces;
 class RenderAPI
 {
 public:
-	virtual ~RenderAPI() { }
+    virtual ~RenderAPI() { }
 
-	// Process general event like initialization, shutdown, device loss/reset etc.
-	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
+    // Process general event like initialization, shutdown, device loss/reset etc.
+    virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
 
     virtual void setVlcContext(libvlc_media_player_t *mp) {}
 
