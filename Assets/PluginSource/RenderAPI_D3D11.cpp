@@ -20,10 +20,6 @@
 
 #define SCREEN_WIDTH  100
 #define SCREEN_HEIGHT  100
-#define BORDER_LEFT    (-0.95f)
-#define BORDER_RIGHT   ( 0.85f)
-#define BORDER_TOP     ( 0.95f)
-#define BORDER_BOTTOM  (-0.90f)
 
 class RenderAPI_D3D11 : public RenderAPI
 {
