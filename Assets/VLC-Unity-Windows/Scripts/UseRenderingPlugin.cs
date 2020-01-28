@@ -75,9 +75,6 @@ public class UseRenderingPlugin : MonoBehaviour
 
     void Start()
     {
-        Vector3 scale = transform.localScale;
-        scale.x = -scale.x;
-        transform.localScale = scale;
     }
 
     private IEnumerator CallPluginAtEndOfFrames()
