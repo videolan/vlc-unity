@@ -309,7 +309,7 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
 {
     DEBUG("Entering CreateResources \n");
 
-     HRESULT hr;
+    HRESULT hr;
 
     ZeroMemory(&m_sizeLock, sizeof(CRITICAL_SECTION));
     InitializeCriticalSection(&m_sizeLock);
