@@ -38,7 +38,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* p
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
 {
-    DEBUG("PRINTING \n");
     DEBUG("%s", toPrint);
 }
 
