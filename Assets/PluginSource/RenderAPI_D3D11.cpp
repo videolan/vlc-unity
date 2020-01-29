@@ -252,6 +252,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     }
 
     sharedResource->Release();
+    sharedResource = NULL;
 
     ID3D11Device1* d3d11VLC1;
     hr = m_d3deviceVLC->QueryInterface(&d3d11VLC1);
@@ -272,6 +273,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     }
 
     d3d11VLC1->Release();
+    d3d11VLC1 = NULL;
 
     D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
     ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
