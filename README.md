@@ -114,6 +114,10 @@ Check out the [NEWS](NEWS) file for details about each release.
 ```
 This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
 
+## Debugging
+
+Editor crash location: `C:\Users\YourUserName\AppData\Local\Temp\Unity\Editor\Crashes`
+
 ## Code of Conduct
 
 Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Conduct/).
