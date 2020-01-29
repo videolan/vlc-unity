@@ -240,7 +240,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     if(FAILED(hr))
     {
         DEBUG("get IDXGIResource1 FAILED \n");
-        abort();
     }
 
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
@@ -248,7 +247,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     {
         _com_error error(hr);
         DEBUG("sharedResource->CreateSharedHandle FAILED %s \n", error.ErrorMessage());
-        abort();
     }
 
     sharedResource->Release();
@@ -260,7 +258,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     {
         _com_error error(hr);
         DEBUG("QueryInterface ID3D11Device1 FAILED %s \n", error.ErrorMessage());
-        abort();
     }
     
     ID3D11Texture2D* textureVLC;
@@ -269,7 +266,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     {
         _com_error error(hr);
         DEBUG("ctx->d3device->OpenSharedResource FAILED %s \n", error.ErrorMessage());
-        abort();
     }
 
     d3d11VLC1->Release();
@@ -337,7 +333,6 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
     if(FAILED(hr))
     {
         DEBUG("FAILED to create d3d11 device and context \n");
-        abort();
     }
 
     DEBUG("Configuring multithread \n");
