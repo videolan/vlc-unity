@@ -298,6 +298,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     }
 
     textureVLC->Release();// No need to keep a reference to that, VLC only writes to the renderTarget
+    textureVLC = NULL;
+
     LeaveCriticalSection(&m_outputLock);
 }
 
