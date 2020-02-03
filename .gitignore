@@ -34,4 +34,3 @@ obj/**
 *.o
 *.lib
 *.csproj
-.h
