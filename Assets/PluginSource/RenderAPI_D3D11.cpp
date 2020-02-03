@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <dxgi1_2.h>
 #include <comdef.h>
-#include <mingw.mutex.h>
 
 #define SCREEN_WIDTH  100
 #define SCREEN_HEIGHT  100
