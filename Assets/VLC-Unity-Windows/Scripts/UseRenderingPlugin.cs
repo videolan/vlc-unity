@@ -10,6 +10,7 @@ public class UseRenderingPlugin : MonoBehaviour
     const int seekTimeDelta = 2000;
     Texture2D tex = null;
 
+    bool playing;
     void Awake()
     {
         Core.Initialize(Application.dataPath);
@@ -55,6 +56,7 @@ public class UseRenderingPlugin : MonoBehaviour
         }
         else
         {
+            playing = true;
             if(_mediaPlayer.Media == null)
             {
                 _mediaPlayer.Media = new Media(_libVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation);
@@ -68,8 +70,8 @@ public class UseRenderingPlugin : MonoBehaviour
     {
         Debug.Log ("[VLC] Stopping Player !");
 
+        playing = false;
         _mediaPlayer?.Stop();
-        tex = null;
         GetComponent<Renderer>().material.mainTexture = null;
     }
 
@@ -85,7 +87,7 @@ public class UseRenderingPlugin : MonoBehaviour
             yield return new WaitForEndOfFrame();
 
             // We may not receive video size the first time           
-            if (tex == null)
+            if (GetComponent<Renderer>().material.mainTexture == null && playing)
             {
                 // If received size is not null, it and scale the texture
                 uint i_videoHeight = 0;
@@ -102,12 +104,10 @@ public class UseRenderingPlugin : MonoBehaviour
                         false,
                         true,
                         texptr);
-                    tex.filterMode = FilterMode.Point;
-                    tex.Apply();
                     GetComponent<Renderer>().material.mainTexture = tex;
                 }
             }
-            else if (tex != null)
+            else if (tex != null && playing)
             {
                 IntPtr texptr = _mediaPlayer.GetTexture(out bool updated);
                 if (updated)
