@@ -27,13 +27,13 @@ public class UseRenderingPlugin : MonoBehaviour
     public void SeekForward()
     {
         Debug.Log("[VLC] Seeking forward !");
-        _mediaPlayer.Time += seekTimeDelta;
+        _mediaPlayer.SetTime(_mediaPlayer.Time + seekTimeDelta);
     }
 
     public void SeekBackward()
     {
         Debug.Log("[VLC] Seeking backward !");
-        _mediaPlayer.Time -= seekTimeDelta;
+        _mediaPlayer.SetTime(_mediaPlayer.Time - seekTimeDelta);
     }
 
     void OnDisable() 
