@@ -1,3 +1,11 @@
+0.0.4:
+- Fix wrong script references leading to Editor warnings https://code.videolan.org/videolan/vlc-unity/issues/32
+- d311 plugin: fix leaks and crashes https://code.videolan.org/videolan/vlc-unity/issues/35 and probably https://code.videolan.org/videolan/vlc-unity/issues/27
+- libvlc update https://nightlies.videolan.org/build/win64-llvm/vlc-4.0.0-20200205-0754/vlc-4.0.0-20200205-0754-dev-win64.7z
+- remove all abort() calls
+- update SetTime API to libvlc 4
+- simplify texture update in C# script
+
 0.0.3:
 libvlc: revision 4.0.0-dev-9660-g6324cfa6f1 llvm build
 - Fix editor crash https://code.videolan.org/videolan/vlc-unity/issues/25
