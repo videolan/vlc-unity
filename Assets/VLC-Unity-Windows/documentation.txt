@@ -27,7 +27,7 @@ LibVLC = new LibVLC();
 MediaPlayer = new MediaPlayer(LibVLC);
 ```
 
-The frame updating is done in a Unity coroutine
+The frame updating is done in a Unity coroutine or Update() function
 ```
 IntPtr texptr = MediaPlayer.GetFrame(out bool updated);
 if (updated)
@@ -36,7 +36,7 @@ if (updated)
 }
 ```
 
-See UseRenderingPlugin.CallPluginAtEndOfFrames() for more details.
+See Update() function for more details.
 
 Once that is all setup, you can create a new Media and start playback like so
 ```
