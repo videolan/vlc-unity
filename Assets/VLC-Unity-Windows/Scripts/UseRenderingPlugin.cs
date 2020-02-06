@@ -7,7 +7,7 @@ public class UseRenderingPlugin : MonoBehaviour
 {
     LibVLC _libVLC;
     MediaPlayer _mediaPlayer;
-    const int seekTimeDelta = 2000;
+    const int seekTimeDelta = 5000;
     Texture2D tex = null;
 
     bool playing;
