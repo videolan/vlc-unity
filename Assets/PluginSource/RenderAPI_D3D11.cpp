@@ -317,7 +317,9 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
     m_d3dctxUnity = d3dctx;
 
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT; /* needed for hardware decoding */
-    creationFlags |= D3D11_CREATE_DEVICE_DEBUG; //TODO: remove for release mode
+#ifndef NDEBUG
+    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
     hr = D3D11CreateDevice(NULL,
                         D3D_DRIVER_TYPE_HARDWARE,
