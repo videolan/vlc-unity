@@ -28,11 +28,11 @@ public:
     void* getVideoFrame(bool* out_updated) override;
 
     /* VLC callbacks */
-    bool UpdateOutput( const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out );
+    bool UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out );
     void Swap();
-    bool StartRendering(bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 );
+    bool StartRendering(bool enter );
     bool SelectPlane(size_t plane );
-    bool Setup(const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out );
+    bool Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out );
     void Cleanup();
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
 
@@ -69,7 +69,7 @@ private:
 };
 
 // VLC C-style callbacks
-bool UpdateOutput_cb( void *opaque, const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
+bool UpdateOutput_cb( void *opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out )
 {
     return ((RenderAPI_D3D11*)opaque)->UpdateOutput(cfg, out);
 }
@@ -79,9 +79,9 @@ void Swap_cb( void* opaque )
     ((RenderAPI_D3D11*)opaque)->Swap();
 }
 
-bool StartRendering_cb( void *opaque, bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 )
+bool StartRendering_cb( void *opaque, bool enter )
 {
-    return ((RenderAPI_D3D11*)opaque)->StartRendering(enter, hdr10);
+    return ((RenderAPI_D3D11*)opaque)->StartRendering(enter);
 }
 
 bool SelectPlane_cb( void *opaque, size_t plane )
@@ -89,7 +89,7 @@ bool SelectPlane_cb( void *opaque, size_t plane )
     return ((RenderAPI_D3D11*)opaque)->SelectPlane(plane);
 }
 
-bool Setup_cb( void **opaque, const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out )
+bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
     return ((RenderAPI_D3D11*)*opaque)->Setup(cfg, out);
 }
@@ -115,9 +115,9 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[D3D11] setVlcContext %p", this);
 
-    libvlc_video_direct3d_set_callbacks( mp, libvlc_video_direct3d_engine_d3d11,
+    libvlc_video_set_output_callbacks( mp, libvlc_video_direct3d_engine_d3d11,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
-                                    Swap_cb, StartRendering_cb, SelectPlane_cb,
+                                    Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
 }
 
@@ -399,14 +399,14 @@ void RenderAPI_D3D11::ReleaseResources()
     }
 }
 
-bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_direct3d_cfg_t *cfg, libvlc_video_output_cfg_t *out )
+bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out )
 {
     DEBUG("Entering UpdateOutput_cb.\n");
 
     DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     Update(cfg->width, cfg->height);
 
-    out->surface_format = renderFormat;
+    out->dxgi_format = renderFormat;
     out->full_range     = true;
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
@@ -423,7 +423,7 @@ void RenderAPI_D3D11::Swap()
     m_updated = true;
 }
 
-bool RenderAPI_D3D11::StartRendering( bool enter, const libvlc_video_direct3d_hdr10_metadata_t *hdr10 )
+bool RenderAPI_D3D11::StartRendering( bool enter )
 {
     if ( enter )
     {
@@ -447,7 +447,7 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane )
     return true;
 }
 
-bool RenderAPI_D3D11::Setup( const libvlc_video_direct3d_device_cfg_t *cfg, libvlc_video_direct3d_device_setup_t *out )
+bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
     DEBUG("Setup m_d3dctxVLC = %p this = %p", m_d3dctxVLC, this);
     out->device_context = m_d3dctxVLC;
