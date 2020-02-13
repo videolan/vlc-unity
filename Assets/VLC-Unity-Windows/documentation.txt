@@ -1,5 +1,12 @@
 Welcome to VLC for Unity on Windows!
 
+## Docs reference
+
+See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/master/docs).
+
+It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/best_practices.md), [Q&A guide](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/how_do_I_do_X.md), [libvlc specific information](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/libvlc_documentation.md) and [tutorials](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/tutorials.md).
+
+## Components included
 
 For reference, you need to a bunch of components to get this working:
 - libvlc.dll, libvlccore.dll (and its plugins in /libs folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
@@ -8,11 +15,13 @@ For reference, you need to a bunch of components to get this working:
 
 This is all included in this package and it all works automatically for you.
 
-LibVLCSharp docs (not Unity specific) https://code.videolan.org/videolan/LibVLCSharp/blob/3.x/docs/getting_started.md
+LibVLCSharp docs (not Unity specific) https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/getting_started.md
 
 !! You need to set your Unity target platform to "PC, Mac & Linux Standalone" to target Windows classic. Go for the x86_64 architecture.
 
 The scene from Assets/VLC-Unity-Windows/Scripts/main.unity provides a way to get started quickly.
+
+## Sample script 
 
 Regarding the integration code that you need, you will find it in UseRenderingPlugin.cs.
 

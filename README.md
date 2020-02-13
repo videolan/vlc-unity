@@ -64,7 +64,9 @@ Since this Unity plugin largely shares the same API than LibVLCSharp, most LibVL
 
 ## Documentation
 
-See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/3.x/docs)
+See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/master/docs).
+
+It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/best_practices.md), [Q&A guide](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/how_do_I_do_X.md), [libvlc specific information](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/libvlc_documentation.md) and [tutorials](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/tutorials.md).
 
 ## Support
 
