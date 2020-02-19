@@ -1,8 +1,71 @@
-#pragma once
-#include "IUnityInterface.h"
-#include <cstdint>
+// Unity Native Plugin API copyright © 2015 Unity Technologies ApS
+//
+// Licensed under the Unity Companion License for Unity - dependent projects--see[Unity Companion License](http://www.unity3d.com/legal/licenses/Unity_Companion_License).
+//
+// Unless expressly provided otherwise, the Software under this license is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.Please review the license for details on these and other terms and conditions.
 
-enum UnityRenderingExtEventType
+#pragma once
+
+
+#include "IUnityGraphics.h"
+
+/*
+    Low-level Native Plugin Rendering Extensions
+    ============================================
+
+    On top of the Low-level native plugin interface, Unity also supports low level rendering extensions that can receive callbacks when certain events happen.
+    This is mostly used to implement and control low-level rendering in your plugin and enable it to work with Unity’s multithreaded rendering.
+
+    Due to the low-level nature of this extension the plugin might need to be preloaded before the devices get created.
+    Currently the convention is name-based namely the plugin name must be prefixed by “GfxPlugin”. Example: GfxPluginMyFancyNativePlugin.
+
+    <code>
+        // Native plugin code example
+
+        enum PluginCustomCommands
+        {
+            kPluginCustomCommandDownscale = kUnityRenderingExtUserEventsStart,
+            kPluginCustomCommandUpscale,
+
+            // insert your own events here
+
+            kPluginCustomCommandCount
+        };
+
+        static IUnityInterfaces* s_UnityInterfaces = NULL;
+
+        extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+        UnityPluginLoad(IUnityInterfaces* unityInterfaces)
+        {
+            // initialization code here...
+        }
+
+        extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+        UnityRenderingExtEvent(UnityRenderingExtEventType event, void* data)
+        {
+            switch (event)
+            {
+                case kUnityRenderingExtEventBeforeDrawCall:
+                    // do some stuff
+                    break;
+                case kUnityRenderingExtEventAfterDrawCall:
+                    // undo some stuff
+                    break;
+                case kPluginCustomCommandDownscale:
+                    // downscale some stuff
+                    break;
+                case kPluginCustomCommandUpscale:
+                    // upscale some stuff
+                    break;
+            }
+        }
+    </code>
+*/
+
+
+//     These events will be propagated to all plugins that implement void UnityRenderingExtEvent(UnityRenderingExtEventType event, void* data);
+
+typedef enum UnityRenderingExtEventType
 {
     kUnityRenderingExtEventSetStereoTarget,                 // issued during SetStereoTarget and carrying the current 'eye' index as parameter
     kUnityRenderingExtEventSetStereoEye,                    // issued during stereo rendering at the beginning of each eye's rendering loop. It carries the current 'eye' index as parameter
@@ -23,59 +86,34 @@ enum UnityRenderingExtEventType
     // keep this last
     kUnityRenderingExtEventCount,
     kUnityRenderingExtUserEventsStart = kUnityRenderingExtEventCount
-};
+} UnityRenderingExtEventType;
 
-typedef enum UnityGfxRenderer
+
+typedef enum UnityRenderingExtCustomBlitCommands
 {
-	kUnityGfxRendererOpenGL            =  0, // Legacy OpenGL
-	kUnityGfxRendererD3D9              =  1, // Direct3D 9
-	kUnityGfxRendererD3D11             =  2, // Direct3D 11
-	kUnityGfxRendererGCM               =  3, // PlayStation 3
-	kUnityGfxRendererNull              =  4, // "null" device (used in batch mode)
-	kUnityGfxRendererXenon             =  6, // Xbox 360
-	kUnityGfxRendererOpenGLES20        =  8, // OpenGL ES 2.0
-	kUnityGfxRendererOpenGLES30        = 11, // OpenGL ES 3.x
-	kUnityGfxRendererGXM               = 12, // PlayStation Vita
-	kUnityGfxRendererPS4               = 13, // PlayStation 4
-	kUnityGfxRendererXboxOne           = 14, // Xbox One
-	kUnityGfxRendererMetal             = 16, // iOS Metal
-	kUnityGfxRendererOpenGLCore        = 17, // OpenGL core
-	kUnityGfxRendererD3D12             = 18, // Direct3D 12
-} UnityGfxRenderer;
+    kUnityRenderingExtCustomBlitVRFlush,                    // This event is mostly used in multi GPU configurations ( SLI, etc ) in order to allow the plugin to flush all GPU's targets
 
-typedef enum UnityGfxDeviceEventType
+    // keep this last
+    kUnityRenderingExtCustomBlitCount,
+    kUnityRenderingExtUserCustomBlitStart = kUnityRenderingExtCustomBlitCount
+} UnityRenderingExtCustomBlitCommands;
+
+/*
+    This will be propagated to all plugins implementing UnityRenderingExtQuery.
+*/
+typedef enum UnityRenderingExtQueryType
 {
-	kUnityGfxDeviceEventInitialize     = 0,
-	kUnityGfxDeviceEventShutdown       = 1,
-	kUnityGfxDeviceEventBeforeReset    = 2,
-	kUnityGfxDeviceEventAfterReset     = 3,
-} UnityGfxDeviceEventType;
-
-typedef void (UNITY_INTERFACE_API * IUnityGraphicsDeviceEventCallback)(UnityGfxDeviceEventType eventType);
-
-// Should only be used on the rendering thread unless noted otherwise.
-UNITY_DECLARE_INTERFACE(IUnityGraphics)
-{
-	UnityGfxRenderer (UNITY_INTERFACE_API * GetRenderer)(); // Thread safe
-
-	// This callback will be called when graphics device is created, destroyed, reset, etc.
-	// It is possible to miss the kUnityGfxDeviceEventInitialize event in case plugin is loaded at a later time,
-	// when the graphics device is already created.
-	void (UNITY_INTERFACE_API * RegisterDeviceEventCallback)(IUnityGraphicsDeviceEventCallback callback);
-	void (UNITY_INTERFACE_API * UnregisterDeviceEventCallback)(IUnityGraphicsDeviceEventCallback callback);
-};
-UNITY_REGISTER_INTERFACE_GUID(0x7CBA0A9CA4DDB544ULL,0x8C5AD4926EB17B11ULL,IUnityGraphics)
+    kUnityRenderingExtQueryOverrideViewport             = 1 << 0,           // The plugin handles setting up the viewport rects. Unity will skip its internal SetViewport calls
+    kUnityRenderingExtQueryOverrideScissor              = 1 << 1,           // The plugin handles setting up the scissor rects. Unity will skip its internal SetScissor calls
+    kUnityRenderingExtQueryOverrideVROcclussionMesh     = 1 << 2,           // The plugin handles its own VR occlusion mesh rendering. Unity will skip rendering its internal VR occlusion mask
+    kUnityRenderingExtQueryOverrideVRSinglePass         = 1 << 3,           // The plugin uses its own single pass stereo technique. Unity will only traverse and render the render node graph once.
+                                                                            //      and it will clear the whole render target not just per-eye on demand.
+    kUnityRenderingExtQueryKeepOriginalDoubleWideWidth_DEPRECATED  = 1 << 4,           // Instructs unity to keep the original double wide width. By default unity will try and have a power-of-two width for mip-mapping requirements.
+    kUnityRenderingExtQueryRequestVRFlushCallback       = 1 << 5,           // Instructs unity to provide callbacks when the VR eye textures need flushing. Useful for multi GPU synchronization.
+} UnityRenderingExtQueryType;
 
 
-
-// Certain Unity APIs (GL.IssuePluginEvent, CommandBuffer.IssuePluginEvent) can callback into native plugins.
-// Provide them with an address to a function of this signature.
-typedef void (UNITY_INTERFACE_API * UnityRenderingEvent)(int eventId);
-typedef void (UNITY_INTERFACE_API * UnityRenderingEventAndData)(int eventId, void* data);
-void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityRenderingExtEvent(UnityRenderingExtEventType event, void* data);
-
-
-enum UnityRenderingExtTextureFormat
+typedef enum UnityRenderingExtTextureFormat
 {
     kUnityRenderingExtFormatNone = 0, kUnityRenderingExtFormatFirst = kUnityRenderingExtFormatNone,
 
@@ -252,15 +290,63 @@ enum UnityRenderingExtTextureFormat
     kUnityRenderingExtFormatYUV2,
 
     // Automatic formats, back-end decides
-    kUnityRenderingExtFormatLDRAuto,
-    kUnityRenderingExtFormatHDRAuto,
     kUnityRenderingExtFormatDepthAuto,
     kUnityRenderingExtFormatShadowAuto,
-    kUnityRenderingExtFormatVideoAuto, kUnityRenderingExtFormatLast = kUnityRenderingExtFormatVideoAuto, // Remove?
-};
+    kUnityRenderingExtFormatVideoAuto,
+
+    // ASTC hdr profile
+    kUnityRenderingExtFormatRGBA_ASTC4X4_UFloat,
+    kUnityRenderingExtFormatRGBA_ASTC5X5_UFloat,
+    kUnityRenderingExtFormatRGBA_ASTC6X6_UFloat,
+    kUnityRenderingExtFormatRGBA_ASTC8X8_UFloat,
+    kUnityRenderingExtFormatRGBA_ASTC10X10_UFloat,
+    kUnityRenderingExtFormatRGBA_ASTC12X12_UFloat,
+
+    kUnityRenderingExtFormatLast = kUnityRenderingExtFormatRGBA_ASTC12X12_UFloat, // Remove?
+} UnityRenderingExtTextureFormat;
 
 
-struct UnityRenderingExtTextureUpdateParamsV2
+typedef struct UnityRenderingExtBeforeDrawCallParams
+{
+    void*   vertexShader;                           // bound vertex shader (platform dependent)
+    void*   fragmentShader;                         // bound fragment shader (platform dependent)
+    void*   geometryShader;                         // bound geometry shader (platform dependent)
+    void*   hullShader;                             // bound hull shader (platform dependent)
+    void*   domainShader;                           // bound domain shader (platform dependent)
+    int     eyeIndex;                               // the index of the current stereo "eye" being currently rendered.
+} UnityRenderingExtBeforeDrawCallParams;
+
+
+typedef struct UnityRenderingExtCustomBlitParams
+{
+    UnityTextureID source;                          // source texture
+    UnityRenderBuffer destination;                  // destination surface
+    unsigned int command;                           // command for the custom blit - could be any UnityRenderingExtCustomBlitCommands command or custom ones.
+    unsigned int commandParam;                      // custom parameters for the command
+    unsigned int commandFlags;                      // custom flags for the command
+} UnityRenderingExtCustomBlitParams;
+
+// Deprecated. Use UnityRenderingExtTextureUpdateParamsV2 and CommandBuffer.IssuePluginCustomTextureUpdateV2 instead.
+// Only supports DX11, GLES, Metal
+typedef struct UnityRenderingExtTextureUpdateParamsV1
+{
+    void*        texData;                           // source data for the texture update. Must be set by the plugin
+    unsigned int userData;                          // user defined data. Set by the plugin
+
+    unsigned int textureID;                         // texture ID of the texture to be updated.
+    UnityRenderingExtTextureFormat format;          // format of the texture to be updated
+    unsigned int width;                             // width of the texture
+    unsigned int height;                            // height of the texture
+    unsigned int bpp;                               // texture bytes per pixel.
+} UnityRenderingExtTextureUpdateParamsV1;
+
+// Deprecated. Use UnityRenderingExtTextureUpdateParamsV2 and CommandBuffer.IssuePluginCustomTextureUpdateV2 instead.
+// Only supports DX11, GLES, Metal
+typedef UnityRenderingExtTextureUpdateParamsV1 UnityRenderingExtTextureUpdateParams;
+
+// Type of the "data" parameter passed when callbacks registered with CommandBuffer.IssuePluginCustomTextureUpdateV2 are called.
+// Supports DX11, GLES, Metal, and Switch (also possibly PS4, PSVita in the future)
+typedef struct UnityRenderingExtTextureUpdateParamsV2
 {
     void*        texData;                           // source data for the texture update. Must be set by the plugin
     intptr_t     textureID;                         // texture ID of the texture to be updated.
@@ -269,4 +355,23 @@ struct UnityRenderingExtTextureUpdateParamsV2
     unsigned int width;                             // width of the texture
     unsigned int height;                            // height of the texture
     unsigned int bpp;                               // texture bytes per pixel.
-};
+} UnityRenderingExtTextureUpdateParamsV2;
+
+
+// Certain Unity APIs (GL.IssuePluginEventAndData, CommandBuffer.IssuePluginEventAndData) can callback into native plugins.
+// Provide them with an address to a function of this signature.
+typedef void (UNITY_INTERFACE_API * UnityRenderingEventAndData)(int eventId, void* data);
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// If exported by a plugin, this function will be called for all the events in UnityRenderingExtEventType
+void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityRenderingExtEvent(UnityRenderingExtEventType event, void* data);
+// If exported by a plugin, this function will be called to query the plugin for the queries in UnityRenderingExtQueryType
+bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityRenderingExtQuery(UnityRenderingExtQueryType query);
+
+#ifdef __cplusplus
+}
+#endif
