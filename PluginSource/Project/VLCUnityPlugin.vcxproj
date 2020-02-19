@@ -28,6 +28,16 @@
     <ClInclude Include="..\Source\Log.h" />
     <ClInclude Include="..\Source\PlatformBase.h" />
     <ClInclude Include="..\Source\RenderAPI.h" />
+    <ClInclude Include="..\Source\Unity\IUnityEventQueue.h" />
+    <ClInclude Include="..\Source\Unity\IUnityGraphics.h" />
+    <ClInclude Include="..\Source\Unity\IUnityGraphicsD3D11.h" />
+    <ClInclude Include="..\Source\Unity\IUnityGraphicsD3D12.h" />
+    <ClInclude Include="..\Source\Unity\IUnityGraphicsMetal.h" />
+    <ClInclude Include="..\Source\Unity\IUnityGraphicsVulkan.h" />
+    <ClInclude Include="..\Source\Unity\IUnityInterface.h" />
+    <ClInclude Include="..\Source\Unity\IUnityProfilerCallbacks.h" />
+    <ClInclude Include="..\Source\Unity\IUnityRenderingExtensions.h" />
+    <ClInclude Include="..\Source\Unity\IUnityShaderCompilerAccess.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
