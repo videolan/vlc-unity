@@ -115,7 +115,7 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[D3D11] setVlcContext %p", this);
 
-    libvlc_video_set_output_callbacks( mp, libvlc_video_direct3d_engine_d3d11,
+    libvlc_video_set_output_callbacks( mp, libvlc_video_engine_d3d11,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
                                     Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
@@ -450,7 +450,7 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane )
 bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
     DEBUG("Setup m_d3dctxVLC = %p this = %p", m_d3dctxVLC, this);
-    out->device_context = m_d3dctxVLC;
+    out->d3d11.device_context = m_d3dctxVLC;
     return true;
 }
 

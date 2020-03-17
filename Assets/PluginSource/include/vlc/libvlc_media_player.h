@@ -511,8 +511,13 @@ typedef struct
 typedef struct
 {
     union {
-        void *device_context; /** ID3D11DeviceContext* for D3D11, IDirect3D9 * for D3D9 */
-        int  adapter;         /** Adapter to use with the IDirect3D9 for D3D9 */
+        struct {
+            void *device_context; /** ID3D11DeviceContext* */
+        } d3d11;
+        struct {
+            void *device;         /** IDirect3D9* */
+            int  adapter;         /** Adapter to use with the IDirect3D9* */
+        } d3d9;
     };
 } libvlc_video_setup_device_info_t;
 
@@ -529,11 +534,11 @@ typedef struct
  * \return true on success
  * \version LibVLC 4.0.0 or later
  *
- * For \ref libvlc_video_direct3d_engine_d3d9 the output must be a IDirect3D9*.
+ * For \ref libvlc_video_engine_d3d9 the output must be a IDirect3D9*.
  * A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called.
  * the device must be created with D3DPRESENT_PARAMETERS.hDeviceWindow set to 0.
  *
- * For \ref libvlc_video_direct3d_engine_d3d11 the output must be a ID3D11DeviceContext*.
+ * For \ref libvlc_video_engine_d3d11 the output must be a ID3D11DeviceContext*.
  * A reference to this object is held until the \ref LIBVLC_VIDEO_DEVICE_CLEANUP is called.
  * The ID3D11Device used to create ID3D11DeviceContext must have multithreading enabled.
  */
@@ -565,8 +570,8 @@ typedef struct
 typedef struct
 {
     union {
-        int dxgi_format;  /** the rendering DXGI_FORMAT for \ref libvlc_video_direct3d_engine_d3d11*/
-        uint32_t d3d9_format;  /** the rendering D3DFORMAT for \ref libvlc_video_direct3d_engine_d3d9 */
+        int dxgi_format;  /** the rendering DXGI_FORMAT for \ref libvlc_video_engine_d3d11*/
+        uint32_t d3d9_format;  /** the rendering D3DFORMAT for \ref libvlc_video_engine_d3d9 */
         int opengl_format;  /** the rendering GLint GL_RGBA or GL_RGB for \ref libvlc_video_engine_opengl and
                             for \ref libvlc_video_engine_gles2 */
         void *p_surface; /** currently unused */
@@ -674,12 +679,14 @@ typedef void (*libvlc_video_frameMetadata_cb)(void* opaque, libvlc_video_metadat
  * can be passed to @a libvlc_video_set_output_callbacks
  */
 typedef enum libvlc_video_engine_t {
+    /** Disable rendering engine */
+    libvlc_video_engine_disable,
     libvlc_video_engine_opengl,
     libvlc_video_engine_gles2,
     /** Direct3D11 rendering engine */
-    libvlc_video_direct3d_engine_d3d11,
+    libvlc_video_engine_d3d11,
     /** Direct3D9 rendering engine */
-    libvlc_video_direct3d_engine_d3d9,
+    libvlc_video_engine_d3d9,
 } libvlc_video_engine_t;
 
 /** Set the callback to call when the host app resizes the rendering area.
@@ -706,7 +713,7 @@ typedef void( *libvlc_video_output_set_resize_cb )( void *opaque,
  * \return true on success
  * \version LibVLC 4.0.0 or later
  *
- * \note This is only used with \ref libvlc_video_direct3d_engine_d3d11.
+ * \note This is only used with \ref libvlc_video_engine_d3d11.
  *
  * The host should call OMSetRenderTargets for Direct3D11. If this callback is
  * not used (set to NULL in @a libvlc_video_set_output_callbacks()) OMSetRenderTargets
@@ -732,7 +739,7 @@ typedef bool( *libvlc_video_output_select_plane_cb )( void *opaque, size_t plane
  * \param resize_cb callback to set the resize callback
  * \param update_output_cb callback to get the rendering format of the host (cannot be NULL)
  * \param swap_cb callback called after rendering a video frame (cannot be NULL)
- * \param makeCurrent_cb callback called to enter/leave the opengl context (cannot be NULL)
+ * \param makeCurrent_cb callback called to enter/leave the rendering context (cannot be NULL)
  * \param getProcAddress_cb opengl function loading callback (cannot be NULL for \ref libvlc_video_engine_opengl and for \ref libvlc_video_engine_gles2)
  * \param metadata_cb callback to provide frame metadata (D3D11 only)
  * \param select_plane_cb callback to select different D3D11 rendering targets
