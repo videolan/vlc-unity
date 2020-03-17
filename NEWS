@@ -1,5 +1,9 @@
 0.0.5:
 - LibVLC Windows: https://nightlies.videolan.org/build/win64-llvm/last/vlc-4.0.0-20200317-0757-dev-win64.7z
+- d3d11: D3D11_CREATE_DEVICE_DEBUG in debug mode only https://code.videolan.org/videolan/vlc-unity/issues/50
+- Update libvlc build and d3d11 API usage
+- Reference libvlcsharp documentation more explicitly in the unity documentation.txt file.
+- commit .meta files, should fix script references going out of date sometimes. https://code.videolan.org/videolan/vlc-unity/-/commit/44847dbc9b564ad12219231970cdf23ef78f697c
 
 0.0.4:
 - LibVLC Windows: https://nightlies.videolan.org/build/win64-llvm/vlc-4.0.0-20200205-0754/vlc-4.0.0-20200205-0754-dev-win64.7z
