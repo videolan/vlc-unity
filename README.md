@@ -84,7 +84,6 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 - Android (prototype working),
 - macOS, iOS, tvOS,
-- Windows 32bit,
 - UWP,
 - Linux.
 
@@ -92,8 +91,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 - OpenGL ES,
 - OpenGL,
-- Metal,
-- Direct3D9.
+- Metal.
 
 ### Other improvements
 
