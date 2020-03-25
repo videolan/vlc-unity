@@ -42,7 +42,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
 }
 
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-CreateAndInitMediaPlayer(libvlc_instance_t* libvlc)
+libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 {
     if(libvlc == NULL)
     {
@@ -105,7 +105,7 @@ err:
 }
 
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-getTexture(libvlc_media_player_t* mp, bool * updated)
+libvlc_unity_get_texture(libvlc_media_player_t* mp, bool * updated)
 {
     if(mp == NULL)
         return NULL;
