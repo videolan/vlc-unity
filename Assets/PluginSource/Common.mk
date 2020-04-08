@@ -6,11 +6,8 @@ OBJS = $(SRCS:.cpp=.o)
 
 CXXFLAGS = -O2 -fdebug-prefix-map='/mnt/c/'='c:/' -Wall -I./include/
 
-ifeq ($(ARCH), x86_64)
-LIB=/mnt/d/vlc-4.0.0-dev/sdk/lib
-else
-LIB=/mnt/d/vlc-4.0.0-dev-x86/sdk/lib
-endif
+LIB=./sdk/lib/
+
 LDFLAGS = -static-libgcc -static-libstdc++ -shared -Wl,-pdb= -L$(LIB)
 
 LIBS = -lvlc -ld3d11 -ld3dcompiler_47 -ldxgi
