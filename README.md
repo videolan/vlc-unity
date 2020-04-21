@@ -107,7 +107,7 @@ Check out the [NEWS](NEWS) file for details about each release.
 ### Windows
 
 - Download and install https://github.com/mstorsjo/llvm-mingw on latest Debian (WSL or otherwise). Add it to path.
-- Download a VLC nightly build from https://nightlies.videolan.org/build/win64-llvm/ and adjust if need be the `vlc-4.0.0-dev/sdk/lib` path to `LDFLAGS` in `Common.mk`
+- run `./get-libvlc-windows.sh` to download a win64 llvm libvlc 4 build.
 - Build with
 ```
 ./build.sh
