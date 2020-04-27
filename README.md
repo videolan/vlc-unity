@@ -128,6 +128,6 @@ Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Cond
 Licensed under the LGPL 2.1 and prorietary license via [Videolabs](https://videolabs.io/).
 
 <br/>
-<h3 align="center">
+<div align="center">
     <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="icons/Icon_Image_160x160.png"/></a>
-</h3>
+</div>
