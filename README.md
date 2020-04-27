@@ -113,7 +113,7 @@ Check out the [NEWS](NEWS) file for details about each release.
 ./build.sh
 ```
 This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
-- Extract the `vlc-cache-gen.exe` binary from the nightly build archive. Drag and drop the `plugins` folder onto it. This will produce a `plugins.dat` file in the `plugins` folder.
+- Extract the `vlc-cache-gen.exe` binary from the nightly build archive. Drag and drop the `plugins` folder onto it. Or just run the Unity scene with `_libVLC = new LibVLC("--reset-plugins-cache");`. This will produce a `plugins.dat` file in the `plugins` folder.
 
 ## Debugging
 
