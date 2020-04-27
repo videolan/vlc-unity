@@ -11,7 +11,7 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 For reference, you need to a bunch of components to get this working:
 - libvlc.dll, libvlccore.dll (and its plugins in /libs folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
 - Custom build of libvlcsharp, the official VideoLAN C# binding to libvlc https://code.videolan.org/videolan/LibVLCSharp
-- VLCUnityPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/mfkl/vlc-unity
+- VLCUnityPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/videolan/vlc-unity
 
 This is all included in this package and it all works automatically for you.
 
@@ -54,3 +54,7 @@ MediaPlayer.Play(new Media(LibVLC, "http://commondatastorage.googleapis.com/gtv-
 
 To get up and running easily and quickly, I recommend you load the Assets/VLC-Unity-Windows/Scripts/main.unity scene and get started from there. 
 The few lines of setup code I mentioned above are located in UseRenderingPlugin.cs.
+
+For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
+
+Your question might have been answered on [StackOverflow](https://stackoverflow.com/questions/tagged/libvlcsharp).
