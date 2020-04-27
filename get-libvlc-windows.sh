@@ -8,6 +8,12 @@ rm ./build.7z
 rm -rf ./build
 rm -rf $sourceLocation/include
 rm -rf $sourceLocation/sdk
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/libvlc.dll
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/libvlccore.dll
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/hrtfs
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/locale
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/lua
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/plugins
 
 curl -Lsfo build.7z $downloadUrl
 7z x build.7z -o./build
