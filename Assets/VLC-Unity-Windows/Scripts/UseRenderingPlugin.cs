@@ -16,8 +16,9 @@ public class UseRenderingPlugin : MonoBehaviour
 
         _libVLC = new LibVLC("--no-osd","--verbose=2");
 
-        _mediaPlayer = new MediaPlayer(_libVLC);
+        //_libVLC.Log += (s, e) => UnityEngine.Debug.Log(e.Message); // enable this for logs in the editor
 
+        _mediaPlayer = new MediaPlayer(_libVLC);
         PlayPause();
     }
 
