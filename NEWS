@@ -1,3 +1,8 @@
+0.0.6:
+- LibVLC Windows: 67c4ffd586f181f21b5883154f0995ab32bd99e4 (with 634a910ae1336b3676e9cb1cc66d7b86f563738c andeac402705c341b28b01c15fc16041e5c728c2d38 reverted).
+- script: include code to enable logs in the Unity Editor.
+- Editor crash fixed by newer libvlc build https://code.videolan.org/videolan/vlc-unity/-/issues/57. 
+
 0.0.5:
 - LibVLC Windows: https://nightlies.videolan.org/build/win64-llvm/last/vlc-4.0.0-20200317-0757-dev-win64.7z
 - d3d11: D3D11_CREATE_DEVICE_DEBUG in debug mode only https://code.videolan.org/videolan/vlc-unity/issues/50
