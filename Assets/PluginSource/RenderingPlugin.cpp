@@ -72,7 +72,12 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     DEBUG("Calling... Initialize Render API \n");
 
     s_DeviceType = s_Graphics->GetRenderer();
-
+    if(s_DeviceType == NULL)
+    {
+        DEBUG("s_DeviceType is NULL \n");    
+        return NULL; 
+    }
+    
     DEBUG("Calling... CreateRenderAPI \n");
 
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
@@ -80,6 +85,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     if(s_CurrentAPI == NULL)
     {
         DEBUG("s_CurrentAPI is NULL \n");    
+        return NULL;
     }    
     
     DEBUG("Calling... ProcessDeviceEvent \n");
