@@ -24,6 +24,7 @@ class RenderAPI_D3D11 : public RenderAPI
 {
 public:
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
+    virtual void clear(libvlc_media_player_t *mp) override;
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(bool* out_updated) override;
 
@@ -119,6 +120,11 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
                                     Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
+}
+
+void RenderAPI_D3D11::clear(libvlc_media_player_t *mp)
+{
+    ReleaseResources();
 }
 
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)

@@ -110,6 +110,24 @@ err:
     return NULL;
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_media_player_release(libvlc_media_player_t* mp)
+{
+    if(mp == NULL)
+        return;
+
+    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+    
+    if(s_CurrentAPI == NULL)
+        return;
+
+    s_CurrentAPI->clear(mp);
+
+    contexts.erase(mp);
+    
+    libvlc_media_player_release(mp);
+}
+
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_get_texture(libvlc_media_player_t* mp, bool * updated)
 {

@@ -19,6 +19,7 @@ public:
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
 
     virtual void setVlcContext(libvlc_media_player_t *mp) {}
+    virtual void clear(libvlc_media_player_t *mp) {}
 
     virtual void* getVideoFrame(bool* out_updated) {
         if (out_updated)
