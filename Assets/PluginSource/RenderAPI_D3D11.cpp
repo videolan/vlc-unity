@@ -348,7 +348,6 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
         pMultithread->Release();
     }
 
-    Update(SCREEN_WIDTH, SCREEN_HEIGHT);
     DEBUG("Exiting CreateResources.\n");
 }
 
