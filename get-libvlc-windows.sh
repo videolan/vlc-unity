@@ -20,6 +20,7 @@ curl -Lsfo build.7z $downloadUrl
 7z x build.7z -o./build
 
 cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,locale,lua,plugins} Assets/VLC-Unity-Windows/Plugins/x86_64
+rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/lua/http # contains unnecessary js files which make the local Unity Store validator fail
 mkdir -p $sourceLocation/sdk/lib/
 cp -r ./build/vlc-4.0.0-dev/sdk/lib/ $sourceLocation/sdk/
 cp -r ./build/vlc-4.0.0-dev/sdk/include $sourceLocation/include
