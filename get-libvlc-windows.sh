@@ -1,7 +1,7 @@
 #! /bin/bash
 
-version="f4198236"
-date="20200507-0453"
+version="b5d43240"
+date="20200512-0453"
 sourceLocation="Assets/PluginSource"
 downloadUrl="https://artifacts.videolan.org/vlc/nightly-win64-llvm/$date/vlc-4.0.0-dev-win64-$version.7z"
 
