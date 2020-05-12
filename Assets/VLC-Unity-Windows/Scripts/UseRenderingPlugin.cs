@@ -1,6 +1,6 @@
 using UnityEngine;
 using System;
-using LibVLCSharp.Shared;
+using LibVLCSharp;
 
 public class UseRenderingPlugin : MonoBehaviour
 {
