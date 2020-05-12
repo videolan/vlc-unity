@@ -124,6 +124,12 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 
 void RenderAPI_D3D11::clear(libvlc_media_player_t *mp)
 {
+    DEBUG("Unsubscribing output callbacks \n");
+
+    libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
+                                    Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
+                                    Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
+                                    this);
     ReleaseResources();
 }
 
