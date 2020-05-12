@@ -34,6 +34,7 @@ extern "C" {
 # endif
 
 typedef struct libvlc_renderer_item_t libvlc_renderer_item_t;
+typedef struct libvlc_title_description_t libvlc_title_description_t;
 
 /**
  * \ingroup libvlc_event
@@ -104,8 +105,8 @@ enum libvlc_event_e {
     libvlc_MediaPlayerPositionChanged,
     libvlc_MediaPlayerSeekableChanged,
     libvlc_MediaPlayerPausableChanged,
-    libvlc_MediaPlayerTitleChanged,
-    libvlc_MediaPlayerSnapshotTaken,
+    /* libvlc_MediaPlayerTitleChanged, */
+    libvlc_MediaPlayerSnapshotTaken = libvlc_MediaPlayerPausableChanged + 2,
     libvlc_MediaPlayerLengthChanged,
     libvlc_MediaPlayerVout,
     libvlc_MediaPlayerScrambledChanged,
@@ -118,6 +119,16 @@ enum libvlc_event_e {
     libvlc_MediaPlayerUnmuted,
     libvlc_MediaPlayerAudioVolume,
     libvlc_MediaPlayerAudioDevice,
+    /**
+     * The title list changed, call
+     * libvlc_media_player_get_full_title_descriptions() to get the new list.
+     */
+    libvlc_MediaPlayerTitleListChanged,
+    /**
+     * The title selection changed, cf media_player_title_selection_changed in
+     * \ref libvlc_event_t.u
+     */
+    libvlc_MediaPlayerTitleSelectionChanged,
     libvlc_MediaPlayerChapterChanged,
 
     /**
@@ -265,8 +276,9 @@ typedef struct libvlc_event_t
         } media_player_time_changed;
         struct
         {
-            int new_title;
-        } media_player_title_changed;
+            const libvlc_title_description_t *title;
+            int index;
+        } media_player_title_selection_changed;
         struct
         {
             int new_seekable;
