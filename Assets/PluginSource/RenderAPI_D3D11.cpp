@@ -24,7 +24,7 @@ class RenderAPI_D3D11 : public RenderAPI
 {
 public:
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
-    virtual void clear(libvlc_media_player_t *mp) override;
+    virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(bool* out_updated) override;
 
@@ -122,7 +122,7 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
                                     this);
 }
 
-void RenderAPI_D3D11::clear(libvlc_media_player_t *mp)
+void RenderAPI_D3D11::unsetVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("Unsubscribing output callbacks \n");
 
@@ -130,7 +130,6 @@ void RenderAPI_D3D11::clear(libvlc_media_player_t *mp)
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
                                     Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
-    ReleaseResources();
 }
 
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
@@ -467,34 +466,7 @@ bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_
 
 void RenderAPI_D3D11::Cleanup()
 {
-    if (m_textureRenderTarget)
-    {
-        m_textureRenderTarget->Release();
-        m_textureRenderTarget = NULL;
-    }
-    
-    if(m_sharedHandle)
-    {
-        CloseHandle(m_sharedHandle);
-        m_sharedHandle = nullptr;
-    }
-
-    if(m_outputTexture)
-    {
-        m_outputTexture->Release();
-        m_outputTexture = nullptr;
-    }
-
-    if (m_textureUnity)
-    {
-        m_textureUnity->Release();
-        m_textureUnity = NULL;
-    }
-    if(m_textureShaderInput)
-    {
-        m_textureShaderInput->Release();
-        m_textureShaderInput = nullptr;
-    }
+    ReleaseResources();
 }
 
 void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),

@@ -121,7 +121,7 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
     if(s_CurrentAPI == NULL)
         return;
 
-    s_CurrentAPI->clear(mp);
+    s_CurrentAPI->unsetVlcContext(mp);
 
     contexts.erase(mp);
     
