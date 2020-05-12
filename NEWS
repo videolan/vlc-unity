@@ -1,3 +1,10 @@
+0.0.7:
+- LibVLC Windows update: 20200512-0453 nightly.
+- LibVLCSharp 4 update: https://code.videolan.org/videolan/LibVLCSharp/-/commit/c27cede01a56653f9025ceec68008eae0876f3a2 nightly.
+- script: set StackTraceLogType to have readable logs.
+- d3d11: Don't create resources before VLC tells us to d1ac158b91156132edbd386a746323d91a5d38ee
+- plugin API: Add some defensive checks when the plugin doesn't initialize properly to avoid a crash 9e93cfe1c688382141a53033c24949fae2371bda
+
 0.0.6:
 - LibVLC Windows: 67c4ffd586f181f21b5883154f0995ab32bd99e4 (with 634a910ae1336b3676e9cb1cc66d7b86f563738c andeac402705c341b28b01c15fc16041e5c728c2d38 reverted).
 - script: include code to enable logs in the Unity Editor.
