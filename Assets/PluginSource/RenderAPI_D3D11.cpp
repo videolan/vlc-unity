@@ -497,10 +497,11 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
     {
         m_updated = false;
         D3D11_BOX box = {
-            .top = 0,
-            .bottom = m_height,
             .left = 0,
+            .top = 0,
+            .front = 0,
             .right = m_width,
+            .bottom = m_height,
             .back = 1,
         };
         m_d3dctxUnity->CopySubresourceRegion(m_outputTexture, 0, 0, 0, 0, m_textureUnity, 0, &box);
