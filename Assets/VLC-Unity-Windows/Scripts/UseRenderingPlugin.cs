@@ -2,14 +2,16 @@ using UnityEngine;
 using System;
 using LibVLCSharp;
 
+/// this class serves as an example on how to configure playback in Unity with VLC for Unity using LibVLCSharp.
+/// for libvlcsharp usage documentation, please visit https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md
 public class UseRenderingPlugin : MonoBehaviour
 {
     LibVLC _libVLC;
     MediaPlayer _mediaPlayer;
     const int seekTimeDelta = 5000;
     Texture2D tex = null;
-
     bool playing;
+    
     void Awake()
     {
         Core.Initialize(Application.dataPath);
@@ -17,9 +19,8 @@ public class UseRenderingPlugin : MonoBehaviour
         _libVLC = new LibVLC("--no-osd","--verbose=2");
 
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
-        //_libVLC.Log += (s, e) => UnityEngine.Debug.Log(e.Message); // enable this for logs in the editor
+        //_libVLC.Log += (s, e) => UnityEngine.Debug.Log(e.FormattedLog); // enable this for logs in the editor
 
-        _mediaPlayer = new MediaPlayer(_libVLC);
         PlayPause();
     }
 
@@ -48,7 +49,10 @@ public class UseRenderingPlugin : MonoBehaviour
     public void PlayPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
-        if (_mediaPlayer == null) return;
+        if (_mediaPlayer == null)
+        {
+            _mediaPlayer = new MediaPlayer(_libVLC);
+        }
         if (_mediaPlayer.IsPlaying)
         {
             _mediaPlayer.Pause();
@@ -72,6 +76,10 @@ public class UseRenderingPlugin : MonoBehaviour
 
         playing = false;
         _mediaPlayer?.Stop();
+        
+        // there is no need to dispose every time you stop, but you should do so when you're done using the mediaplayer and this is how:
+        // _mediaPlayer?.Dispose(); 
+        // _mediaPlayer = null;
         GetComponent<Renderer>().material.mainTexture = null;
         tex = null;
     }
