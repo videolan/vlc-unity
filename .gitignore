@@ -73,4 +73,8 @@ crashlytics-build.properties
 *.so*
 *.o*
 /Assets/PluginSource/include/**
+/Assets/PluginSource/sdk/**
+/Assets/PluginSource/sdk.meta
 /Assets/VLC-Unity-Windows/Plugins/**
+/Assets/AssetStoreTools/
+/Assets/AssetStoreTools.meta
