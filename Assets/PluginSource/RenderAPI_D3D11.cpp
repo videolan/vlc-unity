@@ -492,20 +492,27 @@ void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, uns
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
     EnterCriticalSection(&m_outputLock);
-    *out_updated = m_updated;
-    if(m_updated)
+    if(m_d3dctxUnity == NULL)
     {
-        m_updated = false;
-        D3D11_BOX box = {};
-        box.left = 0;
-        box.top = 0;
-        box.front = 0;
-        box.right = m_width;
-        box.bottom = m_height;
-        box.back = 1;
-        m_d3dctxUnity->CopySubresourceRegion(m_outputTexture, 0, 0, 0, 0, m_textureUnity, 0, &box);
+        DEBUG("m_d3dctxUnity is NULL...");
     }
-    
+    else
+    {
+        *out_updated = m_updated;
+        if(m_updated)
+        {
+            m_updated = false;
+            D3D11_BOX box = {};
+            box.left = 0;
+            box.top = 0;
+            box.front = 0;
+            box.right = m_width;
+            box.bottom = m_height;
+            box.back = 1;
+            m_d3dctxUnity->CopySubresourceRegion(m_outputTexture, 0, 0, 0, 0, m_textureUnity, 0, &box);
+        }
+    }
+
     LeaveCriticalSection(&m_outputLock);
     return m_textureShaderInput;
 }
