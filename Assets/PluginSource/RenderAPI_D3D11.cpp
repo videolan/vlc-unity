@@ -38,7 +38,7 @@ public:
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
 
 private:
-    void CreateResources(ID3D11Device *d3device, ID3D11DeviceContext *d3dctx);
+    void CreateResources();
     void ReleaseResources();
     void DebugInUnity(LPCSTR message);
     void Update(UINT width, UINT height);
@@ -114,22 +114,26 @@ RenderAPI* CreateRenderAPI_D3D11()
 
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
-    DEBUG("[D3D11] setVlcContext %p", this);
+    DEBUG("[D3D11] Subscribing output callbacks %p \n", this);
 
     libvlc_video_set_output_callbacks( mp, libvlc_video_engine_d3d11,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
                                     Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
+
+    CreateResources();
 }
 
 void RenderAPI_D3D11::unsetVlcContext(libvlc_media_player_t *mp)
 {
-    DEBUG("Unsubscribing output callbacks \n");
+    DEBUG("[D3D11] Unsubscribing to output callbacks %p \n", this);
 
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
                                     Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
+
+    ReleaseResources();
 }
 
 void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
@@ -146,20 +150,18 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
                 DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
                 return;
             }
-            ID3D11Device* d3device = d3d->GetDevice();
-            if(d3device == NULL)
+            m_d3deviceUnity = d3d->GetDevice();
+            if(m_d3deviceUnity == NULL)
             {
                 DEBUG("Could not retrieve d3device \n");
                 return;
             }
-            ID3D11DeviceContext* d3dctx;
-            d3device->GetImmediateContext(&d3dctx);
-            if(d3dctx == NULL)
+            m_d3deviceUnity->GetImmediateContext(&m_d3dctxUnity);
+            if(m_d3dctxUnity == NULL)
             {
                 DEBUG("Could not retrieve d3dctx \n");
                 return;
             }
-            CreateResources(d3device, d3dctx);
             break;
         }
         case kUnityGfxDeviceEventShutdown:
@@ -187,26 +189,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
 
     m_width = width;
     m_height = height;
-    if (m_textureUnity)
-    {
-        m_textureUnity->Release();
-        m_textureUnity = NULL;
-    }
-    if (m_textureShaderInput)
-    {
-        m_textureShaderInput->Release();
-        m_textureShaderInput = NULL;
-    }
-    if (m_textureRenderTarget)
-    {
-        m_textureRenderTarget->Release();
-        m_textureRenderTarget = NULL;
-    }
-    if(m_sharedHandle)
-    {
-        CloseHandle(m_sharedHandle);
-        m_sharedHandle = nullptr;
-    }
+    
+    Cleanup();
 
     DEBUG("Done releasing d3d objects.\n");
 
@@ -313,9 +297,15 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     LeaveCriticalSection(&m_outputLock);
 }
 
-void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContext *d3dctx)
+void RenderAPI_D3D11::CreateResources()
 {
     DEBUG("Entering CreateResources \n");
+
+    if(m_d3deviceUnity == NULL || m_d3dctxUnity == NULL)
+    {
+        DEBUG("Could not retrieve unity d3device %p or d3dctx %p, aborting... \n", m_d3deviceUnity, m_d3dctxUnity);
+        return;
+    }
 
     HRESULT hr;
 
@@ -323,9 +313,6 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
     InitializeCriticalSection(&m_sizeLock);
     ZeroMemory(&m_outputLock, sizeof(CRITICAL_SECTION));
     InitializeCriticalSection(&m_outputLock);
-
-    m_d3deviceUnity = d3device;
-    m_d3dctxUnity = d3dctx;
 
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT; /* needed for hardware decoding */
 #ifndef NDEBUG
@@ -362,21 +349,9 @@ void RenderAPI_D3D11::CreateResources(ID3D11Device *d3device, ID3D11DeviceContex
     DEBUG("Exiting CreateResources.\n");
 }
 
-
-void RenderAPI_D3D11::ReleaseResources()
+void RenderAPI_D3D11::Cleanup()
 {
     DEBUG("Entering ReleaseResources.\n");
-    if(m_d3deviceVLC)
-    {
-        m_d3deviceVLC->Release();
-        m_d3deviceVLC = nullptr;
-    }
-    
-    if(m_d3dctxVLC)
-    {
-        m_d3dctxVLC->Release();
-        m_d3deviceVLC = nullptr;
-    }
 
     if(m_textureRenderTarget)
     {
@@ -406,6 +381,21 @@ void RenderAPI_D3D11::ReleaseResources()
     {
         CloseHandle(m_sharedHandle);
         m_sharedHandle = nullptr;
+    }
+}
+
+void RenderAPI_D3D11::ReleaseResources()
+{
+    if(m_d3deviceVLC)
+    {
+        m_d3deviceVLC->Release();
+        m_d3deviceVLC = nullptr;
+    }
+    
+    if(m_d3dctxVLC)
+    {
+        m_d3dctxVLC->Release();
+        m_d3deviceVLC = nullptr;
     }
 }
 
@@ -462,11 +452,6 @@ bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_
     DEBUG("Setup m_d3dctxVLC = %p this = %p", m_d3dctxVLC, this);
     out->d3d11.device_context = m_d3dctxVLC;
     return true;
-}
-
-void RenderAPI_D3D11::Cleanup()
-{
-    ReleaseResources();
 }
 
 void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
