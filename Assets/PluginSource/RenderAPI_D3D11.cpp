@@ -333,7 +333,8 @@ void RenderAPI_D3D11::CreateResources()
 
     if(FAILED(hr))
     {
-        DEBUG("FAILED to create d3d11 device and context \n");
+        _com_error error(hr);
+        DEBUG("FAILED to create d3d11 device and context %s \n", error.ErrorMessage());
     }
 
     DEBUG("Configuring multithread \n");
