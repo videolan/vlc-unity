@@ -17,8 +17,32 @@ stages:
             - nightlies/*
         expire_in: 2 weeks
 
-build-x86_64:
+libvlc-x86_64:
     extends: .build-base
     variables:
         ARCH: x86_64
-        SHORTARCH: win64
+
+libvlcsharp-unity:
+    tags:
+        - docker
+        - amd64
+    stage: build
+    script:
+        - wget https://download.visualstudio.microsoft.com/download/pr/0c795076-b679-457e-8267-f9dd20a8ca28/02446ea777b6f5a5478cd3244d8ed65b/dotnet-sdk-3.1.300-linux-x64.tar.gz
+        - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-3.1.300-linux-x64.tar.gz -C $HOME/dotnet
+        - export DOTNET_ROOT=$HOME/dotnet
+        - export PATH=$PATH:$HOME/dotnet
+        - dotnet --version
+        - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
+        - cd lvs
+        - git checkout -f -B master
+        - git apply ../../0001-Linux-build.patch
+        - cd src/LibVLCSharp
+        - dotnet build /p:UNITY=true -c Release
+    after_script:
+        - mkdir nightlies
+        - cp tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/LibVLCSharp.dll nightlies
+    artifacts:
+        paths:
+            - nightlies/*
+        expire_in: 2 weeks
