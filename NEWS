@@ -1,3 +1,9 @@
+0.0.8:
+- libvlc windows update, 28 May 2020 build.
+- d3d11: fix leaks by releasing more resources
+- d3d11: add more defensive checks when Unity does not initialize properly for various reasons.
+- libvlc build: Use release build, this should fix several issues where debug d3d11 dlls were unnecessarily needed.
+
 0.0.7:
 - LibVLC Windows update: 20200512-0453 nightly.
 - LibVLCSharp 4 update: https://code.videolan.org/videolan/LibVLCSharp/-/commit/c27cede01a56653f9025ceec68008eae0876f3a2 nightly.
