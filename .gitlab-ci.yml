@@ -36,9 +36,8 @@ libvlcsharp-unity:
         - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
         - cd lvs
         - git checkout -f -B master
-        - git apply ../../0001-Linux-build.patch
-        - cd src/LibVLCSharp
-        - dotnet build /p:UNITY=true -c Release
+        - git apply buildsystem/linux.patch
+        - dotnet build src/LibVLCSharp/LibVLCSharp.csproj /p:UNITY=true -c Release
     after_script:
         - mkdir nightlies
         - cp tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/LibVLCSharp.dll nightlies
