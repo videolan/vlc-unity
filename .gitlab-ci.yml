@@ -1,5 +1,6 @@
 stages:
     - build
+    - build-unity-plugin
 
 .build-base:
     image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
@@ -53,3 +54,19 @@ libvlcsharp-unity:
         paths:
             - nightlies/*
         expire_in: 2 weeks
+
+unity-plugin:
+    image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
+    dependencies: 
+        - libvlc-x86_64
+    tags:
+        - docker
+        - amd64
+    stage: build-unity-plugin
+    script:
+        - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
+        - mkdir -p Assets/VLC-Unity-Windows/Plugins/x86_64
+        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,locale,lua,plugins} Assets/VLC-Unity-Windows/Plugins/x86_64
+        - rm -rf Assets/VLC-Unity-Windows/Plugins/x86_64/lua/http
+        - cp -r ./build/vlc-4.0.0-dev/sdk/ Assets/PluginSource/
+        - ./build.sh
