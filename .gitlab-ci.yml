@@ -8,19 +8,27 @@ stages:
         - amd64
     stage: build
     script:
-        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc && extras/package/win32/build.sh -c -r -x -l -i n -a $ARCH 
+        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc && extras/package/win32/build.sh $ARGS 
     after_script:
         - mkdir nightlies
-        - cp ./vlc/win64/vlc-4.0.0-dev-win64.7z nightlies
+        - ls ./vlc/win64
+        - cp ./vlc/win64/$ARTIFACT nightlies
     artifacts:
         paths:
             - nightlies/*
         expire_in: 2 weeks
 
+libvlc-x86_64-debug:
+    extends: .build-base
+    variables:
+        ARGS: -c -d -x -l -i n -a x86_64
+        ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
+        
 libvlc-x86_64:
     extends: .build-base
     variables:
-        ARCH: x86_64
+        ARGS: -c -r -x -l -i n -a x86_64
+        ARTIFACT: vlc-4.0.0-dev-win64.7z
 
 libvlcsharp-unity:
     tags:
