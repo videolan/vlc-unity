@@ -4,7 +4,7 @@ using LibVLCSharp;
 
 /// this class serves as an example on how to configure playback in Unity with VLC for Unity using LibVLCSharp.
 /// for libvlcsharp usage documentation, please visit https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md
-public class UseRenderingPlugin : MonoBehaviour
+public class MinimalPlayback : MonoBehaviour
 {
     LibVLC _libVLC;
     MediaPlayer _mediaPlayer;

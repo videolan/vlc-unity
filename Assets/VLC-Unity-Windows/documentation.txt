@@ -23,7 +23,7 @@ The scene from Assets/VLC-Unity-Windows/Scripts/main.unity provides a way to get
 
 ## Sample script 
 
-Regarding the integration code that you need, you will find it in UseRenderingPlugin.cs.
+Regarding the integration code that you need, you will find it in MinimalPlayback.cs.
 
 First, you need to load the native libraries:
 ```
@@ -53,7 +53,7 @@ MediaPlayer.Play(new Media(LibVLC, "http://commondatastorage.googleapis.com/gtv-
 ```
 
 To get up and running easily and quickly, I recommend you load the Assets/VLC-Unity-Windows/Scripts/main.unity scene and get started from there. 
-The few lines of setup code I mentioned above are located in UseRenderingPlugin.cs.
+The few lines of setup code I mentioned above are located in MinimalPlayback.cs.
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 

@@ -78,7 +78,7 @@ Support is done on a volunteer base, professional support is only available for 
 
 ## Samples
 
-A minimal Unity sample is available [here](./Assets/VLC-Unity-Windows/Scripts/UseRenderingPlugin.cs). Additional Unity samples will come soon.
+A minimal Unity sample is available [here](./Assets/VLC-Unity-Windows/Scripts/MinimalPlayback.cs). Additional Unity samples will come soon.
 
 More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libvlcsharp-samples).
 
