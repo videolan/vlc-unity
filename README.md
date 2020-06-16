@@ -58,6 +58,8 @@ The recommended way to install the VLC for Unity plugin is through the [Unity St
 [VLCUnityWindows]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979
 [VLCUnityWindowsBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
 
+#### [Download the Free Trial Version](https://videolabs.io/#unity).
+
 ## Getting started
 
 There is a quick `documentation.txt` file [included in the package](./Assets/VLC-Unity-Windows/documentation.txt). It gives some context and high level overview of how things work and how to get started.
