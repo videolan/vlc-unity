@@ -36,7 +36,7 @@ public class ThreeSixty : MonoBehaviour
         _libVLC = null;
     }
 
-    public void PlayPause()
+    public async void PlayPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
         if (_mediaPlayer == null)
@@ -55,7 +55,9 @@ public class ThreeSixty : MonoBehaviour
             {
                 // download https://streams.videolan.org/streams/360/eagle_360.mp4 to your computer (to avoid network for smooth navigation)
                 // and adjust the path in Uri
-                _mediaPlayer.Media = new Media(_libVLC, new Uri(@"C:\Users\Martin\Downloads\eagle_360.mp4"));
+                var media = new Media(_libVLC, new Uri(@"C:\Users\Martin\Downloads\eagle_360.mp4"));
+                await media.Parse();
+                _mediaPlayer.Media = media;
             }
 
             _mediaPlayer.Play();
@@ -103,7 +105,7 @@ public class ThreeSixty : MonoBehaviour
     
     void Do360Navigation()
     {
-        var is360 = _mediaPlayer.Media.Tracks[0].Data.Video.Projection == VideoProjection.Equirectangular;
+        var is360 = _mediaPlayer.Media?.Tracks[0].Data.Video.Projection == VideoProjection.Equirectangular;
         if(!is360)
         {
             Debug.Log("The video was not identified as 360 video by VLC, make sure it is properly tagged");
