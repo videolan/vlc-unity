@@ -21,6 +21,7 @@ COMPILEFLAG = m32
 endif
 
 OUTPUT = $(TARGET).dll
+WINDOWS_BINARIES = Assets/VLCUnity/Plugins/x86_64
 
 CXX = $(BIN_PREFIX)-c++
 STRIP = $(BIN_PREFIX)-strip
@@ -31,7 +32,7 @@ copy: $(OUTPUT)
 ifndef NOSTRIP
 	$(STRIP) $(OUTPUT)
 endif
-	cp -f $(OUTPUT) ../Assets/$(OUTPUT)
+	cp -f $(OUTPUT) ../$(WINDOWS_BINARIES)/$(OUTPUT)
 
 clean:
 	rm -f $(OUTPUT) $(OBJS)
