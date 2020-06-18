@@ -30,10 +30,11 @@ static IUnityInterfaces* s_UnityInterfaces = NULL;
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
     DEBUG("SetPluginPath \n");
+    DEBUG("_putenv_s with VLC_PLUGIN_PATH -> %s \n", path);
     auto e = _putenv_s("VLC_PLUGIN_PATH", path);
     if(e != 0)
-        DEBUG("_putenv_s failed");
-    else DEBUG("_putenv_s succeeded");
+        DEBUG("_putenv_s failed \n");
+    else DEBUG("_putenv_s succeeded \n");
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
