@@ -53,9 +53,10 @@ public class ThreeSixty : MonoBehaviour
 
             if(_mediaPlayer.Media == null)
             {
-                // download https://streams.videolan.org/streams/360/eagle_360.mp4 to your computer (to avoid network for smooth navigation)
-                // and adjust the path in Uri
-                var media = new Media(_libVLC, new Uri(@"C:\Users\Martin\Downloads\eagle_360.mp4"));
+                // download https://streams.videolan.org/streams/360/eagle_360.mp4 
+                // to your computer (to avoid network requests for smoother navigation)
+                // and adjust the Uri path
+                var media = new Media(_libVLC, new Uri("https://streams.videolan.org/streams/360/eagle_360.mp4"));
                 await media.Parse();
                 _mediaPlayer.Media = media;
             }

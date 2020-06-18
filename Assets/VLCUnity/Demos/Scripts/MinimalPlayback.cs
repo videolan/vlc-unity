@@ -63,7 +63,11 @@ public class MinimalPlayback : MonoBehaviour
 
             if(_mediaPlayer.Media == null)
             {
-                _mediaPlayer.Media = new Media(_libVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation);
+                // playing remote media
+                // _mediaPlayer.Media = new Media(_libVLC, new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"));
+
+                // playing local media
+                _mediaPlayer.Media = new Media(_libVLC, new Uri($"{Application.dataPath}/VLCUnity/Media/Big_Buck_Bunny_360_10s_20MB.mp4"));
             }
 
             _mediaPlayer.Play();
