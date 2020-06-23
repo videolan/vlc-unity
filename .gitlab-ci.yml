@@ -70,3 +70,9 @@ unity-plugin:
         - rm -rf Assets/VLCUnity/Plugins/x86_64/lua/http
         - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
         - ./build.sh
+    after_script:
+        - cp Assets/VLCUnity/Plugins/x86_64/VLCUnityPlugin.dll nightlies
+    artifacts:
+        paths:
+            - nightlies/*
+        expire_in: 2 weeks
