@@ -1,3 +1,18 @@
+Since this plugin is made of several components, figuring out the changes _relevant to you_ amongst all the moving pieces can be a tricky process.
+This document will focus on the release notes of vlc-unity itself, unless specified otherwise.
+
+For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
+For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
+
+0.0.9:
+- Use MSVCRT instead of UCRT for both libvlc and the unity plugin (see docker-images llvm-mingw changes).
+- Reorganization of the asset. Scenes and Scripts are in separate folders now.
+- Add 360 scene with keyboard navigation.
+- Use the new simpler Uri Media constructor in sample scripts.
+- Add examples for local/remote playback for both scenes (the 360 video ought to be downloaded locally for smoother playback).
+- Add video sample in StreamingAssets folder for offline support.
+- Update documentation.txt file.
+
 0.0.8:
 - libvlc windows update, 28 May 2020 build.
 - d3d11: fix leaks by releasing more resources
