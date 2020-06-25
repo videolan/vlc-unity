@@ -2,14 +2,14 @@ Welcome to VLC for Unity on Windows!
 
 ## Docs reference
 
-See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/master/docs).
+See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 
 It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/best_practices.md), [Q&A guide](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/how_do_I_do_X.md), [libvlc specific information](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/libvlc_documentation.md) and [tutorials](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/tutorials.md).
 
 ## Components included
 
 For reference, you need to a bunch of components to get this working:
-- libvlc.dll, libvlccore.dll (and its plugins in /libs folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
+- libvlc.dll, libvlccore.dll (and its plugins in /plugins folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
 - Custom build of libvlcsharp, the official VideoLAN C# binding to libvlc https://code.videolan.org/videolan/LibVLCSharp
 - VLCUnityPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/videolan/vlc-unity
 
@@ -19,24 +19,29 @@ LibVLCSharp docs (not Unity specific) https://code.videolan.org/videolan/LibVLCS
 
 !! You need to set your Unity target platform to "PC, Mac & Linux Standalone" to target Windows classic. Go for the x86_64 architecture.
 
-The scene from Assets/VLC-Unity-Windows/Scripts/main.unity provides a way to get started quickly.
+The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to get started quickly. 
+
+Select any scene (*.unity) and press play in the Unity Editor (or make a standalone build), and the video will start playing.
 
 ## Sample script 
 
+The following information is to give you more context regarding what happens in the Demo scenes provided in the Asset.
+Understanding the scripts will allow you to know where to look when customizing your own player.
+
 Regarding the integration code that you need, you will find it in MinimalPlayback.cs.
 
-First, you need to load the native libraries:
+First, you need to load the native libraries (libvlc):
 ```
 Core.Initialize(UnityEngine.Application.dataPath);
 ```
 
-You can then create LibVLCSharp objects
+You can then create LibVLCSharp objects like so:
 ```
 LibVLC = new LibVLC();
 MediaPlayer = new MediaPlayer(LibVLC);
 ```
 
-The frame updating is done in a Unity coroutine or Update() function
+The frame updating is done in a Unity coroutine or Update() function:
 ```
 IntPtr texptr = MediaPlayer.GetFrame(out bool updated);
 if (updated)
@@ -49,12 +54,12 @@ See Update() function for more details.
 
 Once that is all setup, you can create a new Media and start playback like so
 ```
-MediaPlayer.Play(new Media(LibVLC, "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", FromType.FromLocation));
+MediaPlayer.Play(new Media(LibVLC, new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")));
 ```
 
-To get up and running easily and quickly, I recommend you load the Assets/VLC-Unity-Windows/Scripts/main.unity scene and get started from there. 
-The few lines of setup code I mentioned above are located in MinimalPlayback.cs.
+To get up and running easily and quickly, I recommend you to load the Assets/VLCUnity/Demos/Scenes/MinimalPlayback.unity scene and press "Play". 
+The few lines of setup code I mentioned above are located in Assets/VLCUnity/Demos/Scripts/MinimalPlayback.cs.
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 
-Your question might have been answered on [StackOverflow](https://stackoverflow.com/questions/tagged/libvlcsharp).
+We also provide support through StackOverflow, you may browse the [libvlcsharp](https://stackoverflow.com/questions/tagged/libvlcsharp) and [vlc-unity](https://stackoverflow.com/questions/tagged/vlc-unity) tags.
