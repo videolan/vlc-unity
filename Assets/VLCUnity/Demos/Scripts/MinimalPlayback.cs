@@ -65,20 +65,7 @@ public class MinimalPlayback : MonoBehaviour
             if(_mediaPlayer.Media == null)
             {
                 // playing remote media
-                // _mediaPlayer.Media = new Media(_libVLC, new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"));
-
-                // playing local media
-                Uri mediaUri;
-                
-                if(Application.isEditor)
-                    mediaUri = new Uri($"{Application.dataPath}/VLCUnity/StreamingAssets/{localMedia}");
-                else
-                {
-                    // adjust the path however you need depending on your assets location
-                    mediaUri = new Uri($"{Application.dataPath}/../../Assets/VLCUnity/StreamingAssets/{localMedia}");
-                }
-
-                _mediaPlayer.Media = new Media(_libVLC, mediaUri);
+                _mediaPlayer.Media = new Media(_libVLC, new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"));
             }
 
             _mediaPlayer.Play();
