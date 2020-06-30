@@ -19,6 +19,28 @@ stages:
             - nightlies/*
         expire_in: 2 weeks
 
+.build-plugin-base:
+    image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
+    dependencies: 
+        - libvlc-x86_64
+    tags:
+        - docker
+        - amd64
+    stage: build-unity-plugin
+    script:
+        - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
+        - mkdir -p Assets/VLCUnity/Plugins/x86_64
+        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,locale,lua,plugins} Assets/VLCUnity/Plugins/x86_64
+        - rm -rf Assets/VLCUnity/Plugins/x86_64/lua/http
+        - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
+        - ./build.sh
+    after_script:
+        - cp Assets/VLCUnity/Plugins/x86_64/VLCUnityPlugin.dll nightlies
+    artifacts:
+        paths:
+            - nightlies/*
+        expire_in: 2 weeks
+
 libvlc-x86_64-debug:
     extends: .build-base
     variables:
@@ -55,24 +77,11 @@ libvlcsharp-unity:
             - nightlies/*
         expire_in: 2 weeks
 
-unity-plugin:
-    image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
-    dependencies: 
-        - libvlc-x86_64
-    tags:
-        - docker
-        - amd64
-    stage: build-unity-plugin
-    script:
-        - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
-        - mkdir -p Assets/VLCUnity/Plugins/x86_64
-        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,locale,lua,plugins} Assets/VLCUnity/Plugins/x86_64
-        - rm -rf Assets/VLCUnity/Plugins/x86_64/lua/http
-        - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
-        - ./build.sh
-    after_script:
-        - cp Assets/VLCUnity/Plugins/x86_64/VLCUnityPlugin.dll nightlies
-    artifacts:
-        paths:
-            - nightlies/*
-        expire_in: 2 weeks
+unity-plugin-windows:
+    extends: .build-plugin-base
+
+unity-plugin-windows-trial:
+    extends: .build-plugin-base
+    before_script:
+        - wget -O trial.patch https://code.videolan.org/snippets/1250/raw
+        - git apply trial.patch
