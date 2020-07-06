@@ -23,6 +23,7 @@ This repository contains the native Unity plugin that bridges [LibVLCSharp](http
   - [Release Notes](#Release-Notes)
   - [Building](#Building)
   - [Code of Conduct](#Code-of-Conduct)
+  - [Commercial Services](#Commercial-services)
   - [License](#License)
 
 ## LibVLC Features
@@ -126,6 +127,17 @@ Editor crash location: `C:\Users\YourUserName\AppData\Local\Temp\Unity\Editor\Cr
 ## Code of Conduct
 
 Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Conduct/).
+
+## Commercial services
+
+If you would like VLC developers to provide you with:
+- custom development on LibVLC, VLC for Unity and/or LibVLCSharp, 
+- training and workshops,
+- support services,
+- consulting services,
+- other multimedia services.
+
+Feel free to [contact us](https://videolabs.io/#contact).
 
 ## License
 
