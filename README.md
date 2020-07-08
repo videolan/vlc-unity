@@ -15,7 +15,7 @@ This repository contains the native Unity plugin that bridges [LibVLCSharp](http
   - [Getting started](#Getting-started)
   - [Documentation](#Documentation)
   - [Support](#Support)
-  - [Samples](#Samples)
+  - [Sample scenes](#Sample-scenes)
   - [Roadmap](#Roadmap)
     - [Platforms support](#Platforms-support)
     - [Graphics APIs](#Graphics-APIs)
@@ -63,7 +63,7 @@ The recommended way to install the VLC for Unity plugin is through the [Unity St
 
 ## Getting started
 
-There is a quick `documentation.txt` file [included in the package](./Assets/VLC-Unity-Windows/documentation.txt). It gives some context and high level overview of how things work and how to get started.
+There is a quick `documentation.txt` file [included in the package](./Assets/VLCUnity/documentation.txt). It gives some context and high level overview of how things work and how to get started.
 
 Since this Unity plugin largely shares the same API than LibVLCSharp, most LibVLCSharp [samples](https://code.videolan.org/mfkl/libvlcsharp-samples) and [documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/3.x/docs) apply, do check those out!
 
@@ -77,9 +77,12 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 Support is done on a volunteer base, professional support is only available for [paying customers](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
 
-## Samples
+## Sample scenes
 
-A minimal Unity sample is available [here](./Assets/VLC-Unity-Windows/Scripts/MinimalPlayback.cs). Additional Unity samples will come soon.
+Several Unity [sample scenes](./Assets/VLCUnity/Demos/Scenes) are available to help you get started quickly!
+
+- [A minimal playback example with buttons](./Assets/VLCUnity/Demos/Scripts/MinimalPlayback.cs)
+- [360 playback with keyboard navigation built-in](./Assets/VLCUnity/Demos/Scripts/ThreeSixty.cs)
 
 More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libvlcsharp-samples).
 
