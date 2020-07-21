@@ -15,6 +15,7 @@ This repository contains the native Unity plugin that bridges [LibVLCSharp](http
   - [Getting started](#Getting-started)
   - [Documentation](#Documentation)
   - [Support](#Support)
+    - [StackOverflow](#stackoverflow)
   - [Sample scenes](#Sample-scenes)
   - [Roadmap](#Roadmap)
     - [Platforms support](#Platforms-support)
@@ -76,6 +77,10 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 ## Support
 
 Support is done on a volunteer base, professional support is only available for [paying customers](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
+
+### StackOverflow
+
+We regularly monitor the [![stackoverflow-libvlcsharp](https://img.shields.io/stackexchange/stackoverflow/t/libvlcsharp.svg?label=libvlcsharp&style=flat)](https://stackoverflow.com/questions/tagged/libvlcsharp) and [![stackoverflow-vlc-unity](https://img.shields.io/stackexchange/stackoverflow/t/vlc-unity.svg?label=vlc-unity&style=flat)](https://stackoverflow.com/questions/tagged/vlc-unity) tags on StackOverflow.
 
 ## Sample scenes
 
