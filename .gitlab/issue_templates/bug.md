@@ -53,6 +53,7 @@ logs, and code as it's very hard to read otherwise. -->
 - LibVLC version and architecture <!-- [e.g. 3.0.6, x64] -->
 - LibVLCSharp version <!-- [e.g. 0.7.0] -->
 - VLC Unity plugin version <!-- [e.g. 0.0.3] -->
+- Scripting backend used <!-- Mono, il2cpp, etc. -->
 
 ### Possible fixes
 
