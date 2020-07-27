@@ -3,7 +3,7 @@ stages:
     - build-unity-plugin
 
 .build-base:
-    image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
+    image: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
     tags:
         - docker
         - amd64
@@ -12,15 +12,21 @@ stages:
         - git clone https://code.videolan.org/videolan/vlc/ && cd vlc && extras/package/win32/build.sh $ARGS 
     after_script:
         - mkdir nightlies
-        - ls ./vlc/win64
-        - cp ./vlc/win64/$ARTIFACT nightlies
+        - cd ./vlc/win64
+        - make package-win-common
+        - ls vlc-4.0.0-dev
+        - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
+        - cp $ARTIFACT ../../nightlies
     artifacts:
         paths:
             - nightlies/*
         expire_in: 2 weeks
+    variables:
+        WINE_SDK_PATH: /usr/include/wine/wine/windows/
+        OUTPUT: ./vlc-4.0.0-dev
 
 .build-plugin-base:
-    image: registry.videolan.org/vlc-debian-llvm-mingw:20200603153044
+    image: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
     dependencies: 
         - libvlc-x86_64
     tags:
@@ -30,7 +36,7 @@ stages:
     script:
         - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
         - mkdir -p Assets/VLCUnity/Plugins/x86_64
-        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,locale,lua,plugins} Assets/VLCUnity/Plugins/x86_64
+        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,lua,plugins} Assets/VLCUnity/Plugins/x86_64
         - rm -rf Assets/VLCUnity/Plugins/x86_64/lua/http
         - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
         - ./build.sh
@@ -44,13 +50,13 @@ stages:
 libvlc-x86_64-debug:
     extends: .build-base
     variables:
-        ARGS: -c -d -x -l -i n -a x86_64
+        ARGS: -c -z -d -x -a x86_64
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
         
 libvlc-x86_64:
     extends: .build-base
     variables:
-        ARGS: -c -r -x -l -i n -a x86_64
+        ARGS: -c -z -r -x -a x86_64 -i nope
         ARTIFACT: vlc-4.0.0-dev-win64.7z
 
 libvlcsharp-unity:
