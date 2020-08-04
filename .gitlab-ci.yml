@@ -2,8 +2,11 @@ stages:
     - build
     - build-unity-plugin
 
-.build-base:
-    image: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
+variables:
+    VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-uwp:20200706065223
+    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
+
+.win-common:
     tags:
         - docker
         - amd64
@@ -12,7 +15,7 @@ stages:
         - git clone https://code.videolan.org/videolan/vlc/ && cd vlc && extras/package/win32/build.sh $ARGS 
     after_script:
         - mkdir nightlies
-        - cd ./vlc/win64
+        - cd ./vlc/$BUILD_FOLDER
         - make package-win-common
         - ls vlc-4.0.0-dev
         - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
@@ -48,17 +51,41 @@ stages:
         expire_in: 2 weeks
 
 libvlc-x86_64-debug:
-    extends: .build-base
+    extends: .win-common
+    image: 
+        name: $VLC_WIN_LLVM_IMAGE
     variables:
         ARGS: -c -z -d -x -a x86_64
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
+        BUILD_FOLDER: win64
         
 libvlc-x86_64:
-    extends: .build-base
+    extends: .win-common
+    image: 
+        name: $VLC_WIN_LLVM_IMAGE
     variables:
         ARGS: -c -z -r -x -a x86_64 -i nope
         ARTIFACT: vlc-4.0.0-dev-win64.7z
+        BUILD_FOLDER: win64
 
+libvlc-uwp64-llvm:
+    extends: .win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
+    variables:
+        ARGS: -w -u -c -z -r -x -a x86_64 -i nope
+        ARTIFACT: vlc-4.0.0-dev-win64.7z
+        BUILD_FOLDER: win64-uwp
+
+libvlc-uwp64-llvm-debug:
+    extends: .win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
+    variables:
+        ARGS: -w -u -c -z -d -x -a x86_64
+        ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
+        BUILD_FOLDER: win64-uwp
+            
 libvlcsharp-unity:
     tags:
         - docker
