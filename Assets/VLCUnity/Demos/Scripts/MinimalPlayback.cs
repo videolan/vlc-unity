@@ -11,7 +11,6 @@ public class MinimalPlayback : MonoBehaviour
     const int seekTimeDelta = 5000;
     Texture2D tex = null;
     bool playing;
-    const string localMedia = "Big_Buck_Bunny_360_10s_20MB.mp4";
     
     void Awake()
     {
