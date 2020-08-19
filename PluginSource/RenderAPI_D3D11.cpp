@@ -405,7 +405,6 @@ bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc
 
 void RenderAPI_D3D11::Swap()
 {
-    m_d3dctxVLC->Flush();
     m_updated = true;
 }
 
