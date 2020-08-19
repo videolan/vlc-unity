@@ -65,7 +65,6 @@ private:
     bool m_updated = false;
 
     CRITICAL_SECTION m_outputLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
-    ID3D11Texture2D  *m_outputTexture = nullptr;
 
     bool m_initialized = false;
     bool m_linear = false;
@@ -208,17 +207,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     texDesc.Height = height;
     texDesc.Width  = width;
     
-    hr = m_d3deviceUnity->CreateTexture2D( &texDesc, NULL, &m_outputTexture );
-    if (FAILED(hr))
-    {
-        DEBUG("Create output Texture2D FAILED \n");
-    }
-    else
-    {
-        DEBUG("Create output Texture2D SUCCEEDED \n");
-    }
-
-    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+    texDesc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     
     hr = m_d3deviceUnity->CreateTexture2D( &texDesc, NULL, &m_textureUnity );
     if (FAILED(hr))
@@ -272,7 +261,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     resviewDesc.Texture2D.MipLevels = 1;
     resviewDesc.Format = texDesc.Format;
-    hr = m_d3deviceUnity->CreateShaderResourceView(m_outputTexture, &resviewDesc, &m_textureShaderInput);
+    hr = m_d3deviceUnity->CreateShaderResourceView(m_textureUnity, &resviewDesc, &m_textureShaderInput);
     if (FAILED(hr))
     {
         DEBUG("CreateShaderResourceView FAILED \n");
@@ -372,12 +361,6 @@ void RenderAPI_D3D11::Cleanup()
     {
         m_textureUnity->Release();
         m_textureUnity = nullptr;
-    }
-    
-    if(m_outputTexture)
-    {
-        m_outputTexture->Release();
-        m_outputTexture = nullptr;
     }
 
     if(m_sharedHandle)
@@ -487,18 +470,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
     else
     {
         *out_updated = m_updated;
-        if(m_updated)
-        {
-            m_updated = false;
-            D3D11_BOX box = {};
-            box.left = 0;
-            box.top = 0;
-            box.front = 0;
-            box.right = m_width;
-            box.bottom = m_height;
-            box.back = 1;
-            m_d3dctxUnity->CopySubresourceRegion(m_outputTexture, 0, 0, 0, 0, m_textureUnity, 0, &box);
-        }
+        m_updated = false;
     }
 
     LeaveCriticalSection(&m_outputLock);
