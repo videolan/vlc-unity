@@ -110,7 +110,7 @@ bool SelectPlane_cb( void *opaque, size_t plane, void *output )
 bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
     RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
-    return ((RenderAPI_D3D11*)*opaque)->Setup(cfg, out);
+    return me->Setup(cfg, out);
 }
 
 void Cleanup_cb( void *opaque )
@@ -215,9 +215,6 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
 
 void RenderAPI_D3D11::Update(UINT width, UINT height)
 {
-    DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-    HRESULT hr;
-    DEBUG("start releasing d3d objects.\n");
     EnterCriticalSection(&m_outputLock);
 
     m_width = width;
