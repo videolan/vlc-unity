@@ -29,6 +29,7 @@ public:
     ID3D11RenderTargetView   *m_textureRenderTarget = nullptr;
 
     void Cleanup();
+    void Update(unsigned width, unsigned height, ID3D11Device *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC);
 };
 
 class RenderAPI_D3D11 : public RenderAPI
@@ -203,8 +204,14 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
 
     m_width = width;
     m_height = height;
-    
-    read_write.Cleanup();
+    read_write.Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC);
+
+    LeaveCriticalSection(&m_outputLock);
+}
+
+void ReadWriteTexture::Update(UINT width, UINT height, ID3D11Device *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC)
+{
+    Cleanup();
 
     DEBUG("Done releasing d3d objects.\n");
 
@@ -216,13 +223,14 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.CPUAccessFlags = 0;
     texDesc.ArraySize = 1;
-    texDesc.Format = renderFormat;
+    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     texDesc.Height = height;
     texDesc.Width  = width;
     
     texDesc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
     
-    hr = m_d3deviceUnity->CreateTexture2D( &texDesc, NULL, &read_write.m_textureUnity );
+    HRESULT hr;
+    hr = m_d3deviceUnity->CreateTexture2D( &texDesc, NULL, &m_textureUnity );
     if (FAILED(hr))
     {
         DEBUG("CreateTexture2D FAILED \n");
@@ -234,13 +242,13 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
 
     IDXGIResource1* sharedResource = NULL;
 
-    hr = read_write.m_textureUnity->QueryInterface(&sharedResource);
+    hr = m_textureUnity->QueryInterface(&sharedResource);
     if(FAILED(hr))
     {
         DEBUG("get IDXGIResource1 FAILED \n");
     }
 
-    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &read_write.m_sharedHandle);
+    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
     if(FAILED(hr))
     {
         _com_error error(hr);
@@ -259,7 +267,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     }
     
     ID3D11Texture2D* textureVLC;
-    hr = d3d11VLC1->OpenSharedResource1(read_write.m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&textureVLC);
+    hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&textureVLC);
     if(FAILED(hr))
     {
         _com_error error(hr);
@@ -274,7 +282,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     resviewDesc.Texture2D.MipLevels = 1;
     resviewDesc.Format = texDesc.Format;
-    hr = m_d3deviceUnity->CreateShaderResourceView(read_write.m_textureUnity, &resviewDesc, &read_write.m_textureShaderInput);
+    hr = m_d3deviceUnity->CreateShaderResourceView(m_textureUnity, &resviewDesc, &m_textureShaderInput);
     if (FAILED(hr))
     {
         DEBUG("CreateShaderResourceView FAILED \n");
@@ -289,7 +297,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     renderTargetViewDesc.Format = texDesc.Format;
     renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
-    hr = m_d3deviceVLC->CreateRenderTargetView(textureVLC, &renderTargetViewDesc, &read_write.m_textureRenderTarget);
+    hr = m_d3deviceVLC->CreateRenderTargetView(textureVLC, &renderTargetViewDesc, &m_textureRenderTarget);
     if (FAILED(hr))
     {
         DEBUG("CreateRenderTargetView FAILED \n");
@@ -297,8 +305,6 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
 
     textureVLC->Release();// No need to keep a reference to that, VLC only writes to the renderTarget
     textureVLC = NULL;
-
-    LeaveCriticalSection(&m_outputLock);
 }
 
 void RenderAPI_D3D11::CreateResources()
