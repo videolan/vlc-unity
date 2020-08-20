@@ -35,6 +35,9 @@ public:
 class RenderAPI_D3D11 : public RenderAPI
 {
 public:
+    RenderAPI_D3D11();
+    ~RenderAPI_D3D11();
+
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
     virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
@@ -48,7 +51,7 @@ public:
     bool SelectPlane(size_t plane, void *output);
     bool Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out );
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
-    ReadWriteTexture        read_write;
+    ReadWriteTexture        *read_write;
 
 private:
     void CreateResources();
@@ -111,7 +114,7 @@ bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc
 void Cleanup_cb( void *opaque )
 {
     RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
-    me->read_write.Cleanup();
+    me->read_write->Cleanup();
 }
 
 void Resize_cb( void *opaque,
@@ -125,6 +128,16 @@ void Resize_cb( void *opaque,
 RenderAPI* CreateRenderAPI_D3D11()
 {
     return new RenderAPI_D3D11();
+}
+
+RenderAPI_D3D11::RenderAPI_D3D11()
+{
+    read_write = new ReadWriteTexture();
+}
+
+RenderAPI_D3D11::~RenderAPI_D3D11()
+{
+    delete read_write;
 }
 
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
@@ -204,7 +217,7 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
 
     m_width = width;
     m_height = height;
-    read_write.Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC);
+    read_write->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC);
 
     LeaveCriticalSection(&m_outputLock);
 }
@@ -444,8 +457,8 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
     if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
     static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    m_d3dctxVLC->OMSetRenderTargets( 1, &read_write.m_textureRenderTarget, NULL );
-    m_d3dctxVLC->ClearRenderTargetView( read_write.m_textureRenderTarget, blackRGBA);
+    m_d3dctxVLC->OMSetRenderTargets( 1, &read_write->m_textureRenderTarget, NULL );
+    m_d3dctxVLC->ClearRenderTargetView( read_write->m_textureRenderTarget, blackRGBA);
     return true;
 }
 
@@ -489,7 +502,7 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
     {
         *out_updated = m_updated;
         m_updated = false;
-        result = read_write.m_textureShaderInput;
+        result = read_write->m_textureShaderInput;
     }
 
     LeaveCriticalSection(&m_outputLock);
