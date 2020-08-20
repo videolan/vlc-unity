@@ -73,17 +73,20 @@ private:
 // VLC C-style callbacks
 bool UpdateOutput_cb( void *opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out )
 {
-    return ((RenderAPI_D3D11*)opaque)->UpdateOutput(cfg, out);
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    return me->UpdateOutput(cfg, out);
 }
 
 void Swap_cb( void* opaque )
 {
-    ((RenderAPI_D3D11*)opaque)->Swap();
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    me->Swap();
 }
 
 bool StartRendering_cb( void *opaque, bool enter )
 {
-    return ((RenderAPI_D3D11*)opaque)->StartRendering(enter);
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    return me->StartRendering(enter);
 }
 
 bool SelectPlane_cb( void *opaque, size_t plane, void *output )
@@ -93,19 +96,22 @@ bool SelectPlane_cb( void *opaque, size_t plane, void *output )
 
 bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
     return ((RenderAPI_D3D11*)*opaque)->Setup(cfg, out);
 }
 
 void Cleanup_cb( void *opaque )
 {
-    ((RenderAPI_D3D11*)opaque)->Cleanup();
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    me->Cleanup();
 }
 
 void Resize_cb( void *opaque,
                     void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
                     void *report_opaque )
 {
-    ((RenderAPI_D3D11*)opaque)->Resize(report_size_change, report_opaque);
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    me->Resize(report_size_change, report_opaque);
 }
 
 RenderAPI* CreateRenderAPI_D3D11()
