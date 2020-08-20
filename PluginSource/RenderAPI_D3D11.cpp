@@ -405,7 +405,9 @@ bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc
 
 void RenderAPI_D3D11::Swap()
 {
+    EnterCriticalSection(&m_outputLock);
     m_updated = true;
+    LeaveCriticalSection(&m_outputLock);
 }
 
 bool RenderAPI_D3D11::StartRendering( bool enter )
