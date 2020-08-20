@@ -461,19 +461,22 @@ void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, uns
 
 void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
 {
+    void* result;
     EnterCriticalSection(&m_outputLock);
     if(m_d3dctxUnity == NULL)
     {
         DEBUG("m_d3dctxUnity is NULL...");
+        result = nullptr;
     }
     else
     {
         *out_updated = m_updated;
         m_updated = false;
+        result = m_textureShaderInput;
     }
 
     LeaveCriticalSection(&m_outputLock);
-    return m_textureShaderInput;
+    return result;
 }
 
 void RenderAPI_D3D11::setColorSpace(int color_space)
