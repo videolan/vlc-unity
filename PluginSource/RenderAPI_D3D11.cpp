@@ -419,16 +419,10 @@ void RenderAPI_D3D11::Swap()
 bool RenderAPI_D3D11::StartRendering( bool enter )
 {
     if ( enter )
-    {
         EnterCriticalSection(&m_outputLock);
-        static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    else
+        LeaveCriticalSection(&m_outputLock);
 
-        m_d3dctxVLC->OMSetRenderTargets(1, &m_textureRenderTarget, NULL);
-        m_d3dctxVLC->ClearRenderTargetView( m_textureRenderTarget, blackRGBA);
-        return true;
-    }
-
-    LeaveCriticalSection(&m_outputLock);
     return true;
 }
 
@@ -436,7 +430,9 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 {
     if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
+    static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     m_d3dctxVLC->OMSetRenderTargets( 1, &m_textureRenderTarget, NULL );
+    m_d3dctxVLC->ClearRenderTargetView( m_textureRenderTarget, blackRGBA);
     return true;
 }
 
