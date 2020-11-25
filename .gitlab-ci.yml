@@ -101,10 +101,10 @@ libvlcsharp-unity:
         - cd lvs
         - git checkout -f master
         - git apply buildsystem/linux.patch
-        - dotnet build src/LibVLCSharp/LibVLCSharp.csproj /p:UNITY=true -c Release
+        - dotnet publish src/LibVLCSharp/LibVLCSharp.csproj /p:UNITY=true -c Release
     after_script:
         - mkdir nightlies
-        - cp tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/LibVLCSharp.dll nightlies
+        - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/publish nightlies
     artifacts:
         paths:
             - nightlies/*
