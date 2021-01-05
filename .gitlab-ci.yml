@@ -12,11 +12,15 @@ variables:
         - amd64
     stage: build
     script:
-        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc && extras/package/win32/build.sh $ARGS 
+        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc 
+        - wget -O disable-activex.patch https://code.videolan.org/-/snippets/1304/raw
+        - git apply disable-activex.patch
+        - extras/package/win32/build.sh $ARGS 
     after_script:
         - mkdir nightlies
+        - ls ./vlc/win64
         - cd ./vlc/$BUILD_FOLDER
-        - make package-win-common
+        - make package-win-strip
         - ls vlc-4.0.0-dev
         - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
         - cp $ARTIFACT ../../nightlies
@@ -29,7 +33,8 @@ variables:
         OUTPUT: ./vlc-4.0.0-dev
 
 .build-plugin-base:
-    image: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
+    image: 
+        name: $VLC_WIN_LLVM_IMAGE
     dependencies: 
         - libvlc-x86_64
     tags:
