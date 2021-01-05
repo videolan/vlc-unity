@@ -4,7 +4,7 @@ stages:
 
 variables:
     VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-uwp:20200706065223
-    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20200703084018
+    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20201201162707
 
 .win-common:
     tags:
