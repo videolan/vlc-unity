@@ -182,7 +182,7 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
 
 void RenderAPI_D3D11::Update(UINT width, UINT height)
 {
-    DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
     HRESULT hr;
     DEBUG("start releasing d3d objects.\n");
     EnterCriticalSection(&m_outputLock);
@@ -404,7 +404,7 @@ bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc
 {
     DEBUG("Entering UpdateOutput_cb.\n");
 
-    DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
     Update(cfg->width, cfg->height);
 
     out->dxgi_format = renderFormat;
