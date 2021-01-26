@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using System.Threading.Tasks;
 using LibVLCSharp;
 
 public class ThreeSixty : MonoBehaviour
@@ -36,7 +37,7 @@ public class ThreeSixty : MonoBehaviour
         _libVLC = null;
     }
 
-    public async void PlayPause()
+    public void PlayPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
         if (_mediaPlayer == null)
@@ -57,7 +58,21 @@ public class ThreeSixty : MonoBehaviour
                 // to your computer (to avoid network requests for smoother navigation)
                 // and adjust the Uri to the local path
                 var media = new Media(_libVLC, new Uri("https://streams.videolan.org/streams/360/eagle_360.mp4"));
-                await media.Parse();
+                
+                Task.Run(async () => 
+                {
+                    var result = await media.Parse(MediaParseOptions.ParseNetwork);
+                    var trackList = media.TrackList(TrackType.Video);
+                    var is360 = trackList[0].Data.Video.Projection == VideoProjection.Equirectangular;
+                    
+                    if(is360)
+                        Debug.Log("The video is a 360 video");
+                    else
+                        Debug.Log("The video was not identified as a 360 video by VLC, make sure it is properly tagged");
+
+                    trackList.Dispose();
+                });
+                
                 _mediaPlayer.Media = media;
             }
 
@@ -106,13 +121,6 @@ public class ThreeSixty : MonoBehaviour
     
     void Do360Navigation()
     {
-        var is360 = _mediaPlayer.Media?.Tracks[0].Data.Video.Projection == VideoProjection.Equirectangular;
-        if(!is360)
-        {
-            Debug.Log("The video was not identified as 360 video by VLC, make sure it is properly tagged");
-            return;
-        }
-
         var range = Math.Max(UnityEngine.Screen.width, UnityEngine.Screen.height);
 
         Yaw = _mediaPlayer.Viewpoint.Yaw;
