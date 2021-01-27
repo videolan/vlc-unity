@@ -4,6 +4,12 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.1.1:
+- libvlc: windows update, January 26th 2021 build.
+- update scene to latest media track APIs.
+- use unlit screens for demo scenes https://code.videolan.org/videolan/vlc-unity/-/issues/3 by Richard Gonlag 
+- fix color space issue by Richard Gonlag https://code.videolan.org/videolan/vlc-unity/-/issues/92
+
 0.1.0:
 - libvlc: windows update, January 5th 2021 build.
 - libvlcsharp update https://code.videolan.org/videolan/LibVLCSharp/-/commit/c0eda0386fdc1dc2472ab516df1b5171e39912b0
