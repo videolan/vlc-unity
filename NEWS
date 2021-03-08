@@ -4,6 +4,11 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.1.2:
+- libvlc: windows update, March 8th 2021 build.
+- libvlcsharp: update build, March 8th 2021 build.
+- add transparent support for gamma/linear colorspace in standalone/editor modes.
+
 0.1.1:
 - libvlc: windows update, January 26th 2021 build.
 - update scene to latest media track APIs.
