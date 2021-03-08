@@ -20,6 +20,8 @@ static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
 static IUnityInterfaces* s_UnityInterfaces = NULL;
 
+static int s_color_space;
+
 /** LibVLC's API function exported to Unity
  *
  * Every following functions will be exported to. Unity We have to
@@ -35,6 +37,12 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* p
     if(e != 0)
         DEBUG("_putenv_s failed \n");
     else DEBUG("_putenv_s succeeded \n");
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_set_color_space(int color_space)
+{
+    s_color_space = color_space;
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
@@ -92,7 +100,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     DEBUG("Calling... ProcessDeviceEvent \n");
     
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
-
+    s_CurrentAPI->setColorSpace(s_color_space);
     DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
     s_CurrentAPI->setVlcContext(mp);
 

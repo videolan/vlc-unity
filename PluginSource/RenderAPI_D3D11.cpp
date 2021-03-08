@@ -27,6 +27,7 @@ public:
     virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(bool* out_updated) override;
+    void setColorSpace(int color_space) override;
 
     /* VLC callbacks */
     bool UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out );
@@ -67,6 +68,7 @@ private:
     ID3D11Texture2D  *m_outputTexture = nullptr;
 
     bool m_initialized = false;
+    bool m_linear = false;
 };
 
 // VLC C-style callbacks
@@ -411,7 +413,7 @@ bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc
     out->full_range     = true;
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
-    out->transfer       = libvlc_video_transfer_func_LINEAR;
+    out->transfer       = m_linear ? libvlc_video_transfer_func_LINEAR : libvlc_video_transfer_func_SRGB;
 
     DEBUG("Exiting UpdateOutput_cb \n");
 
@@ -503,6 +505,9 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
     return m_textureShaderInput;
 }
 
-
+void RenderAPI_D3D11::setColorSpace(int color_space)
+{
+    m_linear = color_space == 1;
+}
 
 // #endif // #if SUPPORT_D3D11

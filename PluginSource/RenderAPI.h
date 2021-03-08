@@ -26,6 +26,8 @@ public:
             *out_updated = false;
         return nullptr;
     }
+
+    virtual void setColorSpace(int color_space){}
 };
 
 
