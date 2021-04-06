@@ -33,7 +33,7 @@ public:
     bool UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out );
     void Swap();
     bool StartRendering(bool enter );
-    bool SelectPlane(size_t plane );
+    bool SelectPlane(size_t plane, void *output);
     bool Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out );
     void Cleanup();
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
@@ -87,9 +87,9 @@ bool StartRendering_cb( void *opaque, bool enter )
     return ((RenderAPI_D3D11*)opaque)->StartRendering(enter);
 }
 
-bool SelectPlane_cb( void *opaque, size_t plane )
+bool SelectPlane_cb( void *opaque, size_t plane, void *output )
 {
-    return ((RenderAPI_D3D11*)opaque)->SelectPlane(plane);
+    return ((RenderAPI_D3D11*)opaque)->SelectPlane(plane, output);
 }
 
 bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
@@ -442,7 +442,7 @@ bool RenderAPI_D3D11::StartRendering( bool enter )
     return true;
 }
 
-bool RenderAPI_D3D11::SelectPlane( size_t plane )
+bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 {
     if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
