@@ -355,7 +355,7 @@ void RenderAPI_D3D11::CreateResources()
                         &m_d3deviceVLC,
                         NULL,
                         &m_d3dctxVLC);
-    DEBUG("CreateResources m_d3dctxVLC = %p this = %p", m_d3dctxVLC, this);
+    DEBUG("CreateResources m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
 
     if(FAILED(hr))
     {
@@ -407,6 +407,8 @@ void ReadWriteTexture::Cleanup()
 
 void RenderAPI_D3D11::ReleaseResources()
 {
+    DEBUG("ReleaseResources called \n");
+
     if(m_d3deviceVLC)
     {
         m_d3deviceVLC->Release();
@@ -416,7 +418,7 @@ void RenderAPI_D3D11::ReleaseResources()
     if(m_d3dctxVLC)
     {
         m_d3dctxVLC->Release();
-        m_d3deviceVLC = nullptr;
+        m_d3dctxVLC = nullptr;
     }
 }
 
@@ -469,7 +471,7 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 
 bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
-    DEBUG("Setup m_d3dctxVLC = %p this = %p", m_d3dctxVLC, this);
+    DEBUG("Setup m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
     out->d3d11.device_context = m_d3dctxVLC;
     return true;
 }
