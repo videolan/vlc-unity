@@ -16,7 +16,7 @@ public class MinimalPlayback : MonoBehaviour
     {
         Core.Initialize(Application.dataPath);
 
-        _libVLC = new LibVLC("--no-osd","--verbose=2");
+        _libVLC = new LibVLC(enableDebugLogs: true, "--no-osd");
 
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
         //_libVLC.Log += (s, e) => UnityEngine.Debug.Log(e.FormattedLog); // enable this for logs in the editor
