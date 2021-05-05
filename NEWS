@@ -4,6 +4,12 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.1.3:
+- libvlc: windows update, May 5th 2021 build.
+- libvlcsharp: update build, May 5th 2021 build.
+- Fixes crash from MediaTrackList API binding https://code.videolan.org/videolan/vlc-unity/-/issues/104
+- Fixes small memory leaks from misused LibVLC API usage https://code.videolan.org/videolan/LibVLCSharp/-/commit/f0fe62edfb103c2bfd541c0bf1f3bc8a3c0586a2
+
 0.1.2:
 - libvlc: windows update, March 8th 2021 build.
 - libvlcsharp: update build, March 8th 2021 build.
