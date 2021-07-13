@@ -109,7 +109,7 @@ bool SelectPlane_cb( void *opaque, size_t plane, void *output )
 
 bool Setup_cb( void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
-    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+    RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(*opaque);
     return me->Setup(cfg, out);
 }
 
