@@ -460,7 +460,7 @@ bool RenderAPI_D3D11::StartRendering( bool enter )
 
 bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 {
-    if ( plane != 0 ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
+    if ( plane != 0 || m_d3dctxVLC == NULL ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
     size_t write_index = write_on_first ? 0 : 1;
     static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
