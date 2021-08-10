@@ -41,7 +41,7 @@ public:
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
     virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
-    void* getVideoFrame(bool* out_updated) override;
+    void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
     void setColorSpace(int color_space) override;
 
     /* VLC callbacks */
@@ -378,7 +378,7 @@ void RenderAPI_D3D11::CreateResources()
 
 void ReadWriteTexture::Cleanup()
 {
-    DEBUG("Entering ReleaseResources.\n");
+    DEBUG("Entering Cleanup.\n");
 
     if(m_textureRenderTarget)
     {
@@ -496,7 +496,7 @@ void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, uns
     DEBUG("Exiting Resize_cb");
 }
 
-void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
+void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
     void* result;
     EnterCriticalSection(&m_outputLock);
@@ -511,6 +511,19 @@ void* RenderAPI_D3D11::getVideoFrame(bool* out_updated)
         m_updated = false;
         size_t read_index = write_on_first ? 1 : 0;
         result = read_write[read_index]->m_textureShaderInput;
+
+        if(m_width != width || m_height != height)
+        {
+            m_width = width;
+            m_height = height;
+
+            EnterCriticalSection(&m_sizeLock);
+
+            if (m_ReportSize != nullptr)
+                m_ReportSize(m_reportOpaque, m_width, m_height);
+
+            LeaveCriticalSection(&m_sizeLock);
+        }
     }
 
     LeaveCriticalSection(&m_outputLock);

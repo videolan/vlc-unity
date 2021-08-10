@@ -21,7 +21,7 @@ public:
     virtual void setVlcContext(libvlc_media_player_t *mp) {}
     virtual void unsetVlcContext(libvlc_media_player_t *mp) {}
 
-    virtual void* getVideoFrame(bool* out_updated) {
+    virtual void* getVideoFrame(unsigned height, unsigned width, bool* out_updated) {
         if (out_updated)
             *out_updated = false;
         return nullptr;

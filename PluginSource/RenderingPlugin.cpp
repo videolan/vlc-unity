@@ -138,7 +138,7 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
 }
 
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-libvlc_unity_get_texture(libvlc_media_player_t* mp, bool * updated)
+libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned height, bool * updated)
 {
     if(mp == NULL)
         return NULL;
@@ -152,7 +152,7 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, bool * updated)
         return nullptr;
     }
 
-    return s_CurrentAPI->getVideoFrame(updated);
+    return s_CurrentAPI->getVideoFrame(width, height, updated);
 }
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
