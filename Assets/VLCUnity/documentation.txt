@@ -43,7 +43,7 @@ MediaPlayer = new MediaPlayer(LibVLC);
 
 The frame updating is done in a Unity coroutine or Update() function:
 ```
-IntPtr texptr = MediaPlayer.GetFrame(out bool updated);
+IntPtr texptr = MediaPlayer.GetFrame(width, height, out bool updated);
 if (updated)
 {
     tex.UpdateExternalTexture(texptr);
