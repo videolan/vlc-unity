@@ -96,7 +96,7 @@ public class MinimalPlayback : MonoBehaviour
             uint i_videoWidth = 0;
 
             _mediaPlayer.Size(0, ref i_videoWidth, ref i_videoHeight);
-            var texptr = _mediaPlayer.GetTexture(out bool updated);
+            var texptr = _mediaPlayer.GetTexture(i_videoWidth, i_videoHeight, out bool updated);
             if (i_videoWidth != 0 && i_videoHeight != 0 && updated && texptr != IntPtr.Zero)
             {
                 Debug.Log("Creating texture with height " + i_videoHeight + " and width " + i_videoWidth);
