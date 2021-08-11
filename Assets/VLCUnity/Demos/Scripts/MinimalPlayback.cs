@@ -111,7 +111,7 @@ public class MinimalPlayback : MonoBehaviour
         }
         else if (tex != null)
         {
-            var texptr = _mediaPlayer.GetTexture(out bool updated);
+            var texptr = _mediaPlayer.GetTexture((uint)tex.width, (uint)tex.height, out bool updated);
             if (updated)
             {
                 tex.UpdateExternalTexture(texptr);
