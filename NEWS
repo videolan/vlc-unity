@@ -5,8 +5,10 @@ For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/m
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
 0.1.4:
-- triple buffering implementation to remove GPU copy and improve performance.
-- add proper libvlc resize support to fix https://code.videolan.org/videolan/vlc-unity/-/issues/115
+- libvlc: windows update, September 13th 2021 build.
+- libvlcsharp: update build, September 13th 2021 build.
+- add proper libvlc resize API support to fix https://code.videolan.org/videolan/vlc-unity/-/issues/115
+- simplify and cleanup d3d11 code, remove GPU copy and unnecessary locks.
 
 0.1.3:
 - libvlc: windows update, May 5th 2021 build.
