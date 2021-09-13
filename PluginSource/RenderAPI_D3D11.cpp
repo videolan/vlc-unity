@@ -62,7 +62,6 @@ private:
 
     /* Unity side resources */
     ID3D11Device             *m_d3deviceUnity       = nullptr;
-    ID3D11DeviceContext      *m_d3dctxUnity         = nullptr;
 
     /* VLC side resources */
     ID3D11Device            *m_d3deviceVLC          = nullptr;
@@ -183,12 +182,6 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
             if(m_d3deviceUnity == NULL)
             {
                 DEBUG("Could not retrieve d3device \n");
-                return;
-            }
-            m_d3deviceUnity->GetImmediateContext(&m_d3dctxUnity);
-            if(m_d3dctxUnity == NULL)
-            {
-                DEBUG("Could not retrieve d3dctx \n");
                 return;
             }
             break;
@@ -322,9 +315,9 @@ void RenderAPI_D3D11::CreateResources()
 {
     DEBUG("Entering CreateResources \n");
 
-    if(m_d3deviceUnity == NULL || m_d3dctxUnity == NULL)
+    if(m_d3deviceUnity == NULL)
     {
-        DEBUG("Could not retrieve unity d3device %p or d3dctx %p, aborting... \n", m_d3deviceUnity, m_d3dctxUnity);
+        DEBUG("Could not retrieve unity d3device %p, aborting... \n", m_d3deviceUnity);
         return;
     }
 
@@ -362,10 +355,13 @@ void RenderAPI_D3D11::CreateResources()
 
     /* The ID3D11Device must have multithread protection */
     ID3D10Multithread *pMultithread;
-    hr = m_d3deviceUnity->QueryInterface(&pMultithread);
+    hr = m_d3dctxVLC->QueryInterface(&pMultithread);
     if (SUCCEEDED(hr)) {
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
+    } else {
+        _com_error error(hr);
+        DEBUG("FAILED to SetMultithreadProtected %s \n", error.ErrorMessage());
     }
 
     DEBUG("Exiting CreateResources.\n");
@@ -444,11 +440,6 @@ void RenderAPI_D3D11::Swap()
 
 bool RenderAPI_D3D11::StartRendering( bool enter )
 {
-    if ( enter )
-        EnterCriticalSection(&m_outputLock);
-    else
-        LeaveCriticalSection(&m_outputLock);
-
     return true;
 }
 
@@ -493,29 +484,22 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
 {
     void* result;
     EnterCriticalSection(&m_outputLock);
-    if(m_d3dctxUnity == NULL)
+   
+    *out_updated = m_updated;
+    m_updated = false;
+    result = read_write->m_textureShaderInput;
+
+    if(m_width != width || m_height != height)
     {
-        DEBUG("m_d3dctxUnity is NULL...");
-        result = nullptr;
-    }
-    else
-    {
-        *out_updated = m_updated;
-        m_updated = false;
-        result = read_write->m_textureShaderInput;
+        m_width = width;
+        m_height = height;
 
-        if(m_width != width || m_height != height)
-        {
-            m_width = width;
-            m_height = height;
+        EnterCriticalSection(&m_sizeLock);
 
-            EnterCriticalSection(&m_sizeLock);
+        if (m_ReportSize != nullptr)
+            m_ReportSize(m_reportOpaque, m_width, m_height);
 
-            if (m_ReportSize != nullptr)
-                m_ReportSize(m_reportOpaque, m_width, m_height);
-
-            LeaveCriticalSection(&m_sizeLock);
-        }
+        LeaveCriticalSection(&m_sizeLock);
     }
 
     LeaveCriticalSection(&m_outputLock);
