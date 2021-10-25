@@ -3,8 +3,9 @@ stages:
     - build-unity-plugin
 
 variables:
-    VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-uwp:20201201150955
-    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20201201162707
+    VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-uwp:20211020111246
+    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20211020094514
+    VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20210803114245
 
 .win-common:
     tags:
@@ -92,6 +93,8 @@ libvlc-uwp64-llvm-debug:
         BUILD_FOLDER: win64-uwp
             
 libvlcsharp-unity:
+    image:
+        name: $VLC_DEBIAN_IMAGE
     tags:
         - docker
         - amd64
