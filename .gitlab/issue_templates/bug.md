@@ -50,8 +50,8 @@ logs, and code as it's very hard to read otherwise. -->
 - OS:       <!-- [e.g. iOS] -->
 - Version   <!-- [e.g. 22] -->
 - Device:   <!-- [e.g. iPhone6] -->
-- LibVLC version and architecture <!-- [e.g. 3.0.6, x64] -->
-- LibVLCSharp version <!-- [e.g. 0.7.0] -->
+- LibVLC version and architecture <!-- get this information with `libVLC.Changeset` -->
+- LibVLCSharp version <!-- get this information with `typeof(LibVLC).Assembly.GetName().Version` -->
 - VLC Unity plugin version <!-- [e.g. 0.0.3] -->
 - Scripting backend used <!-- Mono, il2cpp, etc. -->
 
