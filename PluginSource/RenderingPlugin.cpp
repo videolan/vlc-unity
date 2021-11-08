@@ -140,7 +140,7 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned height, bool * updated)
 {
-    if(mp == NULL)
+    if(mp == NULL || !libvlc_media_player_is_playing(mp))
         return NULL;
 
     RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
