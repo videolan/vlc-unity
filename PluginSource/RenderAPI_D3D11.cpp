@@ -47,7 +47,7 @@ public:
     /* VLC callbacks */
     bool UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out );
     void Swap();
-    bool StartRendering(bool enter );
+    bool MakeCurrent(bool enter );
     bool SelectPlane(size_t plane, void *output);
     bool Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out );
     void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
@@ -94,10 +94,10 @@ void Swap_cb( void* opaque )
     me->Swap();
 }
 
-bool StartRendering_cb( void *opaque, bool enter )
+bool MakeCurrent_cb( void *opaque, bool enter )
 {
     RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
-    return me->StartRendering(enter);
+    return me->MakeCurrent(enter);
 }
 
 bool SelectPlane_cb( void *opaque, size_t plane, void *output )
@@ -146,7 +146,7 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 
     libvlc_video_set_output_callbacks( mp, libvlc_video_engine_d3d11,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
-                                    Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
+                                    Swap_cb, MakeCurrent_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
 
     CreateResources();
@@ -158,7 +158,7 @@ void RenderAPI_D3D11::unsetVlcContext(libvlc_media_player_t *mp)
 
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
                                     Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
-                                    Swap_cb, StartRendering_cb, nullptr, nullptr, SelectPlane_cb,
+                                    Swap_cb, MakeCurrent_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
 
     ReleaseResources();
@@ -438,7 +438,7 @@ void RenderAPI_D3D11::Swap()
     LeaveCriticalSection(&m_outputLock);
 }
 
-bool RenderAPI_D3D11::StartRendering( bool enter )
+bool RenderAPI_D3D11::MakeCurrent( bool enter )
 {
     return true;
 }
