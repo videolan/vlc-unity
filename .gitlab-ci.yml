@@ -108,7 +108,6 @@ libvlcsharp-unity:
         - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
         - cd lvs
         - git checkout -f master
-        - git apply buildsystem/linux.patch
         - dotnet publish src/LibVLCSharp/LibVLCSharp.csproj /p:UNITY=true -c Release
     after_script:
         - mkdir nightlies
