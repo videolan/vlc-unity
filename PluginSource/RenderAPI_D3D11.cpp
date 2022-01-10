@@ -455,11 +455,7 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
         return false;
     
     size_t write_index = write_on_first ? 0 : 1;
-
-    static const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    
     m_d3dctxVLC->OMSetRenderTargets( 1, &read_write[write_index]->m_textureRenderTarget, NULL );
-    m_d3dctxVLC->ClearRenderTargetView( read_write[write_index]->m_textureRenderTarget, blackRGBA);
 
     return true;
 }
