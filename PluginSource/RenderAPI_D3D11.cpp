@@ -54,6 +54,7 @@ public:
 
     ReadWriteTexture        *read_write[2];
     bool                    write_on_first = false;
+    ReadWriteTexture        *current_texture = nullptr;
 
 private:
     void CreateResources();
@@ -73,7 +74,7 @@ private:
     unsigned m_height = 0;
     void (*m_ReportSize)(void *ReportOpaque, unsigned width, unsigned height) = nullptr;
     void *m_reportOpaque = nullptr;
-
+    const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     bool m_updated = false;
 
     CRITICAL_SECTION m_outputLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
@@ -441,11 +442,30 @@ void RenderAPI_D3D11::Swap()
     EnterCriticalSection(&m_outputLock);
     m_updated = true;
     write_on_first = !write_on_first;
+    if( write_on_first )
+    {
+        current_texture = read_write[0];
+    }
+    else
+    {
+        current_texture = read_write[1];
+    }
     LeaveCriticalSection(&m_outputLock);
 }
 
 bool RenderAPI_D3D11::MakeCurrent( bool enter )
 {
+    if( enter )
+    {
+        EnterCriticalSection(&m_outputLock);
+        size_t write_index = write_on_first ? 0 : 1;
+        if( current_texture )
+        {
+            m_d3dctxVLC->ClearRenderTargetView( current_texture->m_textureRenderTarget, blackRGBA);
+        }
+        return true;
+    }
+    LeaveCriticalSection(&m_outputLock);
     return true;
 }
 
@@ -453,9 +473,11 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 {
     if ( plane != 0 || m_d3dctxVLC == NULL ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
-    
-    size_t write_index = write_on_first ? 0 : 1;
-    m_d3dctxVLC->OMSetRenderTargets( 1, &read_write[write_index]->m_textureRenderTarget, NULL );
+
+    if( current_texture )
+    {
+        m_d3dctxVLC->OMSetRenderTargets( 1, &current_texture->m_textureRenderTarget, NULL );
+    }
 
     return true;
 }
@@ -489,14 +511,19 @@ void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, uns
 
 void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
-    void* result;
-    EnterCriticalSection(&m_outputLock);
-   
+    void* result = nullptr;
+
     *out_updated = m_updated;
     m_updated = false;
-    size_t read_index = write_on_first ? 1 : 0;
-    result = read_write[read_index]->m_textureShaderInput;
+    
+    EnterCriticalSection(&m_outputLock);
 
+    if( current_texture )
+    { 
+        result = current_texture->m_textureShaderInput;
+    }
+
+    LeaveCriticalSection(&m_outputLock);
     if(m_width != width || m_height != height)
     {
         m_width = width;
@@ -510,7 +537,6 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
         LeaveCriticalSection(&m_sizeLock);
     }
 
-    LeaveCriticalSection(&m_outputLock);
     return result;
 }
 
