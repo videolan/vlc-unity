@@ -455,6 +455,8 @@ void RenderAPI_D3D11::Swap()
 
 bool RenderAPI_D3D11::MakeCurrent( bool enter )
 {
+    if( m_d3dctxVLC == NULL ) return false;
+
     if( enter )
     {
         EnterCriticalSection(&m_outputLock);
