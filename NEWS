@@ -4,6 +4,13 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.1.5:
+- libvlc: windows update, January 11th 2022 build.
+- libvlcsharp: update build, January 11th 2022 build.
+- double buffering optimization,
+- fix subtitles support,
+- add subtitles sample
+
 0.1.4:
 - libvlc: windows update, September 13th 2021 build.
 - libvlcsharp: update build, September 13th 2021 build.
