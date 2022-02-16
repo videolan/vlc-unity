@@ -1,17 +1,123 @@
 stages:
-    - build
+    - build-libvlc
     - build-unity-plugin
 
 variables:
     VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-uwp:20211020111246
     VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-mingw:20211020094514
     VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20210803114245
+    VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20210915065913
 
-.win-common:
+.base-template:
     tags:
         - docker
         - amd64
-    stage: build
+    stage: build-libvlc
+    artifacts:
+        paths:
+            - nightlies/*
+        expire_in: 2 weeks
+
+# ANDROID
+
+.variables-android-armv7: &variables-android-armv7
+        ANDROID_ABI: armeabi-v7a
+
+.variables-android-armv8: &variables-android-armv8
+        ANDROID_ABI: arm64-v8a
+
+.variables-android-x86: &variables-android-x86
+        ANDROID_ABI: x86
+
+.variables-android-x86_64: &variables-android-x86_64
+        ANDROID_ABI: x86_64
+
+.libvlc-android-common:
+    extends: .base-template
+    image:
+        name: $VLC_ANDROID_IMAGE
+    script: |
+        git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
+        git apply ../patches/disable-rav1e.patch
+        git clone https://code.videolan.org/videolan/vlc/ --depth=1
+        ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
+    after_script:
+        - mkdir nightlies
+        - cp vlc-android/libvlc/jni/libs/${ANDROID_ABI}/libvlc.so nightlies
+        - cp vlc-android/libvlc/jni/libs/${ANDROID_ABI}/libc++_shared.so nightlies
+        - cp vlc-android/libvlc/build/intermediates/aar_main_jar/release/classes.jar nightlies
+
+.unity-android-common:
+    extends: .base-template
+    image:
+        name: $VLC_ANDROID_IMAGE
+    stage: build-unity-plugin
+    script:
+        - mkdir -p Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
+        - mv nightlies/* Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
+        - ./build.sh -p android -a ${ANDROID_ABI} -r
+    after_script:
+        - cp -r Assets/VLCUnity/Plugins/Android/${ANDROID_ABI} nightlies
+
+# libvlc android
+
+libvlc-android-armv7:
+    extends: .libvlc-android-common
+    variables: *variables-android-armv7
+
+libvlc-android-armv8:
+    extends: .libvlc-android-common
+    variables: *variables-android-armv8
+
+libvlc-android-x86:
+    extends: .libvlc-android-common
+    variables: *variables-android-x86
+
+libvlc-android-x86_64:
+    extends: .libvlc-android-common
+    variables: *variables-android-x86_64
+
+# unity android
+
+unity-android-armv7:
+    extends: .unity-android-common
+    variables: *variables-android-armv7
+    dependencies:
+      - libvlc-android-armv7
+
+unity-android-armv8:
+    extends: .unity-android-common
+    variables: *variables-android-armv8
+    dependencies:
+      - libvlc-android-armv8
+
+unity-android-x86:
+    extends: .unity-android-common
+    variables: *variables-android-x86
+    dependencies:
+      - libvlc-android-x86
+
+unity-android-x86_64:
+    extends: .unity-android-common
+    variables: *variables-android-x86_64
+    dependencies:
+      - libvlc-android-x86_64
+
+unity-android-armv7-trial:
+    extends: .unity-android-common
+    variables: *variables-android-armv7
+    dependencies:
+      - libvlc-android-armv7
+    before_script:
+        - git apply patches/trial.patch
+
+# Windows Classic
+
+.libvlc-win-common:
+    tags:
+        - docker
+        - amd64
+    stage: build-libvlc
     script:
         - git clone https://code.videolan.org/videolan/vlc/ && cd vlc 
         - wget -O disable-activex.patch https://code.videolan.org/-/snippets/1304/raw
@@ -33,7 +139,7 @@ variables:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
         OUTPUT: ./vlc-4.0.0-dev
 
-.build-plugin-base:
+.unity-win-common:
     image: 
         name: $VLC_WIN_LLVM_IMAGE
     dependencies: 
@@ -57,16 +163,16 @@ variables:
         expire_in: 2 weeks
 
 libvlc-x86_64-debug:
-    extends: .win-common
+    extends: .libvlc-win-common
     image: 
         name: $VLC_WIN_LLVM_IMAGE
     variables:
         ARGS: -c -z -d -x -a x86_64
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
         BUILD_FOLDER: win64
-        
+       
 libvlc-x86_64:
-    extends: .win-common
+    extends: .libvlc-win-common
     image: 
         name: $VLC_WIN_LLVM_IMAGE
     variables:
@@ -75,7 +181,7 @@ libvlc-x86_64:
         BUILD_FOLDER: win64
 
 libvlc-uwp64-llvm:
-    extends: .win-common
+    extends: .libvlc-win-common
     image:
         name: $VLC_UWP_LLVM_IMAGE
     variables:
@@ -84,21 +190,31 @@ libvlc-uwp64-llvm:
         BUILD_FOLDER: win64-uwp
 
 libvlc-uwp64-llvm-debug:
-    extends: .win-common
+    extends: .libvlc-win-common
     image:
         name: $VLC_UWP_LLVM_IMAGE
     variables:
         ARGS: -w -u -c -z -d -x -a x86_64
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
         BUILD_FOLDER: win64-uwp
-            
+
+unity-plugin-windows:
+    extends: .unity-win-common
+
+unity-plugin-windows-trial:
+    extends: .unity-win-common
+    before_script:
+        - git apply patches/trial.patch
+
+# LibVLCSharp
+
 libvlcsharp-unity:
     image:
         name: $VLC_DEBIAN_IMAGE
     tags:
         - docker
         - amd64
-    stage: build
+    stage: build-libvlc
     script:
         - wget https://download.visualstudio.microsoft.com/download/pr/17b6759f-1af0-41bc-ab12-209ba0377779/e8d02195dbf1434b940e0f05ae086453/dotnet-sdk-6.0.100-linux-x64.tar.gz
         - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-6.0.100-linux-x64.tar.gz -C $HOME/dotnet
@@ -116,12 +232,3 @@ libvlcsharp-unity:
         paths:
             - nightlies/*
         expire_in: 2 weeks
-
-unity-plugin-windows:
-    extends: .build-plugin-base
-
-unity-plugin-windows-trial:
-    extends: .build-plugin-base
-    before_script:
-        - wget -O trial.patch https://code.videolan.org/snippets/1250/raw
-        - git apply trial.patch
