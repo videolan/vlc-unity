@@ -27,7 +27,8 @@ public:
         return nullptr;
     }
 
-    virtual void setColorSpace(int color_space){}
+    virtual void retrieveOpenGLContext() {}
+    virtual void setColorSpace(int color_space) {}
 };
 
 

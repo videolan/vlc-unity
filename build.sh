@@ -2,6 +2,8 @@
 
 set -e
 
+RELEASE=1
+
 while [ $# -gt 0 ]; do
     case $1 in
         help|--help|-h)
@@ -27,7 +29,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -r|release|--release)
-            RELEASE=1
+            RELEASE=0
             ;;
         *)
             diagnostic "$0: Invalid option '$1'."
@@ -38,9 +40,9 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ -z $PLATFORM ] ||  [ -z $ARCH ]
+if [ -z $PLATFORM ] && [ -z $ARCH ]
 then
-    echo "Platform and/or Arch undefined... Building for Windows x64."
+    echo "Platform and Arch undefined... Building for Windows x64."
     PLATFORM=win
     ARCH=x86_64
 fi
@@ -49,5 +51,21 @@ echo "Building for OS '$PLATFORM' with target arch '$ARCH'"
 
 OUTPUT="../Assets/VLCUnity/Plugins/$ARCH"
 
-cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH
-mv VLCUnityPlugin.{dll,pdb} $OUTPUT -f
+if [ "$PLATFORM" = "android" ]; then
+    cd PluginSource
+    if [ ! -d "include" ]; then
+        wget -O headers.zip https://code.videolan.org/videolan/vlc/-/archive/master/vlc-master.zip?path=include
+        unzip headers.zip
+        mv vlc-master-include/include/ .
+        rm -rf vlc-master-include headers.zip
+    fi
+    cd jni
+    /sdk/android-ndk-r21/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH
+    cd ../..
+    mv -f PluginSource/libs/$ARCH/libVLCUnityPlugin.so Assets/VLCUnity/Plugins/Android/$ARCH/
+    rm -rf PluginSource/libs PluginSource/obj
+else
+    cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH
+    mv VLCUnityPlugin.{dll,pdb} $OUTPUT -f
+fi
+

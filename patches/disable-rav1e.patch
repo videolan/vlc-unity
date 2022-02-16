@@ -1,0 +1,20 @@
+diff --git a/buildsystem/compile-libvlc.sh b/buildsystem/compile-libvlc.sh
+index 0c96730fd..4a47802b2 100755
+--- a/buildsystem/compile-libvlc.sh
++++ b/buildsystem/compile-libvlc.sh
+@@ -287,6 +287,7 @@ VLC_BOOTSTRAP_ARGS="\
+     --enable-vpx \
+     --disable-x265 \
+     --disable-medialibrary \
++    --disable-rav1e \
+ "
+ 
+ ###########################
+@@ -354,6 +355,7 @@ VLC_CONFIGURE_ARGS="\
+     --disable-vnc \
+     --enable-jpeg \
+     --enable-smb2 \
++    --disable-rav1e \
+ "
+ 
+ ########################
