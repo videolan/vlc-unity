@@ -4,7 +4,7 @@
 - [Make a release](#make-a-release)
 - [Platform support](#platform-spport)
 
-## User documentation 
+## User documentation
 
 Given that VLC for Unity is based on LibVLCSharp, it shares 99% of the same APIs which means the LibVLCSharp documentation applies. You can find it [here](https://code.videolan.org/videolan/LibVLCSharp/-/blob/3.x/docs/home.md).
 
@@ -20,6 +20,19 @@ This is a list of things to check until the release is more automated. Though th
 - check that editor and standalone demo scenes work,
 - check final package size size (~50MB),
 
+### Android
+
+To be complete, the android asset for every ABIs needs:
+
+- classes.jar (only one file for all arch)
+- libc++_shared.so (per arch)
+- libvlc.so (per arch)
+- libVLCUnityPlugin.so (per arch)
+- LibVLCSharp and related DLLs (one file for all platform and architectures)
+
 ## Platform support
 
-Currently only Windows classic (win64) is supported (not UWP).
+Currently the only supported platforms are:
+
+- Windows classic (win64, not UWP),
+- Android (all ABIs).

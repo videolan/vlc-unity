@@ -9,23 +9,23 @@
 This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
 
 - [VLC for Unity](#VLC-for-Unity)
-  - [LibVLC Features](#LibVLC-Features)
-  - [Supported platforms](#Supported-platforms)
-  - [Installation](#Installation)
-  - [Getting started](#Getting-started)
-  - [Documentation](#Documentation)
-  - [Support](#Support)
+  - [LibVLC Features](#libVLC-Features)
+  - [Supported platforms](#supported-platforms)
+  - [Installation](#installation)
+  - [Getting started](#getting-started)
+  - [Documentation](#documentation)
+  - [Support](#support)
     - [StackOverflow](#stackoverflow)
-  - [Sample scenes](#Sample-scenes)
-  - [Roadmap](#Roadmap)
-    - [Platforms support](#Platforms-support)
-    - [Graphics APIs](#Graphics-APIs)
-    - [Other improvements](#Other-improvements)
-  - [Release Notes](#Release-Notes)
-  - [Building](#Building)
-  - [Code of Conduct](#Code-of-Conduct)
-  - [Commercial Services](#Commercial-services)
-  - [License](#License)
+  - [Sample scenes](#sample-scenes)
+  - [Roadmap](#roadmap)
+    - [Future platforms support](#future-platforms-support)
+    - [Graphics APIs](#graphics-APIs)
+    - [Other improvements](#other-improvements)
+  - [Release Notes](#release-Notes)
+  - [Building](#building)
+  - [Code of Conduct](#code-of-Conduct)
+  - [Commercial Services](#commercial-services)
+  - [License](#license)
 
 ## LibVLC Features
 
@@ -46,7 +46,12 @@ And more.
 
 ## Supported platforms
 
-- Windows Classic x64
+- Windows Classic
+  - Minimum OS version: Windows 7.
+  - ABI supported: x64.
+- Android:
+  - Minimum OS version: Android 4.2 (API 17).
+  - ABIs supposed: armeabi-v7a, arm64-v8a, x86, x86_64.
 
 ## Installation
 
@@ -93,9 +98,8 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ## Roadmap
 
-### Platforms support
+### Future platforms support
 
-- Android (prototype working),
 - macOS, iOS, tvOS,
 - UWP,
 - Linux.
@@ -128,6 +132,14 @@ Check out the [NEWS](NEWS) file for details about each release.
 ```
 This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
 - Extract the `vlc-cache-gen.exe` binary from the nightly build archive. Drag and drop the `plugins` folder onto it. Or just run the Unity scene with `_libVLC = new LibVLC("--reset-plugins-cache");`. This will produce a `plugins.dat` file in the `plugins` folder.
+
+### Android
+
+After having built libvlc 4+ for android, extract the .jar classes from the JNI binding in addition to the .so binaries and type:
+
+```bash
+./build.sh -p android -a armeabi-v7a
+```
 
 ## Debugging
 
