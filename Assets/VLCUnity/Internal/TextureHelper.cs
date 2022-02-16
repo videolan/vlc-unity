@@ -1,0 +1,24 @@
+using UnityEngine;
+using LibVLCSharp;
+using System;
+
+namespace LibVLCSharp
+{
+    // Unity flips textures differently depending on the graphics API used https://docs.unity3d.com/530/Documentation/Manual/SL-PlatformDifferences.html
+    // We offer this helper in the meantime, until libvlc gets a new feature to be able to flip
+    // textures internally in libvlc, after which this helper will not be needed anymore.
+    public static class TextureHelper
+    {
+        public static void FlipTextures(Transform transform)
+        {
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+            Vector3 scale = transform.localScale;
+            scale.x = -scale.x;
+            transform.localScale = scale;
+#elif UNITY_ANDROID
+            Vector3 rotationToAdd = new Vector3(0, 180, 0);
+            transform.Rotate(rotationToAdd);
+#endif
+        }
+    }    
+}
