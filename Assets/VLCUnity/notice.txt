@@ -1,0 +1,8 @@
+This asset is governed by the Asset Store EULA; however, the following components are governed by the licenses indicated below: 
+
+A. LibVLC [LGPL 2.1+, Copyright © VLC authors and VideoLAN]
+B. LibVLCSharp [LGPL 2.1+, Copyright © VLC authors and VideoLAN]
+
+Additionally, for VLC for Unity (Android) asset only:
+
+C. libvlcjni [LGPL 2.1+, Copyright © VLC authors and VideoLAN]
