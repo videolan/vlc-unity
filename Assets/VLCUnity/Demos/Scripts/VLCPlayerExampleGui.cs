@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using UnityEngine.EventSystems;
 using LibVLCSharp;
 
@@ -25,7 +24,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
 	public Button tracksButton;
 	public Button volumeButton;
 	public GameObject pathGroup; //Group containing pathInputField and openButton
-	public TMP_InputField pathInputField;
+	public InputField pathInputField;
 	public Button openButton;
 	public GameObject tracksButtonsGroup; //Group containing buttons to switch video, audio, and subtitle tracks
 	public Slider volumeBar;
@@ -33,6 +32,9 @@ public class VLCPlayerExampleGui : MonoBehaviour
 	public GameObject trackLabelPrefab;
 	public Color unselectedButtonColor; //Used for unselected track text
 	public Color selectedButtonColor; //Used for selected track text
+
+	//Configurable Options
+	public int maxVolume = 100; //The highest volume the slider can reach. 100 is usually good but you can go higher.
 
 	//State variables
 	bool _isPlaying = false; //We use VLC events to track whether we are playing, rather than relying on IsPlaying 
@@ -133,7 +135,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
 
 		//Volume Bar
 		volumeBar.wholeNumbers = true;
-		volumeBar.maxValue = 100; //You can go higher than 100 but you risk audio clipping
+		volumeBar.maxValue = maxVolume; //You can go higher than 100 but you risk audio clipping
 		volumeBar.value = vlcPlayer.Volume;
 		volumeBar.onValueChanged.AddListener((data) => { vlcPlayer.SetVolume((int)volumeBar.value);	});
 		volumeBar.gameObject.SetActive(false);
@@ -222,13 +224,13 @@ public class VLCPlayerExampleGui : MonoBehaviour
 		if (tracks.Count > 0)
 		{
 			var newLabel = Instantiate(trackLabelPrefab, tracksButtonsGroup.transform);
-			newLabel.GetComponentInChildren<TextMeshProUGUI>().text = label;
+			newLabel.GetComponentInChildren<Text>().text = label;
 
 			for (int i = 0; i < tracks.Count; i++)
 			{
 				var track = tracks[i];
 				var newButton = Instantiate(trackButtonPrefab, tracksButtonsGroup.transform).GetComponent<Button>();
-				var textMeshPro = newButton.GetComponentInChildren<TextMeshProUGUI>();
+				var textMeshPro = newButton.GetComponentInChildren<Text>();
 				textMeshPro.text = track.Name;
 				if (selected != null && track.Id == selected.Id)
 					textMeshPro.color = selectedButtonColor;
@@ -238,7 +240,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
 				buttonList.Add(newButton);
 				newButton.onClick.AddListener(() => {
 					foreach (var button in buttonList)
-						button.GetComponentInChildren<TextMeshProUGUI>().color = unselectedButtonColor;
+						button.GetComponentInChildren<Text>().color = unselectedButtonColor;
 					textMeshPro.color = selectedButtonColor;
 					vlcPlayer.Select(track);
 				});
@@ -246,7 +248,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
 			if (includeNone)
 			{
 				var newButton = Instantiate(trackButtonPrefab, tracksButtonsGroup.transform).GetComponent<Button>();
-				var textMeshPro = newButton.GetComponentInChildren<TextMeshProUGUI>();
+				var textMeshPro = newButton.GetComponentInChildren<Text>();
 				textMeshPro.text = "None";
 				if (selected == null)
 					textMeshPro.color = selectedButtonColor;
@@ -256,7 +258,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
 				buttonList.Add(newButton); 
 				newButton.onClick.AddListener(() => {
 					foreach (var button in buttonList)
-						button.GetComponentInChildren<TextMeshProUGUI>().color = unselectedButtonColor;
+						button.GetComponentInChildren<Text>().color = unselectedButtonColor;
 					textMeshPro.color = selectedButtonColor;
 					vlcPlayer.Unselect(type);
 				});
