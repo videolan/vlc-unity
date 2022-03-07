@@ -91,8 +91,11 @@ We regularly monitor the [![stackoverflow-libvlcsharp](https://img.shields.io/st
 
 Several Unity [sample scenes](./Assets/VLCUnity/Demos/Scenes) are available to help you get started quickly!
 
-- [A minimal playback example with buttons](./Assets/VLCUnity/Demos/Scripts/MinimalPlayback.cs)
-- [360 playback with keyboard navigation built-in](./Assets/VLCUnity/Demos/Scripts/ThreeSixty.cs)
+- A minimal playback example with buttons,
+- 360 playback with keyboard navigation built-in,
+- A video with subtitles showcasing support,
+- The VLCPlayerExample provides a great base with more controls,
+- 3D scene you can move around in with a movie screen and chairs in a cinema room.
 
 More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libvlcsharp-samples).
 
@@ -113,7 +116,6 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Other improvements
 
-- Provide various easy to use, ready-to-run samples and improved documentation.
 - Provide in-Editor MediaPlayer customization, so you can customize LibVLC and playback parameters directly from the Unity Editor.
 
 ## Release Notes
@@ -152,6 +154,7 @@ Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Cond
 ## Commercial services
 
 If you would like VLC developers to provide you with:
+
 - custom development on LibVLC, VLC for Unity and/or LibVLCSharp, 
 - training and workshops,
 - support services,
