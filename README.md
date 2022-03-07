@@ -55,15 +55,17 @@ And more.
 
 ## Installation
 
-The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979). This also ensures you get commercial support with your build.
+The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/publishers/39987). This also ensures you get commercial support with your build.
 
 | Platform          |  Unity Store Asset                              |
 | ----------------- | ----------------------------------------------- |
-| Windows           | [![VLCUnityWindowsBadge]][VLCUnityWindows]      |
+| Windows           | [![VLCUnityBadge]][VLCUnityWindows]             |
+| Android           | [![VLCUnityBadge]][VLCUnityAndroid]             |
 
-[RVLCUnityWindows]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979
 [VLCUnityWindows]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979
-[VLCUnityWindowsBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
+[VLCUnityAndroid]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-android-213786
+
+[VLCUnityBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
 
 #### [Download the Free Trial Version](https://videolabs.io/#unity).
 
