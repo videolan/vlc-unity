@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using LibVLCSharp;
 
-public class ThreeSixty : MonoBehaviour
+public class VLCThreeSixty : MonoBehaviour
 {
     LibVLC _libVLC;
     MediaPlayer _mediaPlayer;

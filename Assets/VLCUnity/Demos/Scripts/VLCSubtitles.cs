@@ -7,7 +7,7 @@ using LibVLCSharp;
 // this class serves as an example on how to configure playback in Unity with VLC for Unity using LibVLCSharp.
 // In this particular sample, we discover how to get and set subtitles information.
 // For libvlcsharp usage documentation, please visit https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md
-public class Subtitles : MonoBehaviour
+public class VLCSubtitles : MonoBehaviour
 {
     LibVLC _libVLC;
     MediaPlayer _mediaPlayer;
