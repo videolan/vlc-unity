@@ -37,12 +37,12 @@ The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to ge
 
 Select any scene (*.unity) and press play in the Unity Editor (or make a standalone build), and the video will start playing.
 
-## Sample script 
+## Getting started with the minimal sample script 
 
 The following information is to give you more context regarding what happens in the Demo scenes provided in the Asset.
 Understanding the scripts will allow you to know where to look when customizing your own player.
 
-Regarding the integration code that you need, you will find it in MinimalPlayback.cs.
+Regarding the basic integration code that you need, you will find it in MinimalPlayback.cs.
 
 First, you need to load the native libraries (libvlc):
 ```
@@ -73,6 +73,14 @@ MediaPlayer.Play(new Media(LibVLC, new Uri("http://commondatastorage.googleapis.
 
 To get up and running easily and quickly, I recommend you to load the Assets/VLCUnity/Demos/Scenes/MinimalPlayback.unity scene and press "Play". 
 The few lines of setup code I mentioned above are located in Assets/VLCUnity/Demos/Scripts/MinimalPlayback.cs.
+
+## Scenes
+
+- A minimal playback example with buttons,
+- 360 playback with keyboard navigation built-in,
+- A video with subtitles showcasing support,
+- The VLCPlayerExample provides a great base with more controls,
+- 3D scene you can move around in with a movie screen and chairs in a cinema room.
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 
