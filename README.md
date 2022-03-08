@@ -1,5 +1,5 @@
 <h3 align="center">
-    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="/icons/Social_Media_Image_1200x630.png"/></a>
+    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="/images/Social_Media_Image_1200x630.png"/></a>
 </h3>
 
 # VLC for Unity
@@ -171,5 +171,5 @@ Licensed under the LGPL 2.1 and prorietary license via [Videolabs](https://video
 
 <br/>
 <div align="center">
-    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="icons/Icon_Image_160x160.png"/></a>
+    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="images/Icon_Image_160x160.png"/></a>
 </div>
