@@ -99,6 +99,8 @@ Several Unity [sample scenes](./Assets/VLCUnity/Demos/Scenes) are available to h
 - The VLCPlayerExample provides a great base with more controls,
 - 3D scene you can move around in with a movie screen and chairs in a cinema room.
 
+<img src="images/3d-scene.png" width="425"/> <img src="images/media-element.png" width="425"/>
+
 More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libvlcsharp-samples).
 
 ## Roadmap
