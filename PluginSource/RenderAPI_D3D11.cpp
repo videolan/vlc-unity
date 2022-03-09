@@ -431,6 +431,7 @@ bool RenderAPI_D3D11::UpdateOutput( const libvlc_video_render_cfg_t *cfg, libvlc
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
     out->transfer       = m_linear ? libvlc_video_transfer_func_LINEAR : libvlc_video_transfer_func_SRGB;
+    out->orientation    = libvlc_video_orient_top_right;
 
     DEBUG("Exiting UpdateOutput_cb \n");
 

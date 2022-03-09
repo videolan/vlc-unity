@@ -11,11 +11,7 @@ namespace LibVLCSharp
     {
         public static void FlipTextures(Transform transform)
         {
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-            Vector3 scale = transform.localScale;
-            scale.x = -scale.x;
-            transform.localScale = scale;
-#elif UNITY_ANDROID
+#if UNITY_ANDROID
             Vector3 rotationToAdd = new Vector3(0, 180, 0);
             transform.Rotate(rotationToAdd);
 #endif
