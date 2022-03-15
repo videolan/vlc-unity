@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Linq;
 using LibVLCSharp;
 
@@ -15,7 +16,7 @@ public class VLCSubtitles : MonoBehaviour
     Texture2D tex = null;
     bool playing;
 
-    void Awake()
+    async void Awake()
     {
         TextureHelper.FlipTextures(transform);
 
@@ -51,7 +52,7 @@ public class VLCSubtitles : MonoBehaviour
         _libVLC = null;
     }
 
-    public void PlayPause()
+    public async void PlayPause()
     {
         Debug.Log ("[VLC] Toggling Play Pause !");
         if (_mediaPlayer == null)
@@ -70,34 +71,28 @@ public class VLCSubtitles : MonoBehaviour
             {
                 // playing remote media
                 _mediaPlayer.Media = new Media(_libVLC, new Uri("https://github.com/Matroska-Org/matroska-test-files/blob/master/test_files/test5.mkv?raw=true"));
-                _mediaPlayer.Playing += (s, e) =>
-                {
-                    // we use this function when calling back into libvlc from a libvlc callbacks to avoid a deadlock.
-                    ThreadPool.QueueUserWorkItem(o =>
-                    {
-                        var trackList = _mediaPlayer.Tracks(TrackType.Text);
-
-                        foreach (var track in trackList)
-                        {
-                            Debug.Log($"Language {track.Language}, id {track.Id}");
-                        }
-
-                        // we select the japanese track
-                        _mediaPlayer.Select(trackList.Single(t => t.Language.Equals("jpn")));
-
-                        // we can also use the track id to select it (11 is the ID of the japanese subtitle track)
-                        // _mediaPlayer.Select(TrackType.Text, "spu/11");
-
-                        // if you would like to add an external subtitle file (.srt, .ass, etc.), use the _mediaPlayer.AddSlave method instead
-                        // https://code.videolan.org/videolan/LibVLCSharp/-/blob/3.x/docs/how_do_I_do_X.md#how-do-i-set-subtitles
-
-                        // do not forget to dispose of the trackList when you are done with it
-                        trackList.Dispose();
-                    });
-                };
             }
 
-            _mediaPlayer.Play();
+            await _mediaPlayer.PlayAsync();
+
+            var trackList = _mediaPlayer.Tracks(TrackType.Text);
+
+            foreach (var track in trackList)
+            {
+                Debug.Log($"Language {track.Language}, id {track.Id}");
+            }
+
+            // we select the japanese track
+            _mediaPlayer.Select(trackList.Single(t => t.Language.Equals("jpn")));
+
+            // we can also use the track id to select it (11 is the ID of the japanese subtitle track)
+            // _mediaPlayer.Select(TrackType.Text, "spu/11");
+
+            // if you would like to add an external subtitle file (.srt, .ass, etc.), use the _mediaPlayer.AddSlave method instead
+            // https://code.videolan.org/videolan/LibVLCSharp/-/blob/3.x/docs/how_do_I_do_X.md#how-do-i-set-subtitles
+
+            // do not forget to dispose of the trackList when you are done with it
+            trackList.Dispose();
         }
     }
 

@@ -61,7 +61,7 @@ public class VLCThreeSixty : MonoBehaviour
                 
                 Task.Run(async () => 
                 {
-                    var result = await media.Parse(MediaParseOptions.ParseNetwork);
+                    var result = await media.ParseAsync(MediaParseOptions.ParseNetwork);
                     var trackList = media.TrackList(TrackType.Video);
                     var is360 = trackList[0].Data.Video.Projection == VideoProjection.Equirectangular;
                     
