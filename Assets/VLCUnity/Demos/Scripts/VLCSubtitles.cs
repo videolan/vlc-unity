@@ -16,7 +16,7 @@ public class VLCSubtitles : MonoBehaviour
     Texture2D tex = null;
     bool playing;
 
-    async void Awake()
+    void Awake()
     {
         TextureHelper.FlipTextures(transform);
 
