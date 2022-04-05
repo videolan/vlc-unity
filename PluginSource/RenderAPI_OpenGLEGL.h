@@ -15,7 +15,8 @@ public:
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     virtual void retrieveOpenGLContext() override;
 
-    static bool  make_current(void* data, bool current);
+    virtual bool makeCurrent(bool current) override;
+
     static void* get_proc_address(void* /*data*/, const char* current);
 
 private:

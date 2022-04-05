@@ -3,6 +3,16 @@
 
 EGLContext RenderAPI_OpenEGL::unity_context = EGL_NO_CONTEXT;
 
+namespace {
+
+bool staticMakeCurrent(void* data, bool current)
+{
+    auto that = static_cast<RenderAPI_OpenEGL*>(data);
+    return that->makeCurrent(current);
+}
+
+}
+
 RenderAPI* CreateRenderAPI_OpenEGL(UnityGfxRenderer apiType)
 {
 	return new RenderAPI_OpenEGL(apiType);
@@ -14,22 +24,21 @@ RenderAPI_OpenEGL::RenderAPI_OpenEGL(UnityGfxRenderer apiType) :
 }
 
 
-bool RenderAPI_OpenEGL::make_current(void* data, bool current)
+bool RenderAPI_OpenEGL::makeCurrent(bool current)
 {
     DEBUG("[EGL] make current");
-    RenderAPI_OpenEGL* that = reinterpret_cast<RenderAPI_OpenEGL*>(data);
     //DEBUG("[EGL] make current %s disp=%p surf=%p ctx=%p", current ? "yes": "no", that->m_display, that->m_surface, that->m_context);
     EGLBoolean ret;
     if (current)
     {
         assert(eglGetCurrentContext() == EGL_NO_CONTEXT);
-        ret = eglMakeCurrent(that->m_display, that->m_surface, that->m_surface, that->m_context);
+        ret = eglMakeCurrent(m_display, m_surface, m_surface, m_context);
     }
     else
     {
-         assert(eglGetCurrentContext() == that->m_context);
+        assert(eglGetCurrentContext() == m_context);
         // glClearColor(1, 0, 0, 1);
-        ret = eglMakeCurrent(that->m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        ret = eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
     if (ret ==  EGL_TRUE)
         return true;
@@ -54,8 +63,8 @@ void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp)
 
     DEBUG("[EGL] subscribing to opengl output callbacks %p", this);
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_gles2,
-        setup, cleanup, nullptr, resize, swap, 
-        make_current, get_proc_address, nullptr, nullptr, this);
+        setup, cleanup, nullptr, resize, swap,
+        staticMakeCurrent, get_proc_address, nullptr, nullptr, this);
 }
 
 // should only be called from the unity rendering thread

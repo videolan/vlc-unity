@@ -37,6 +37,8 @@ public:
 
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override = 0;
 
+    virtual bool makeCurrent(bool) = 0;
+
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
 
 private:
