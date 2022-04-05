@@ -26,7 +26,7 @@ RenderAPI_OpenEGL::RenderAPI_OpenEGL(UnityGfxRenderer apiType) :
 
 bool RenderAPI_OpenEGL::makeCurrent(bool current)
 {
-    DEBUG("[EGL] make current");
+    //DEBUG("[EGL] make current");
     //DEBUG("[EGL] make current %s disp=%p surf=%p ctx=%p", current ? "yes": "no", that->m_display, that->m_surface, that->m_context);
     EGLBoolean ret;
     if (current)
@@ -50,7 +50,7 @@ bool RenderAPI_OpenEGL::makeCurrent(bool current)
 void* RenderAPI_OpenEGL::get_proc_address(void* /*data*/, const char* procname)
 {
     void* p = reinterpret_cast<void*>(eglGetProcAddress(procname));
-    DEBUG("[EGL] get_proc_address %s %p", procname, p);
+    //DEBUG("[EGL] get_proc_address %s %p", procname, p);
     return p;
 }
 
@@ -123,7 +123,7 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             DEBUG("[EGL] eglGetConfigAttrib() returned error %x", eglGetError());
             return;
         }
-        
+
         EGLint egl_version;
         if (!eglQueryContext(m_display, unity_context, EGL_CONTEXT_CLIENT_VERSION, &egl_version)) {
             DEBUG("[EGL] failed to retrieve EGL_CONTEXT_CLIENT_VERSION");
@@ -135,7 +135,7 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             EGL_CONTEXT_CLIENT_VERSION, egl_version,
             EGL_NONE
         };
-   
+
         m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
         if ( m_surface == EGL_NO_SURFACE || eglGetError() != EGL_SUCCESS ) {
             DEBUG("[EGL] eglCreatePbufferSurface() returned error %x", eglGetError());

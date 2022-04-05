@@ -26,26 +26,48 @@ bool RenderAPI_OpenGLBase::setup(void **opaque,
     RenderAPI_OpenGLBase* that = static_cast<RenderAPI_OpenGLBase*>(*opaque);
     that->width = 0;
     that->height = 0;
-    return true;
+
+    bool ret = true;
+
+#ifdef SHOW_WATERMARK
+    //setup is called with no OpengGL context set
+    that->makeCurrent(true);
+
+    ret &= that->watermark.setup();
+
+    that->makeCurrent(false);
+#endif
+
+    return ret;
+}
+
+void RenderAPI_OpenGLBase::releaseFrameBufferResources()
+{
+    if (width == 0 && height == 0)
+        return;
+
+    glDeleteTextures(3, tex);
+    glDeleteFramebuffers(3, fbo);
 }
 
 void RenderAPI_OpenGLBase::cleanup(void* opaque)
 {
+    RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
     DEBUG("output callback cleanup");
     DEBUG("destroy_fbo");
-    RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
-    if (that->width == 0 && that->height == 0)
-        return;
 
-    glDeleteTextures(3, that->tex);
-    glDeleteFramebuffers(3, that->fbo);
+    that->releaseFrameBufferResources();
+
+#ifdef SHOW_WATERMARK
+    that->watermark.cleanup();
+#endif
 }
 
 bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
 {
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
     if (cfg->width != that->width || cfg->height != that->height)
-        cleanup(opaque);
+        that->releaseFrameBufferResources();
 
     glGenTextures(3, that->tex);
     glGenFramebuffers(3, that->fbo);
@@ -71,7 +93,7 @@ bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t 
             return false;
         }
     }
-    
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     that->width = cfg->width;
@@ -90,13 +112,19 @@ bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t 
 
 void RenderAPI_OpenGLBase::swap(void* opaque)
 {
-    DEBUG("output callback SWAP");
+    //DEBUG("output callback SWAP");
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
+
+#ifdef SHOW_WATERMARK
+    that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
+#endif
+
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }
+
 
 void* RenderAPI_OpenGLBase::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
@@ -110,6 +138,7 @@ void* RenderAPI_OpenGLBase::getVideoFrame(unsigned width, unsigned height, bool*
         std::swap(idx_swap, idx_display);
         updated = false;
     }
-    //DEBUG("get Video Frame %u", tex[idx_display]);
+    DEBUG("get Video Frame %u", tex[idx_display]);
+
     return (void*)(size_t)tex[idx_display];
 }

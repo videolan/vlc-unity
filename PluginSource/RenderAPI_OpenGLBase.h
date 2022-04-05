@@ -13,13 +13,15 @@
 #	include "GLEW/glew.h"
 #endif
 
-
 #if UNITY_WIN
 #  include <mingw.mutex.h>
 #else
 #  include <mutex>
 #endif
 
+#ifdef SHOW_WATERMARK
+#  include "RenderAPI_OpenGLWatermark.h"
+#endif
 
 class RenderAPI_OpenGLBase : public RenderAPI
 {
@@ -42,6 +44,8 @@ public:
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
 
 private:
+    void releaseFrameBufferResources();
+
 	UnityGfxRenderer m_APIType;
 
     std::mutex text_lock;
@@ -53,6 +57,10 @@ private:
     size_t idx_swap = 1;
     size_t idx_display = 2;
     bool updated = false;
+
+#ifdef SHOW_WATERMARK
+    OpenGLWatermark watermark;
+#endif
 };
 
 
