@@ -8,6 +8,9 @@ variables:
     VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20210803114245
     VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20210915065913
 
+.variables-trial: &variables-trial
+    ARGS_TRIAL: -t
+
 .base-template:
     tags:
         - docker
@@ -55,7 +58,7 @@ variables:
     script:
         - mkdir -p Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
         - mv nightlies/* Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
-        - ./build.sh -p android -a ${ANDROID_ABI} -r
+        - ./build.sh -p android -a ${ANDROID_ABI} -r ${ARGS_TRIAL}
     after_script:
         - cp -r Assets/VLCUnity/Plugins/Android/${ANDROID_ABI} nightlies
 
@@ -105,11 +108,10 @@ unity-android-x86_64:
 
 unity-android-armv7-trial:
     extends: .unity-android-common
-    variables: *variables-android-armv7
+    variables:
+      <<: [*variables-android-armv7, *variables-trial]
     dependencies:
       - libvlc-android-armv7
-    before_script:
-        - git apply patches/trial.patch
 
 # Windows Classic
 
@@ -119,10 +121,10 @@ unity-android-armv7-trial:
         - amd64
     stage: build-libvlc
     script:
-        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc 
+        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc
         - wget -O disable-activex.patch https://code.videolan.org/-/snippets/1304/raw
         - git apply disable-activex.patch
-        - extras/package/win32/build.sh $ARGS 
+        - extras/package/win32/build.sh $ARGS
     after_script:
         - mkdir nightlies
         - ls ./vlc/win64
@@ -140,9 +142,9 @@ unity-android-armv7-trial:
         OUTPUT: ./vlc-4.0.0-dev
 
 .unity-win-common:
-    image: 
+    image:
         name: $VLC_WIN_LLVM_IMAGE
-    dependencies: 
+    dependencies:
         - libvlc-x86_64
     tags:
         - docker
@@ -164,16 +166,16 @@ unity-android-armv7-trial:
 
 libvlc-x86_64-debug:
     extends: .libvlc-win-common
-    image: 
+    image:
         name: $VLC_WIN_LLVM_IMAGE
     variables:
         ARGS: -c -z -d -x -a x86_64
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
         BUILD_FOLDER: win64
-       
+
 libvlc-x86_64:
     extends: .libvlc-win-common
-    image: 
+    image:
         name: $VLC_WIN_LLVM_IMAGE
     variables:
         ARGS: -c -z -r -x -a x86_64 -i nope
@@ -203,8 +205,7 @@ unity-plugin-windows:
 
 unity-plugin-windows-trial:
     extends: .unity-win-common
-    before_script:
-        - git apply patches/trial.patch
+    variables: *variables-trial
 
 # LibVLCSharp
 

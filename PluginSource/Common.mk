@@ -20,6 +20,10 @@ BIN_PREFIX = i686-w64-mingw32
 COMPILEFLAG = m32
 endif
 
+ifeq ($(TRIAL), 1)
+CXXFLAGS += -DSHOW_WATERMARK
+endif
+
 OUTPUT = $(TARGET).dll
 WINDOWS_BINARIES = Assets/VLCUnity/Plugins/x86_64
 

@@ -28,6 +28,9 @@ while [ $# -gt 0 ]; do
             PLATFORM=$2
             shift
             ;;
+        t|-t|--trial)
+            TRIAL=1
+            ;;
         -r|release|--release)
             RELEASE=0
             ;;
@@ -60,12 +63,11 @@ if [ "$PLATFORM" = "android" ]; then
         rm -rf vlc-master-include headers.zip
     fi
     cd jni
-    /sdk/android-ndk-r21/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH
+    /sdk/android-ndk-r21/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH TRIAL=$TRIAL
     cd ../..
     mv -f PluginSource/libs/$ARCH/libVLCUnityPlugin.so Assets/VLCUnity/Plugins/Android/$ARCH/
     rm -rf PluginSource/libs PluginSource/obj
 else
-    cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH
+    cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH TRIAL=$TRIAL
     mv VLCUnityPlugin.{dll,pdb} $OUTPUT -f
 fi
-
