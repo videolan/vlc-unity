@@ -4,6 +4,11 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+Android-only release 0.0.2 3bc3648ee30c6f7bae89ef1c2baf3816f3879964:
+- libvlc 20 April 2022
+- force require internet access permission for android sample scene https://code.videolan.org/videolan/vlc-unity/-/issues/146
+- use LVS async APIs
+
 Android-only release: 0.0.1:
 - initial Android support through OpenGL ES.
 - libvlc 28 february 2022.
