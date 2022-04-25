@@ -461,7 +461,6 @@ bool RenderAPI_D3D11::MakeCurrent( bool enter )
     if( enter )
     {
         EnterCriticalSection(&m_outputLock);
-        size_t write_index = write_on_first ? 0 : 1;
         if( current_texture )
         {
             m_d3dctxVLC->ClearRenderTargetView( current_texture->m_textureRenderTarget, blackRGBA);
