@@ -18,6 +18,8 @@ while [ $# -gt 0 ]; do
             echo "  Android:       android"
             echo " "    
             echo "Use --release to build in release mode"
+            echo " "
+            echo "Use --trial to build the trial version"
             exit 0
             ;;
         a|-a)
@@ -51,6 +53,9 @@ then
 fi
 
 echo "Building for OS '$PLATFORM' with target arch '$ARCH'"
+if [ "$TRIAL" == 1 ]; then
+echo "TRIAL version build enabled"
+fi
 
 OUTPUT="../Assets/VLCUnity/Plugins/$ARCH"
 
