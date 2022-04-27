@@ -22,7 +22,7 @@ public class VLCSubtitles : MonoBehaviour
 
         Core.Initialize(Application.dataPath);
 
-        _libVLC = new LibVLC(enableDebugLogs: true, "--no-osd");
+        _libVLC = new LibVLC(enableDebugLogs: true);
 
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
         //_libVLC.Log += (s, e) => UnityEngine.Debug.Log(e.FormattedLog); // enable this for logs in the editor
