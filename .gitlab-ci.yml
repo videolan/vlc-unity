@@ -40,8 +40,10 @@ variables:
     image:
         name: $VLC_ANDROID_IMAGE
     script: |
-        git clone https://code.videolan.org/mfkl/vlc-android && cd vlc-android && git checkout 4.0-reloaded
-        git apply ../patches/disable-rav1e.patch
+        git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
+        git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
+        git apply ../../patches/disable-rav1e.patch
+        cd ..
         git clone https://code.videolan.org/videolan/vlc/ --depth=1
         ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
     after_script:
