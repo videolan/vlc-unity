@@ -29,6 +29,8 @@ For the Unity Android target, we support:
 - x86,
 - x86_64.
 
+/!\ OpenGL ES MUST be selected in the project settings as a target graphics API. Vulkan is NOT supported at this time.
+
 VLC for Unity requires Android 16 minimum.
 
 ## General

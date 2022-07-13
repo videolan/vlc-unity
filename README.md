@@ -49,9 +49,11 @@ And more.
 - Windows Classic
   - Minimum OS version: Windows 7.
   - ABI supported: x64.
+  - Graphics API: Direct3D 11
 - Android:
   - Minimum OS version: Android 4.2 (API 17).
   - ABIs supposed: armeabi-v7a, arm64-v8a, x86, x86_64.
+  - Graphics API: OpenGL ES 2/3
 
 ## Installation
 
@@ -113,7 +115,6 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Graphics APIs
 
-- OpenGL ES,
 - OpenGL,
 - Vulkan,
 - Metal.
