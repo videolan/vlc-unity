@@ -70,7 +70,7 @@ See Update() function for more details.
 
 Once that is all setup, you can create a new Media and start playback like so
 ```
-MediaPlayer.Play(new Media(LibVLC, new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")));
+MediaPlayer.Play(new Media(new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")));
 ```
 
 To get up and running easily and quickly, I recommend you to load the Assets/VLCUnity/Demos/Scenes/MinimalPlayback.unity scene and press "Play". 

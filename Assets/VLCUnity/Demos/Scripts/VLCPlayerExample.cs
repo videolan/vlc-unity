@@ -115,7 +115,7 @@ public class VLCPlayerExample : MonoBehaviour
 			mediaPlayer.Media.Dispose();
 
 		var trimmedPath = path.Trim(new char[]{'"'});//Windows likes to copy paths with quotes but Uri does not like to open them
-		mediaPlayer.Media = new Media(libVLC, new Uri(trimmedPath));
+		mediaPlayer.Media = new Media(new Uri(trimmedPath));
 		Play();
 	}
 

@@ -70,7 +70,7 @@ public class VLCSubtitles : MonoBehaviour
             if(_mediaPlayer.Media == null)
             {
                 // playing remote media
-                _mediaPlayer.Media = new Media(_libVLC, new Uri("https://github.com/Matroska-Org/matroska-test-files/blob/master/test_files/test5.mkv?raw=true"));
+                _mediaPlayer.Media = new Media(new Uri("https://github.com/Matroska-Org/matroska-test-files/blob/master/test_files/test5.mkv?raw=true"));
             }
 
             await _mediaPlayer.PlayAsync();

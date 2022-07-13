@@ -57,11 +57,11 @@ public class VLCThreeSixty : MonoBehaviour
                 // download https://streams.videolan.org/streams/360/eagle_360.mp4 
                 // to your computer (to avoid network requests for smoother navigation)
                 // and adjust the Uri to the local path
-                var media = new Media(_libVLC, new Uri("https://streams.videolan.org/streams/360/eagle_360.mp4"));
+                var media = new Media(new Uri("https://streams.videolan.org/streams/360/eagle_360.mp4"));
                 
                 Task.Run(async () => 
                 {
-                    var result = await media.ParseAsync(MediaParseOptions.ParseNetwork);
+                    var result = await media.ParseAsync(_libVLC, MediaParseOptions.ParseNetwork);
                     var trackList = media.TrackList(TrackType.Video);
                     var is360 = trackList[0].Data.Video.Projection == VideoProjection.Equirectangular;
                     
