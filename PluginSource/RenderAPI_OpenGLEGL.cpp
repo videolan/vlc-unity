@@ -1,5 +1,6 @@
 #include "RenderAPI_OpenGLEGL.h"
 #include "Log.h"
+#include <cassert>
 
 EGLContext RenderAPI_OpenEGL::unity_context = EGL_NO_CONTEXT;
 
