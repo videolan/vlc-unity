@@ -68,7 +68,7 @@ if [ "$PLATFORM" = "android" ]; then
         rm -rf vlc-master-include headers.zip
     fi
     cd jni
-    /sdk/android-ndk-r21/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH TRIAL=$TRIAL
+    /sdk/android-ndk-r25/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH TRIAL=$TRIAL
     cd ../..
     mv -f PluginSource/libs/$ARCH/libVLCUnityPlugin.so Assets/VLCUnity/Plugins/Android/$ARCH/
     rm -rf PluginSource/libs PluginSource/obj
