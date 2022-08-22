@@ -582,6 +582,16 @@ PrefabInstance:
       propertyPath: m_AnchorMax.x
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4177636116619390680, guid: f0c7360e3bd822949ac713631924504a,
+        type: 3}
+      propertyPath: flipTextureX
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4177636116619390680, guid: f0c7360e3bd822949ac713631924504a,
+        type: 3}
+      propertyPath: flipTextureY
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4177636116619390681, guid: f0c7360e3bd822949ac713631924504a,
         type: 3}
       propertyPath: m_RootOrder

@@ -578,9 +578,9 @@ MonoBehaviour:
   canvasScreen: {fileID: 0}
   texture: {fileID: 0}
   path: http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
-  flipTextureX: 0
+  flipTextureX: 1
   flipTextureY: 1
-  automaticallyFlipOnAndroid: 1
+  automaticallyFlipOnAndroid: 0
   playOnAwake: 1
   logToConsole: 0
 --- !u!4 &643741872
