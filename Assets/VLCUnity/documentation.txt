@@ -86,4 +86,6 @@ The few lines of setup code I mentioned above are located in Assets/VLCUnity/Dem
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 
+For VLC Unity specific questions and support, open an issue on our GitLab and browse our opensource plugin code at https://code.videolan.org/videolan/vlc-unity
+
 We also provide support through StackOverflow, you may browse the [libvlcsharp](https://stackoverflow.com/questions/tagged/libvlcsharp) and [vlc-unity](https://stackoverflow.com/questions/tagged/vlc-unity) tags.
