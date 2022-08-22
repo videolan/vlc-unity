@@ -46,7 +46,7 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         {
             string name = Path.GetFileName( file );
             string dest = Path.Combine( destFolder, name );
-            File.Copy( file, dest );
+            CopyFile( file, dest );
         }
         string[] folders = Directory.GetDirectories( sourceFolder );
         foreach (string folder in folders)
