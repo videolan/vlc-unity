@@ -134,6 +134,7 @@ unity-android-armv7-trial:
         - cd ./vlc/$BUILD_FOLDER
         - make package-win-strip
         - ls vlc-4.0.0-dev
+        - rm -rf vlc-4.0.0-dev/lua/http
         - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
         - cp $ARTIFACT ../../nightlies
     artifacts:
@@ -157,7 +158,6 @@ unity-android-armv7-trial:
         - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
         - mkdir -p Assets/VLCUnity/Plugins/x86_64
         - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,lua,plugins} Assets/VLCUnity/Plugins/x86_64
-        - rm -rf Assets/VLCUnity/Plugins/x86_64/lua/http
         - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
         - ./build.sh -r ${ARGS_TRIAL}
     after_script:
