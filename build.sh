@@ -70,7 +70,7 @@ if [ "$PLATFORM" = "android" ]; then
     cd jni
     /sdk/android-ndk-r25/ndk-build NDK_DEBUG=$RELEASE APP_ABI=$ARCH TRIAL=$TRIAL
     cd ../..
-    mv -f PluginSource/libs/$ARCH/libVLCUnityPlugin.so Assets/VLCUnity/Plugins/Android/$ARCH/
+    mv -f PluginSource/libs/$ARCH/libVLCUnityPlugin.so Assets/VLCUnity/Plugins/Android/libs/$ARCH/
     rm -rf PluginSource/libs PluginSource/obj
 else
     cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH TRIAL=$TRIAL

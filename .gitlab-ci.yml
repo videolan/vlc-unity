@@ -59,11 +59,11 @@ variables:
         name: $VLC_ANDROID_IMAGE
     stage: build-unity-plugin
     script:
-        - mkdir -p Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
-        - mv nightlies/* Assets/VLCUnity/Plugins/Android/${ANDROID_ABI}
+        - mkdir -p Assets/VLCUnity/Plugins/Android/libs/${ANDROID_ABI}
+        - mv nightlies/* Assets/VLCUnity/Plugins/Android/libs/${ANDROID_ABI}
         - ./build.sh -p android -a ${ANDROID_ABI} -r ${ARGS_TRIAL}
     after_script:
-        - cp -r Assets/VLCUnity/Plugins/Android/${ANDROID_ABI} nightlies
+        - cp -r Assets/VLCUnity/Plugins/Android/libs/${ANDROID_ABI} nightlies
 
 # libvlc android
 

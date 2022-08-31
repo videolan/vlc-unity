@@ -1,7 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 SRC_DIR := ../
 ROOT_DIR := $(SRC_DIR)/../
-LIB_DIR := Assets/VLCUnity/Plugins/Android
+LIB_DIR := Assets/VLCUnity/Plugins/Android/libs
 
 include $(CLEAR_VARS)
 
