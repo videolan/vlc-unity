@@ -6,6 +6,7 @@ using LibVLCSharp;
 
 /// this class serves as an example on how to configure playback in Unity with VLC for Unity using LibVLCSharp.
 /// for libvlcsharp usage documentation, please visit https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md
+/// On Android, make sure you require Internet access in your manifest to be able to access internet-hosted videos in these demo scenes.
 public class VLCYouTubePlayback : MonoBehaviour
 {
     LibVLC _libVLC;

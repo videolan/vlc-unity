@@ -33,6 +33,8 @@ For the Unity Android target, we support:
 
 /!\ If the plugin complains about missing binaries and there is an error about this, make sure you have each architecture properly setup in the inspector for each binaries in each VLCUnity/Plugins/Android/libs folders. Select a libvlc.so in any given folder, check the Inspector window of the Unity Editor and make sure the selected "Platform" and "CPU" are correct.
 
+/!\ If the scene starts but no video plays, make sure you set internet access to "required" in Unity player settings. The demo scenes play HTTP videos so your app needs the Android Internet permission.
+
 Reminded: If you want to target arm64-v8a CPU architecture, you must select it in the player settings. To be able to select it, you need to switch the scripting backend to IL2CPP (as opposed to Mono). This is a Unity requirement unrelated to libvlc.
 
 VLC for Unity requires Android 16 minimum.

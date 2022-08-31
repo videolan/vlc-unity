@@ -9,6 +9,7 @@ using System.Collections.Generic;
 ///It outputs audio directly to speakers and video to a RenderTexture and a Renderer or RawImage screen
 ///This example also shows how to deal with several common problems including vertically flipped videos 
 ///
+/// On Android, make sure you require Internet access in your manifest to be able to access internet-hosted videos in these demo scenes.
 ///libvlcsharp usage documentation: https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md
 ///LibVLC parameters: https://wiki.videolan.org/VLC_command-line_help/
 ///Report a bug: https://code.videolan.org/videolan/vlc-unity/-/issues
