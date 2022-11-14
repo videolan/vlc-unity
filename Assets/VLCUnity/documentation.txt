@@ -35,6 +35,8 @@ For the Unity Android target, we support:
 
 /!\ If the scene starts but no video plays, make sure you set internet access to "required" in Unity player settings. The demo scenes play HTTP videos so your app needs the Android Internet permission.
 
+/!\ If running on Oculus, you may need to disable "Low Overhead Mode" which is not yet supported by vlc-unity. https://code.videolan.org/videolan/vlc-unity/-/issues/164
+
 Reminded: If you want to target arm64-v8a CPU architecture, you must select it in the player settings. To be able to select it, you need to switch the scripting backend to IL2CPP (as opposed to Mono). This is a Unity requirement unrelated to libvlc.
 
 VLC for Unity requires Android 16 minimum.
