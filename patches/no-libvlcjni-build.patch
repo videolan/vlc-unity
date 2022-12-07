@@ -1,21 +1,13 @@
-diff --git a/libvlc/jni/Android.mk b/libvlc/jni/Android.mk
-index c1cd35e..a1c4811 100644
---- a/libvlc/jni/Android.mk
-+++ b/libvlc/jni/Android.mk
-@@ -43,11 +43,11 @@ include $(BUILD_SHARED_LIBRARY)
- # libvlcjni
- include $(CLEAR_VARS)
- LOCAL_MODULE    := libvlcjni
--LOCAL_SRC_FILES := libvlcjni.c
--LOCAL_SRC_FILES += libvlcjni-mediaplayer.c
--LOCAL_SRC_FILES += libvlcjni-vlcobject.c
--LOCAL_SRC_FILES += libvlcjni-media.c libvlcjni-medialist.c libvlcjni-mediadiscoverer.c libvlcjni-rendererdiscoverer.c
--LOCAL_SRC_FILES += libvlcjni-dialog.c
-+# LOCAL_SRC_FILES := libvlcjni.c
-+# LOCAL_SRC_FILES += libvlcjni-mediaplayer.c
-+# LOCAL_SRC_FILES += libvlcjni-vlcobject.c
-+# LOCAL_SRC_FILES += libvlcjni-media.c libvlcjni-medialist.c libvlcjni-mediadiscoverer.c libvlcjni-rendererdiscoverer.c
-+# LOCAL_SRC_FILES += libvlcjni-dialog.c
- LOCAL_SRC_FILES += std_logger.c
- LOCAL_C_INCLUDES := $(VLC_SRC_DIR)/include $(VLC_BUILD_DIR)/include
- LOCAL_CFLAGS := -std=c11
+diff --git a/buildsystem/compile-libvlc.sh b/buildsystem/compile-libvlc.sh
+index d320e1b..e68c3c9 100755
+--- a/buildsystem/compile-libvlc.sh
++++ b/buildsystem/compile-libvlc.sh
+@@ -14,7 +14,7 @@ AVLC_MAKE_PREBUILT_CONTRIBS=0
+ # used instead of building the contribs from source
+ AVLC_USE_PREBUILT_CONTRIBS=0
+ # JNI build can be disabled for testing/CI purpose
+-AVLC_BUILD_JNI=1
++AVLC_BUILD_JNI=0
+ while [ $# -gt 0 ]; do
+     case $1 in
+         help|--help)
