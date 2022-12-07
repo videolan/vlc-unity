@@ -43,7 +43,6 @@ variables:
         git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
         git clone https://code.videolan.org/videolan/vlc/ --depth=1
         git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
-        git apply ../../patches/disable-rav1e.patch
         git apply ../../patches/no-libvlcjni-build.patch
         cd ..
         ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
