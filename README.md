@@ -158,6 +158,45 @@ Please read and follow the [VideoLAN CoC](https://wiki.videolan.org/Code_of_Cond
 
 ## Commercial services
 
+The VLC for Unity integration makes use of several software components to provide a full featured and easy to use VLC player in your Unity apps and games. It goes without saying that this represents significant work. This work is handled by both the OSS community and opensource consulting partners. The frontiers and rules of commercial and open-source cohabitation can sometimes be blurry and confusing. The following information aims to clarify that.
+
+### Distribution
+
+Distribution can be defined as _the way in which you acquire a piece of software_, in this case, a VLC for Unity asset.
+
+| Distribution                        | $$$ Cost                 |
+| ----------------------------------- | -------------------------|
+| Build from source                   | Free                     |
+| Download from the Unity Asset Store | 100$ per target platform |
+
+The whole of the VLC for Unity asset is open-source. Which means that you can definitely build it yourself and use it, for free.
+Depending on your experience building native and managed code, it can be a challenging (yet rewarding) endeavor.
+
+For convenience, [Videolabs](https://videolabs.io/) provides the already built binaries through the Unity Store platform. Building and publishing these assets properly takes time and skill, this is the reason for the financial cost.
+
+### Support
+
+VLC for Unity combines wide and powerful bricks of software. Bugs happen and feature requests, too. That is an expected part of software development. If you encounter an issue on VLC for Unity, depending on which component is at play, you have a few options to choose from at your disposal:
+
+| Support                                   | $$$ Cost                 |
+| ----------------------------------------- | -------------------------|
+| Debug and fix the code by yourself        | Free                     |
+| Limited support                           | Free                     |
+| Bug in the Unity integration              | Free (+ paid if urgent)  |
+| Feature request for the Unity integration | Paid                     |
+| Bug in VLC                                | Paid                     |
+| Feature request for VLC                   | Paid                     |
+| Performance optimization for VLC or Unity | Paid                     |
+
+**Important note**
+
+VLC is a large ecosystem run by the VideoLAN non-profit and a community of volunteers.
+[Videolabs](https://videolabs.io/) is an independent company providing development services around VLC open source technologies.
+While [Videolabs](https://videolabs.io/) does ship and sell the Unity integration, Videolabs declines all responsibility for issues specific to VLC.
+However, Videolabs being the main contributors to VLC improvements, feel free to reach out in case of related commercial projects.
+
+### More services
+
 If you would like VLC developers to provide you with:
 
 - custom development on LibVLC, VLC for Unity and/or LibVLCSharp, 
