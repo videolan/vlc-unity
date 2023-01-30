@@ -37,7 +37,7 @@ static int s_color_space;
  * UNITY_INTERFACE_EXPORT and UNITY_INTERFACE_API
  */
 
-#if SUPPORT_D3D11
+#if SUPPORT_D3D11 && UNITY_STANDALONE
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
     DEBUG("SetPluginPath \n");
@@ -83,6 +83,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     mp = libvlc_media_player_new(inst);
 
 #if defined(SHOW_WATERMARK) && !(UNITY_ANDROID)
+#if UNITY_STANDALONE
     std::ofstream outfile;
     outfile.open("logo.png", std::ofstream::binary);
     outfile.write((const char*)watermark_png, watermark_png_len);
@@ -91,6 +92,12 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     libvlc_video_set_logo_string(mp, libvlc_logo_file, "logo.png");
     libvlc_video_set_logo_int(mp, libvlc_logo_enable, 1);
     libvlc_video_set_logo_int(mp, libvlc_logo_position, 10);
+#else
+    libvlc_video_set_marquee_string(mp, libvlc_marquee_Text, "Videolabs");
+    libvlc_video_set_marquee_int(mp, libvlc_marquee_Enable, 1);
+    libvlc_video_set_marquee_int(mp, libvlc_marquee_Position, 9);
+    libvlc_video_set_logo_int(mp, libvlc_marquee_Size, 32);
+#endif
 #endif
 
     RenderAPI* s_CurrentAPI;

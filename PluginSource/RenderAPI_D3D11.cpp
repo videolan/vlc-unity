@@ -15,7 +15,9 @@
 
 #include <algorithm>
 #include <dxgi1_2.h>
-#include <comdef.h>
+#if UNITY_STANDALONE
+// #include <comdef.h> // enable for debugging
+#endif
 
 #define SCREEN_WIDTH  100
 #define SCREEN_HEIGHT  100
@@ -261,8 +263,8 @@ void ReadWriteTexture::Update(UINT width, UINT height, ID3D11Device *m_d3deviceU
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
     if(FAILED(hr))
     {
-        _com_error error(hr);
-        DEBUG("sharedResource->CreateSharedHandle FAILED %s \n", error.ErrorMessage());
+        // _com_error error(hr);
+        DEBUG("sharedResource->CreateSharedHandle FAILED \n");
     }
 
     sharedResource->Release();
@@ -272,16 +274,16 @@ void ReadWriteTexture::Update(UINT width, UINT height, ID3D11Device *m_d3deviceU
     hr = m_d3deviceVLC->QueryInterface(&d3d11VLC1);
     if(FAILED(hr))
     {
-        _com_error error(hr);
-        DEBUG("QueryInterface ID3D11Device1 FAILED %s \n", error.ErrorMessage());
+        // _com_error error(hr);
+        DEBUG("QueryInterface ID3D11Device1 FAILED \n");
     }
     
     ID3D11Texture2D* textureVLC;
     hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&textureVLC);
     if(FAILED(hr))
     {
-        _com_error error(hr);
-        DEBUG("ctx->d3device->OpenSharedResource FAILED %s \n", error.ErrorMessage());
+        // _com_error error(hr);
+        DEBUG("ctx->d3device->OpenSharedResource FAILED \n");
     }
 
     d3d11VLC1->Release();
@@ -353,8 +355,8 @@ void RenderAPI_D3D11::CreateResources()
 
     if(FAILED(hr))
     {
-        _com_error error(hr);
-        DEBUG("FAILED to create d3d11 device and context %s \n", error.ErrorMessage());
+        // _com_error error(hr);
+        DEBUG("FAILED to create d3d11 device and context \n");
     }
 
     DEBUG("Configuring multithread \n");
@@ -366,8 +368,8 @@ void RenderAPI_D3D11::CreateResources()
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
     } else {
-        _com_error error(hr);
-        DEBUG("FAILED to SetMultithreadProtected %s \n", error.ErrorMessage());
+        // _com_error error(hr);
+        DEBUG("FAILED to SetMultithreadProtected \n");
     }
 
     DEBUG("Exiting CreateResources.\n");

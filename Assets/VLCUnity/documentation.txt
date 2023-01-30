@@ -41,6 +41,17 @@ Reminded: If you want to target arm64-v8a CPU architecture, you must select it i
 
 VLC for Unity requires Android 16 minimum.
 
+## UWP
+
+For the Unity UWP target, we support:
+- x86_64,
+- ARM64.
+
+If you need 32 bit versions, feel free to email us with information regarding your use case at unity@videolabs.io
+
+
+In the publisher manifest, make sure the 'InternetClient' capability is enabled so that VLC can access remote streams.
+
 ## General
 
 The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to get started quickly. 

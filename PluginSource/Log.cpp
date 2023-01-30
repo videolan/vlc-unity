@@ -1,4 +1,5 @@
 #include "PlatformBase.h"
+#include "Log.h"
 
 #if UNITY_WIN
 #include <windows.h>
@@ -20,12 +21,7 @@ void debugmsg( const char* fmt, ...)
     va_start(args, fmt);
 
 #if UNITY_WIN
-    int msgsize = _vsnprintf(NULL, 0, fmt, args);
-    char* buff = (char*)malloc(msgsize + 1);
-    _vsnprintf(buff, msgsize + 1, fmt, args);
-    buff[msgsize] = '\0';
-    OutputDebugString(buff);
-    free(buff);
+    windows_print(fmt, args);
 #elif UNITY_ANDROID
     __android_log_vprint(ANDROID_LOG_INFO, "VLCUnity", fmt, args);
 #else
@@ -35,3 +31,33 @@ void debugmsg( const char* fmt, ...)
 
     va_end(args);
 }
+
+#if UNITY_WIN
+void windows_print(const char* fmt, va_list args)
+{
+    int msgsize = _vsnprintf(NULL, 0, fmt, args);
+    char* buff = (char*)malloc(msgsize + 1);
+    _vsnprintf(buff, msgsize + 1, fmt, args);
+    buff[msgsize] = '\0';
+
+    int len = MultiByteToWideChar (CP_UTF8, 0, buff, -1, NULL, 0);
+    if (len == 0)
+        return;
+
+    wchar_t *out = (wchar_t *)malloc (len * sizeof (wchar_t));
+
+    if (out)
+    {
+        MultiByteToWideChar (CP_UTF8, 0, buff, -1, out, len);
+    }
+    if(out != NULL)
+    {
+        OutputDebugStringW(out);
+        free(out);
+    }
+    if(buff != NULL)
+    {
+        free(buff);
+    }
+}
+#endif

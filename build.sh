@@ -16,6 +16,7 @@ while [ $# -gt 0 ]; do
             echo "Use -p to set the PLATFORM:"
             echo "  Windows:       win"
             echo "  Android:       android"
+            echo "  UWP:           uwp"
             echo " "    
             echo "Use --release to build in release mode"
             echo " "
@@ -45,10 +46,14 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ -z $PLATFORM ] && [ -z $ARCH ]
+if [ -z $PLATFORM ]
 then
-    echo "Platform and Arch undefined... Building for Windows x64."
+    echo "Platform undefined..."
     PLATFORM=win
+fi
+if [ -z $ARCH ]
+then
+    echo "Architecture undefined..."
     ARCH=x86_64
 fi
 
@@ -57,7 +62,13 @@ if [ "$TRIAL" == 1 ]; then
 echo "TRIAL version build enabled"
 fi
 
-OUTPUT="../Assets/VLCUnity/Plugins/$ARCH"
+if [ "$PLATFORM" == "win" ];
+then
+    mkdir -p Assets/VLCUnity/Plugins/Windows/$ARCH
+elif [ "$PLATFORM" == "uwp" ];
+then
+    mkdir -p Assets/VLCUnity/Plugins/WSA/UWP/$ARCH
+fi
 
 if [ "$PLATFORM" = "android" ]; then
     cd PluginSource
@@ -74,5 +85,4 @@ if [ "$PLATFORM" = "android" ]; then
     rm -rf PluginSource/libs PluginSource/obj
 else
     cd PluginSource && make clean && make PLATFORM=$PLATFORM ARCH=$ARCH TRIAL=$TRIAL
-    mv VLCUnityPlugin.{dll,pdb} $OUTPUT -f
 fi

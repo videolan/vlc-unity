@@ -21,6 +21,20 @@ variables:
             - nightlies/*
         expire_in: 2 weeks
 
+.variables-windows-x64: &variables-windows-x64
+        ARCH: x86_64
+
+.variables-uwp-arm64: &variables-uwp-arm64
+        ARCH: ARM64
+
+.variables-windows-classic: &variables-windows-classic
+        PLATFORM: win
+        OUTPUT_PATH: Windows
+
+.variables-windows-uwp: &variables-windows-uwp
+        PLATFORM: uwp
+        OUTPUT_PATH: WSA/UWP
+
 # ANDROID
 
 .variables-android-armv7: &variables-android-armv7
@@ -122,17 +136,18 @@ unity-android-armv7-trial:
         - docker
         - amd64
     stage: build-libvlc
-    script:
-        - git clone https://code.videolan.org/videolan/vlc/ && cd vlc
-        - wget -O disable-activex.patch https://code.videolan.org/-/snippets/1304/raw
-        - git apply disable-activex.patch
-        - extras/package/win32/build.sh $ARGS
+    script: |
+        git clone https://code.videolan.org/videolan/vlc/ && cd vlc
+        git apply ../patches/disable-activex.patch
+        if [[ $ARGS == *"-w"* ]]; then
+            echo "Applying the UWP specific patch"
+            git apply ../patches/uwp-plugins-path.patch
+        fi
+        extras/package/win32/build.sh $ARGS
     after_script:
         - mkdir nightlies
-        - ls ./vlc/win64
         - cd ./vlc/$BUILD_FOLDER
         - make package-win-strip
-        - ls vlc-4.0.0-dev
         - rm -rf vlc-4.0.0-dev/lua/http
         - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
         - cp $ARTIFACT ../../nightlies
@@ -147,20 +162,18 @@ unity-android-armv7-trial:
 .unity-win-common:
     image:
         name: $VLC_WIN_LLVM_IMAGE
-    dependencies:
-        - libvlc-x86_64
     tags:
         - docker
         - amd64
     stage: build-unity-plugin
     script:
         - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
-        - mkdir -p Assets/VLCUnity/Plugins/x86_64
-        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,lua,plugins} Assets/VLCUnity/Plugins/x86_64
+        - mkdir -p Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}
+        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,lua,plugins} Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}
         - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
-        - ./build.sh -r ${ARGS_TRIAL}
+        - ./build.sh -a ${ARCH} -p ${PLATFORM} -r ${ARGS_TRIAL}
     after_script:
-        - cp Assets/VLCUnity/Plugins/x86_64/VLCUnityPlugin.dll nightlies
+        - cp Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}/VLCUnityPlugin.dll nightlies
     artifacts:
         paths:
             - nightlies/*
@@ -184,7 +197,7 @@ libvlc-x86_64:
         ARTIFACT: vlc-4.0.0-dev-win64.7z
         BUILD_FOLDER: win64
 
-libvlc-uwp64-llvm:
+libvlc-uwp-x64:
     extends: .libvlc-win-common
     image:
         name: $VLC_UWP_LLVM_IMAGE
@@ -193,7 +206,16 @@ libvlc-uwp64-llvm:
         ARTIFACT: vlc-4.0.0-dev-win64.7z
         BUILD_FOLDER: win64-uwp
 
-libvlc-uwp64-llvm-debug:
+libvlc-uwp-arm64:
+    extends: .libvlc-win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
+    variables:
+        ARGS: -w -u -c -z -r -x -a aarch64 -i nope
+        ARTIFACT: vlc-4.0.0-dev-win64.7z
+        BUILD_FOLDER: winarm64-uwp
+
+libvlc-uwp-x64-debug:
     extends: .libvlc-win-common
     image:
         name: $VLC_UWP_LLVM_IMAGE
@@ -204,10 +226,38 @@ libvlc-uwp64-llvm-debug:
 
 unity-plugin-windows:
     extends: .unity-win-common
+    dependencies:
+      - libvlc-x86_64
+    variables: 
+      <<: [*variables-windows-x64, *variables-windows-classic]
 
 unity-plugin-windows-trial:
     extends: .unity-win-common
-    variables: *variables-trial
+    dependencies:
+      - libvlc-x86_64
+    variables:
+      <<: [*variables-windows-x64, *variables-trial, *variables-windows-classic]
+
+unity-plugin-uwp-x64:
+    extends: .unity-win-common
+    dependencies:
+      - libvlc-uwp-x64
+    variables: 
+      <<: [*variables-windows-x64, *variables-windows-uwp]
+
+unity-plugin-uwp-arm64:
+    extends: .unity-win-common
+    dependencies:
+      - libvlc-uwp-arm64
+    variables: 
+      <<: [*variables-uwp-arm64, *variables-windows-uwp]
+
+unity-plugin-uwp-x64-trial:
+    extends: .unity-win-common
+    dependencies:
+      - libvlc-uwp-x64
+    variables:
+      <<: [*variables-windows-x64, *variables-trial, *variables-windows-uwp]
 
 # LibVLCSharp
 
