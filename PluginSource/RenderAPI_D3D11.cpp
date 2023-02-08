@@ -15,7 +15,7 @@
 
 #include <algorithm>
 #include <dxgi1_2.h>
-#if UNITY_STANDALONE
+#if !UWP
 // #include <comdef.h> // enable for debugging
 #endif
 

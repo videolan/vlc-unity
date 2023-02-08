@@ -37,7 +37,7 @@ static int s_color_space;
  * UNITY_INTERFACE_EXPORT and UNITY_INTERFACE_API
  */
 
-#if SUPPORT_D3D11 && UNITY_STANDALONE
+#if SUPPORT_D3D11 && !UWP
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
     DEBUG("SetPluginPath \n");
@@ -83,7 +83,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     mp = libvlc_media_player_new(inst);
 
 #if defined(SHOW_WATERMARK) && !(UNITY_ANDROID)
-#if UNITY_STANDALONE
+#if !UWP
     std::ofstream outfile;
     outfile.open("logo.png", std::ofstream::binary);
     outfile.write((const char*)watermark_png, watermark_png_len);

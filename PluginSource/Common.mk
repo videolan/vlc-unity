@@ -9,7 +9,7 @@ CXXFLAGS = -O3 -g -gcodeview -fdebug-prefix-map='/mnt/s/'='s:/' -Wall -I./sdk/in
 ifeq ($(PLATFORM), uwp)
 CPPFLAGS = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_UNICODE -DUNICODE -D__MSVCRT_VERSION__=0xE00 -D_WIN32_WINNT=0x0A00
 LDFLAGS += -lwindowsapp -lwindowsappcompat -Wl,--nxcompat -Wl,--no-seh -Wl,--dynamicbase
-CXXFLAGS += -Wl,-lwindowsapp,-lwindowsappcompat,-lucrt $(CPPFLAGS)
+CXXFLAGS += -DUWP -Wl,-lwindowsapp,-lwindowsappcompat,-lucrt $(CPPFLAGS)
 endif
 
 LIB=./sdk/lib/
