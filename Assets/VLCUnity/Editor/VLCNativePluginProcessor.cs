@@ -49,21 +49,10 @@ namespace Videolabs.VLCUnity.Editor
 
         public void OnPreprocessBuild(BuildTarget target, string path)
         {
-            switch(target)
-            {
-                case BuildTarget.WSAPlayer:
-                    ConfigureUWPNativePlugins();
-                    break;
-                case BuildTarget.StandaloneWindows64:
-                    ConfigureWindowsNativePlugins();
-                    break;
-                case BuildTarget.Android:
-                    ConfigureAndroidNativePlugins();
-                    break;
-                case BuildTarget.StandaloneOSX:
-                    ConfigureMacOSNativePlugins();
-                    break;
-            }
+            ConfigureUWPNativePlugins();
+            ConfigureWindowsNativePlugins();
+            ConfigureAndroidNativePlugins();
+            ConfigureMacOSNativePlugins();
         }
 
         void ConfigureWindowsNativePlugins()
