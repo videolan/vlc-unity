@@ -128,8 +128,6 @@ void RenderAPI_OpenGLBase::swap(void* opaque)
 
 void* RenderAPI_OpenGLBase::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
-    // DEBUG("getVideoFrame");
-
     std::lock_guard<std::mutex> lock(text_lock);
     if (out_updated)
         *out_updated = updated;
@@ -138,7 +136,6 @@ void* RenderAPI_OpenGLBase::getVideoFrame(unsigned width, unsigned height, bool*
         std::swap(idx_swap, idx_display);
         updated = false;
     }
-    DEBUG("get Video Frame %u", tex[idx_display]);
-
+    // DEBUG("get Video Frame %u", tex[idx_display]);
     return (void*)(size_t)tex[idx_display];
 }
