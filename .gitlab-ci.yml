@@ -129,6 +129,13 @@ unity-android-armv7-trial:
     dependencies:
       - libvlc-android-armv7
 
+unity-android-armv8-trial:
+    extends: .unity-android-common
+    variables:
+      <<: [*variables-android-armv8, *variables-trial]
+    dependencies:
+      - libvlc-android-armv8
+
 # Windows Classic
 
 .libvlc-win-common:
