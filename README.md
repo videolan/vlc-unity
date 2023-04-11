@@ -19,7 +19,7 @@ This repository contains the native Unity plugin that bridges [LibVLCSharp](http
   - [Sample scenes](#sample-scenes)
   - [Roadmap](#roadmap)
     - [Future platforms support](#future-platforms-support)
-    - [Graphics APIs](#graphics-APIs)
+    - [Future graphics APIs](#future-graphics-APIs)
     - [Other improvements](#other-improvements)
   - [Release Notes](#release-Notes)
   - [Building](#building)
@@ -50,6 +50,10 @@ And more.
   - Minimum OS version: Windows 7.
   - ABI supported: x64.
   - Graphics API: Direct3D 11
+- Windows Modern (UWP)
+  - Minimum OS version: Windows 10.
+  - ABI supported: x64, ARM64.
+  - Graphics API: Direct3D 11
 - Android:
   - Minimum OS version: Android 4.2 (API 17).
   - ABIs supposed: armeabi-v7a, arm64-v8a, x86, x86_64.
@@ -62,9 +66,11 @@ The recommended way to install the VLC for Unity plugin is through the [Unity St
 | Platform          |  Unity Store Asset                              |
 | ----------------- | ----------------------------------------------- |
 | Windows           | [![VLCUnityBadge]][VLCUnityWindows]             |
+| UWP               | [![VLCUnityBadge]][VLCUnityUWP]                 |
 | Android           | [![VLCUnityBadge]][VLCUnityAndroid]             |
 
 [VLCUnityWindows]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979
+[VLCUnityUWP]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-uwp-246153
 [VLCUnityAndroid]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-android-213786
 
 [VLCUnityBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
@@ -110,13 +116,13 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 ### Future platforms support
 
 - macOS, iOS, tvOS,
-- UWP,
+- Browser,
 - Linux.
 
-### Graphics APIs
+### Future graphics APIs
 
-- OpenGL,
 - Vulkan,
+- WebGL
 - Metal.
 
 ### Other improvements
@@ -209,7 +215,7 @@ Feel free to [contact us](https://videolabs.io/#contact).
 
 ## License
 
-Licensed under the LGPL 2.1 and prorietary license via [Videolabs](https://videolabs.io/).
+Licensed under the LGPL 2.1 and proprietary license via [Videolabs](https://videolabs.io/).
 
 <br/>
 <div align="center">
