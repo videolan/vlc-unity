@@ -1,10 +1,10 @@
 diff --git a/src/modules/bank.c b/src/modules/bank.c
-index e5cc6c5c86..0162c52cbc 100644
+index 87101cb74b..134478f0dd 100644
 --- a/src/modules/bank.c
 +++ b/src/modules/bank.c
-@@ -572,7 +572,7 @@ static void AllocateAllPlugins (libvlc_int_t *p_this)
+@@ -581,7 +581,7 @@ static void AllocateAllPlugins (libvlc_int_t *p_this)
  
- #ifdef VLC_WINSTORE_APP
+ #ifdef HAVE_FORCED_PLUGINS
      /* Windows Store Apps can not load external plugins with absolute paths. */
 -    AllocatePluginPath (p_this, "plugins", mode);
 +    AllocatePluginPath (p_this, ".\\", mode);
