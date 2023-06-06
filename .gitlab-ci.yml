@@ -209,7 +209,7 @@ libvlc-uwp-x64:
     image:
         name: $VLC_UWP_LLVM_IMAGE
     variables:
-        ARGS: -w -u -c -z -r -x -a x86_64 -i nope
+        ARGS: -w -u -c -z -r -x -a x86_64 -i nope -S 0x0A000007
         ARTIFACT: vlc-4.0.0-dev-win64.7z
         BUILD_FOLDER: win64-uwp
 
@@ -218,7 +218,7 @@ libvlc-uwp-arm64:
     image:
         name: $VLC_UWP_LLVM_IMAGE
     variables:
-        ARGS: -w -u -c -z -r -x -a aarch64 -i nope
+        ARGS: -w -u -c -z -r -x -a aarch64 -i nope -S 0x0A000007
         ARTIFACT: vlc-4.0.0-dev-win64.7z
         BUILD_FOLDER: winarm64-uwp
 
@@ -227,7 +227,7 @@ libvlc-uwp-x64-debug:
     image:
         name: $VLC_UWP_LLVM_IMAGE
     variables:
-        ARGS: -w -u -c -z -d -x -a x86_64
+        ARGS: -w -u -c -z -d -x -a x86_64 -S 0x0A000007
         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
         BUILD_FOLDER: win64-uwp
 
