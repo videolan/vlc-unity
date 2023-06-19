@@ -108,3 +108,8 @@ For more API usage information, explore our [online docs](https://code.videolan.
 For VLC Unity specific questions and support, open an issue on our GitLab and browse our opensource plugin code at https://code.videolan.org/videolan/vlc-unity
 
 We also provide support through StackOverflow, you may browse the [libvlcsharp](https://stackoverflow.com/questions/tagged/libvlcsharp) and [vlc-unity](https://stackoverflow.com/questions/tagged/vlc-unity) tags.
+
+## Misc
+
+/!\ There seems to be issues when using VLC Unity and MRTK in the same Unity project. Both LibVLCSharp and MRTK rely on System.Numerics.Vectors and this triggers an issue with IL2CPP. 
+Removing one of the System.Numerics.Vectors.dll in your project seems to be a valid workaround (but be aware of versioning mismatch).
