@@ -59,7 +59,7 @@ variables:
         git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
         git apply ../../patches/no-libvlcjni-build.patch
         cd ..
-        ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
+        ANDROID_HOME=/sdk/android-sdk-linux ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
     after_script:
         - mkdir nightlies
         - cp vlc-android/libvlcjni/libvlc/jni/libs/${ANDROID_ABI}/libvlc.so nightlies
