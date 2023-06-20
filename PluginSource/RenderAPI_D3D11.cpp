@@ -52,7 +52,12 @@ public:
     bool MakeCurrent(bool enter );
     bool SelectPlane(size_t plane, void *output);
     bool Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out );
-    void Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height), void *report_opaque );
+    void Report(
+                libvlc_video_output_resize_cb report_size_change,
+                libvlc_video_output_mouse_move_cb report_mouse_move,
+                libvlc_video_output_mouse_press_cb report_mouse_press,
+                libvlc_video_output_mouse_release_cb report_mouse_release,
+                void *report_opaque);
 
     ReadWriteTexture        *read_write[2];
     bool                    write_on_first = false;
@@ -74,7 +79,7 @@ private:
     CRITICAL_SECTION m_sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
     unsigned m_width = 0;
     unsigned m_height = 0;
-    void (*m_ReportSize)(void *ReportOpaque, unsigned width, unsigned height) = nullptr;
+    libvlc_video_output_resize_cb m_ReportSize = nullptr;
     void *m_reportOpaque = nullptr;
     const FLOAT blackRGBA[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     bool m_updated = false;
@@ -122,12 +127,15 @@ void Cleanup_cb( void *opaque )
     me->read_write[1]->Cleanup();
 }
 
-void Resize_cb( void *opaque,
-                    void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
-                    void *report_opaque )
+void Report_cb(void *opaque, 
+                libvlc_video_output_resize_cb report_size_change, 
+                libvlc_video_output_mouse_move_cb report_mouse_move,
+                libvlc_video_output_mouse_press_cb report_mouse_press, 
+                libvlc_video_output_mouse_release_cb report_mouse_release, 
+                void *report_opaque)
 {
     RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
-    me->Resize(report_size_change, report_opaque);
+    me->Report(report_size_change, report_mouse_move, report_mouse_press, report_mouse_release, report_opaque);
 }
 
 RenderAPI* CreateRenderAPI_D3D11()
@@ -152,7 +160,7 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
     DEBUG("[D3D11] Subscribing output callbacks %p \n", this);
 
     libvlc_video_set_output_callbacks( mp, libvlc_video_engine_d3d11,
-                                    Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
+                                    Setup_cb, Cleanup_cb, Report_cb, UpdateOutput_cb,
                                     Swap_cb, MakeCurrent_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
 
@@ -164,7 +172,7 @@ void RenderAPI_D3D11::unsetVlcContext(libvlc_media_player_t *mp)
     DEBUG("[D3D11] Unsubscribing to output callbacks %p \n", this);
 
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
-                                    Setup_cb, Cleanup_cb, Resize_cb, UpdateOutput_cb,
+                                    Setup_cb, Cleanup_cb, Report_cb, UpdateOutput_cb,
                                     Swap_cb, MakeCurrent_cb, nullptr, nullptr, SelectPlane_cb,
                                     this);
 
@@ -493,8 +501,11 @@ bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_
     return true;
 }
 
-void RenderAPI_D3D11::Resize(void (*report_size_change)(void *report_opaque, unsigned width, unsigned height),
-                       void *report_opaque )
+void RenderAPI_D3D11::Report(libvlc_video_output_resize_cb report_size_change,
+                libvlc_video_output_mouse_move_cb report_mouse_move,
+                libvlc_video_output_mouse_press_cb report_mouse_press,
+                libvlc_video_output_mouse_release_cb report_mouse_release,
+                void *report_opaque)
 {
     DEBUG("Resize_cb called \n");
     EnterCriticalSection(&m_sizeLock);
