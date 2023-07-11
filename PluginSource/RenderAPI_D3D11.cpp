@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <dxgi1_2.h>
 #if !UWP
+#include <memory>
 // #include <comdef.h> // enable for debugging
 #endif
 
@@ -59,7 +60,7 @@ public:
                 libvlc_video_output_mouse_release_cb report_mouse_release,
                 void *report_opaque);
 
-    ReadWriteTexture        *read_write[2];
+    std::unique_ptr<ReadWriteTexture> read_write[2];
     bool                    write_on_first = false;
     ReadWriteTexture        *current_texture = nullptr;
 
@@ -145,15 +146,12 @@ RenderAPI* CreateRenderAPI_D3D11()
 
 RenderAPI_D3D11::RenderAPI_D3D11()
 {
-    read_write[0] = new ReadWriteTexture();
-    read_write[1] = new ReadWriteTexture();
+    read_write[0].reset(new ReadWriteTexture());
+    read_write[1].reset(new ReadWriteTexture());
 }
 
 RenderAPI_D3D11::~RenderAPI_D3D11()
-{
-    delete read_write[0];
-    delete read_write[1];
-}
+{}
 
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
@@ -236,7 +234,7 @@ void ReadWriteTexture::Update(UINT width, UINT height, ID3D11Device *m_d3deviceU
     DEBUG("Done releasing d3d objects.\n");
 
     /* interim texture */
-    D3D11_TEXTURE2D_DESC texDesc = { 0 };
+    D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
     texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -354,7 +352,7 @@ void RenderAPI_D3D11::CreateResources()
                         NULL,
                         creationFlags,
                         NULL,
-                        NULL,
+                        0,
                         D3D11_SDK_VERSION,
                         &m_d3deviceVLC,
                         NULL,
@@ -455,11 +453,11 @@ void RenderAPI_D3D11::Swap()
     write_on_first = !write_on_first;
     if( write_on_first )
     {
-        current_texture = read_write[0];
+        current_texture = read_write[0].get();
     }
     else
     {
-        current_texture = read_write[1];
+        current_texture = read_write[1].get();
     }
     LeaveCriticalSection(&m_outputLock);
 }
