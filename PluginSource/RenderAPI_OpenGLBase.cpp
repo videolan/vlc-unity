@@ -5,15 +5,15 @@ RenderAPI_OpenGLBase::RenderAPI_OpenGLBase(UnityGfxRenderer apiType)
 	: m_APIType(apiType)
 {
     DEBUG("Entering RenderAPI_OpenGLBase ctor");
-#if SUPPORT_OPENGL_CORE
+#if defined(UNITY_WIN)
     glewExperimental=true;
     if (glewInit() != GLEW_OK) {
         DEBUG("unable to initialise GLEW");
     } else {
         DEBUG("GLEW init OK");
     }
-#endif
     glGetError();
+#endif
     DEBUG("Exiting RenderAPI_OpenGLBase ctor");
 }
 

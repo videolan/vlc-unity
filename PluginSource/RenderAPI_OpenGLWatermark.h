@@ -1,12 +1,16 @@
 
 
-#if UNITY_IPHONE
+#if defined(UNITY_IPHONE)
 #	include <OpenGLES/ES2/gl.h>
-#elif UNITY_ANDROID || UNITY_WEBGL
+#elif defined(UNITY_OSX)
+#  include <OpenGL/GL.h>
+#elif defined(UNITY_ANDROID) || defined(UNITY_WEBGL)
 #	include <GLES2/gl2.h>
-#else
+#elif defined(UNITY_WIN)
 #   define GL_GLEXT_PROTOTYPES
 #	include "GLEW/glew.h"
+#else
+# error "OpenGL not implemented"
 #endif
 
 

@@ -15,8 +15,10 @@
 
 #include <algorithm>
 #include <dxgi1_2.h>
-#if !UWP
+
 #include <memory>
+
+#if !defined(UWP)
 // #include <comdef.h> // enable for debugging
 #endif
 

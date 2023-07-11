@@ -13,10 +13,11 @@
 // UNITY_ANDROID - Android
 // UNITY_METRO - WSA or UWP
 // UNITY_WEBGL - WebGL
-#if _WIN32
+#if defined(_WIN32)
 	#define UNITY_WIN 1
 #elif defined(__APPLE__)
-	#if defined(__arm__) || defined(__arm64__)
+	#import <TargetConditionals.h>
+	#if TARGET_OS_IPHONE
 		#define UNITY_IPHONE 1
 	#else
 		#define UNITY_OSX 1
@@ -33,28 +34,28 @@
 
 
 // Which graphics device APIs we possibly support?
-#if UNITY_METRO
+#if defined(UNITY_METRO)
 	#define SUPPORT_D3D11 1
-	#if WINDOWS_UWP
+	#if defined(WINDOWS_UWP)
 		#define SUPPORT_D3D12 1
 	#endif
-#elif UNITY_WIN
+#elif defined(UNITY_WIN)
 	#define SUPPORT_D3D9 1
 	#define SUPPORT_D3D11 1 // comment this out if you don't have D3D11 header/library files
 	#define SUPPORT_D3D12 0 //@TODO: enable by default? comment this out if you don't have D3D12 header/library files
 	#define SUPPORT_OPENGL_LEGACY 1
 	#define SUPPORT_OPENGL_UNIFIED 1
 	#define SUPPORT_OPENGL_CORE 1
-#elif UNITY_IPHONE || UNITY_ANDROID || UNITY_WEBGL
+#elif defined(UNITY_IPHONE) || defined(UNITY_ANDROID) || defined(UNITY_WEBGL)
 	#define SUPPORT_OPENGL_UNIFIED 1
 	#define SUPPORT_OPENGL_ES 1
-#elif UNITY_OSX || UNITY_LINUX
+#elif defined(UNITY_OSX) || defined(UNITY_LINUX)
 	#define SUPPORT_OPENGL_LEGACY 1
 	#define SUPPORT_OPENGL_UNIFIED 1
 	#define SUPPORT_OPENGL_CORE 1
 #endif
 
-#if UNITY_IPHONE || UNITY_OSX
+#if defined(UNITY_IPHONE) || defined(UNITY_OSX)
 	#define SUPPORT_METAL 1
 #endif
 

@@ -9,7 +9,7 @@
 
 #include <map>
 
-#if SUPPORT_D3D11
+#if defined(SUPPORT_D3D11)
 #include <windows.h>
 #endif
 
@@ -40,6 +40,7 @@ static int s_color_space;
 #if SUPPORT_D3D11 && !UWP
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
+#if defined(SUPPORT_D3D11) && !defined(UWP)
     DEBUG("SetPluginPath \n");
     DEBUG("_putenv_s with VLC_PLUGIN_PATH -> %s \n", path);
     auto e = _putenv_s("VLC_PLUGIN_PATH", path);
@@ -82,7 +83,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     mp = libvlc_media_player_new(inst);
 
-#if defined(SHOW_WATERMARK) && !(UNITY_ANDROID)
+#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID)
 #if !UWP
     std::ofstream outfile;
     outfile.open("logo.png", std::ofstream::binary);
@@ -252,7 +253,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
     DEBUG("OnRenderEvent called \n");
-#if UNITY_ANDROID
+#if defined(UNITY_ANDROID)
     if(EarlyRenderAPI)
     {
         EarlyRenderAPI->retrieveOpenGLContext();

@@ -4,20 +4,22 @@
 #include "RenderAPI.h"
 #include "PlatformBase.h"
 
-#if UNITY_IPHONE
-#	include <OpenGLES/ES2/gl.h>
-#elif UNITY_ANDROID || UNITY_WEBGL
+#if defined(UNITY_IPHONE)
+#	import <OpenGLES/ES2/gl.h>
+#elif defined(UNITY_OSX)
+#  import <OpenGL/GL.h>
+#elif defined(UNITY_ANDROID) || defined(UNITY_WEBGL)
 #	include <GLES2/gl2.h>
-#else
+#elif defined(UNITY_WIN)
 #   define GL_GLEXT_PROTOTYPES
-#	include "GLEW/glew.h"
+#	include "GL/glew.h"
 #endif
 
-#if UNITY_WIN
-#  include <mingw.mutex.h>
-#else
+//#if defined(UNITY_WIN)
+//#  include <mingw.mutex.h>
+//#else
 #  include <mutex>
-#endif
+//#endif
 
 #ifdef SHOW_WATERMARK
 #  include "RenderAPI_OpenGLWatermark.h"
@@ -45,8 +47,6 @@ public:
 
 private:
     void releaseFrameBufferResources();
-
-	UnityGfxRenderer m_APIType;
 
     std::mutex text_lock;
     unsigned width = 0;

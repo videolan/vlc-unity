@@ -1,9 +1,9 @@
 #include "PlatformBase.h"
 #include "Log.h"
 
-#if UNITY_WIN
+#if defined(UNITY_WIN)
 #include <windows.h>
-#elif UNITY_ANDROID
+#elif defined(UNITY_ANDROID)
 #include <android/log.h>
 #endif
 
@@ -20,9 +20,9 @@ void debugmsg( const char* fmt, ...)
     va_list args;
     va_start(args, fmt);
 
-#if UNITY_WIN
+#if defined(UNITY_WIN)
     windows_print(fmt, args);
-#elif UNITY_ANDROID
+#elif defined(UNITY_ANDROID)
     __android_log_vprint(ANDROID_LOG_INFO, "VLCUnity", fmt, args);
 #else
     vfprintf(stderr, fmt, args);
@@ -32,7 +32,7 @@ void debugmsg( const char* fmt, ...)
     va_end(args);
 }
 
-#if UNITY_WIN
+#if defined(UNITY_WIN)
 void windows_print(const char* fmt, va_list args)
 {
     int msgsize = _vsnprintf(NULL, 0, fmt, args);

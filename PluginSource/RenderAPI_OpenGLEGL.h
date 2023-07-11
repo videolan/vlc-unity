@@ -20,7 +20,6 @@ public:
     static void* get_proc_address(void* /*data*/, const char* current);
 
 private:
-	UnityGfxRenderer m_APIType;
 
     EGLDisplay m_display;
     EGLSurface m_surface;

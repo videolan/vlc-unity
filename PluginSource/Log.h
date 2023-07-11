@@ -5,7 +5,7 @@
 
 #define DEBUG(fmt, ...) debugmsg( "[VLC-Unity] " fmt, ## __VA_ARGS__ )
 void debugmsg( const char* fmt, ...);
-#if UNITY_WIN
+#if defined(UNITY_WIN)
 void windows_print(const char* fmt, va_list args);
 #endif
 #endif

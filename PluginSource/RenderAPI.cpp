@@ -5,7 +5,7 @@
 
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 {
-#if SUPPORT_D3D11
+#if defined(SUPPORT_D3D11)
     if (apiType == kUnityGfxRendererD3D11)
     {
         extern RenderAPI* CreateRenderAPI_D3D11();
@@ -13,14 +13,12 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
     }
 #endif // if SUPPORT_D3D11
 
-#if SUPPORT_OPENGL_UNIFIED
+#if defined(SUPPORT_OPENGL_UNIFIED)
 	if (apiType == kUnityGfxRendererOpenGLCore || apiType == kUnityGfxRendererOpenGLES20 || apiType == kUnityGfxRendererOpenGLES30)
 	{
-#if UNITY_ANDROID
+#if defined(UNITY_ANDROID)
         extern RenderAPI* CreateRenderAPI_Android(UnityGfxRenderer apiType);
 		return CreateRenderAPI_Android(apiType);
-#else
-        return NULL;
 #endif
 	}
 #endif // if SUPPORT_OPENGL_UNIFIED
