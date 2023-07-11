@@ -1,0 +1,9 @@
+[binaries]
+pkgconfig = 'pkg-config'
+
+[properties]
+pkg_config_libdir = '/usr/x86_64-w64-mingw32/lib/pkgconfig/'
+
+[built-in options]
+c_args = [ '-DWINAPI_FAMILY=WINAPI_FAMILY_APP' ]
+cpp_args = [ '-DWINAPI_FAMILY=WINAPI_FAMILY_APP' ]

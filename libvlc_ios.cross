@@ -1,0 +1,5 @@
+[binaries]
+pkgconfig = 'pkg-config'
+
+[properties]
+pkg_config_libdir = '/Users/unidan/Workspace/vlc/build-iphoneos-arm64-shared/vlc-iphoneos-arm64/lib/pkgconfig:/home/alexandre/workspace/videolabs/vlc/build-iphoneos-arm64/contrib/arm64-iphoneos/lib/pkgconfig'

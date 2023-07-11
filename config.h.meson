@@ -1,0 +1,75 @@
+/* Config template used by meson to generate config.h */
+
+/* Dynamic object extension */
+#mesondefine LIBEXT
+
+/* libvlc version major number */
+#mesondefine LIBVLC_ABI_MAJOR
+
+/* libvlc version micro number */
+#mesondefine LIBVLC_ABI_MICRO
+
+/* libvlc version minor number */
+#mesondefine LIBVLC_ABI_MINOR
+
+/* Define within the LibVLC source code tree. */
+#define LIBVLC_INTERNAL_
+
+/* Define to the libdir */
+#mesondefine LIBDIR
+
+/* Define to the libexecdir */
+#mesondefine LIBEXECDIR
+
+/* Define to the pkgdatadir */
+#mesondefine PKGDATADIR
+
+/* Define to the pkglibdir */
+#mesondefine PKGLIBDIR
+
+/* Define to the pkglibexecdir */
+#mesondefine PKGLIBEXECDIR
+
+/* Define to the sysdatadir */
+#mesondefine SYSDATADIR
+
+/* Define to the localedir */
+#mesondefine LOCALEDIR
+
+/* Name of package */
+#mesondefine PACKAGE
+
+/* Define to the full name of this package. */
+#mesondefine PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#mesondefine PACKAGE_STRING
+
+/* Define to the version of this package. */
+#mesondefine PACKAGE_VERSION
+
+/* version development string */
+#mesondefine PACKAGE_VERSION_DEV
+
+/* version extra number */
+#mesondefine PACKAGE_VERSION_EXTRA
+
+/* version major number */
+#mesondefine PACKAGE_VERSION_MAJOR
+
+/* version minor number */
+#mesondefine PACKAGE_VERSION_MINOR
+
+/* version revision number */
+#mesondefine PACKAGE_VERSION_REVISION
+
+/* Enable GNU extensions on systems that have them.  */
+#ifndef _GNU_SOURCE
+#mesondefine _GNU_SOURCE
+#endif
+
+/* Version number of package */
+#mesondefine VERSION
+
+/* Simple version string */
+#mesondefine VERSION_MESSAGE

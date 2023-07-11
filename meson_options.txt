@@ -1,0 +1,4 @@
+option('watermark',
+    type: 'boolean',
+    value: true,
+    description: 'Display the Videolabs watermark')
