@@ -17,8 +17,6 @@ public class VLCYouTubePlayback : MonoBehaviour
     
     async void Awake()
     {
-        TextureHelper.FlipTextures(transform);
-
         Core.Initialize(Application.dataPath);
 
         _libVLC = new LibVLC(enableDebugLogs: true);

@@ -19,8 +19,6 @@ public class VLCSubtitles : MonoBehaviour
 
     void Awake()
     {
-        TextureHelper.FlipTextures(transform);
-
         Core.Initialize(Application.dataPath);
 
         _libVLC = new LibVLC(enableDebugLogs: true);
