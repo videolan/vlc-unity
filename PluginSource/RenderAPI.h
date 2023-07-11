@@ -18,17 +18,24 @@ public:
     // Process general event like initialization, shutdown, device loss/reset etc.
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) = 0;
 
-    virtual void setVlcContext(libvlc_media_player_t *mp) {}
-    virtual void unsetVlcContext(libvlc_media_player_t *mp) {}
+    virtual void setVlcContext(libvlc_media_player_t *mp) {
+        (void)mp;
+    }
+    virtual void unsetVlcContext(libvlc_media_player_t *mp) {
+        (void)mp;
+    }
 
     virtual void* getVideoFrame(unsigned height, unsigned width, bool* out_updated) {
+        (void)height; (void)width;
         if (out_updated)
             *out_updated = false;
         return nullptr;
     }
 
     virtual void retrieveOpenGLContext() {}
-    virtual void setColorSpace(int color_space) {}
+    virtual void setColorSpace(int color_space) {
+        (void)color_space;
+    }
 };
 
 

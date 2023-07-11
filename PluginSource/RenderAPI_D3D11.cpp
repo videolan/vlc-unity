@@ -483,6 +483,7 @@ bool RenderAPI_D3D11::MakeCurrent( bool enter )
 
 bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 {
+    (void)output;
     if ( plane != 0 || m_d3dctxVLC == NULL ) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
         return false;
 
@@ -496,6 +497,7 @@ bool RenderAPI_D3D11::SelectPlane( size_t plane, void *output )
 
 bool RenderAPI_D3D11::Setup( const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out )
 {
+    (void)cfg;
     DEBUG("Setup m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
     out->d3d11.device_context = m_d3dctxVLC;
     return true;

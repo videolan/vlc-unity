@@ -2,8 +2,8 @@
 #include "Log.h"
 
 RenderAPI_OpenGLBase::RenderAPI_OpenGLBase(UnityGfxRenderer apiType)
-	: m_APIType(apiType)
 {
+    (void)apiType; // TODO
     DEBUG("Entering RenderAPI_OpenGLBase ctor");
 #if defined(UNITY_WIN)
     glewExperimental=true;
@@ -22,6 +22,7 @@ bool RenderAPI_OpenGLBase::setup(void **opaque,
                                       const libvlc_video_setup_device_cfg_t *cfg,
                                       libvlc_video_setup_device_info_t *out)
 {
+    (void)cfg; (void)out;
     DEBUG("output callback setup");
     RenderAPI_OpenGLBase* that = static_cast<RenderAPI_OpenGLBase*>(*opaque);
     that->width = 0;
@@ -129,6 +130,7 @@ void RenderAPI_OpenGLBase::swap(void* opaque)
 
 void* RenderAPI_OpenGLBase::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
+    (void)width; (void)height;
     std::lock_guard<std::mutex> lock(text_lock);
     if (out_updated)
         *out_updated = updated;
