@@ -9,8 +9,15 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
 using UnityEditor.Build;
+using UnityEditor.Callbacks;
+
 #if UNITY_SUPPORTS_BUILD_REPORT
 using UnityEditor.Build.Reporting;
+#endif
+
+#if UNITY_IPHONE
+using UnityEditor.iOS.Xcode;
+using UnityEditor.iOS.Xcode.Extensions;
 #endif
 
 namespace Videolabs.VLCUnity.Editor
@@ -30,6 +37,8 @@ namespace Videolabs.VLCUnity.Editor
         const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
         const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
         const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
+        const string MACOS_PATH  = "VLCUnity/Plugins/MacOS";
+        const string IOS_PATH = "VLCUnity/Plugins/iOS/";
 
 #if UNITY_SUPPORTS_BUILD_REPORT
         public void OnPreprocessBuild(BuildReport report)
@@ -50,6 +59,9 @@ namespace Videolabs.VLCUnity.Editor
                     break;
                 case BuildTarget.Android:
                     ConfigureAndroidNativePlugins();
+                    break;
+                case BuildTarget.StandaloneOSX:
+                    ConfigureMacOSNativePlugins();
                     break;
             }
         }
@@ -74,11 +86,47 @@ namespace Videolabs.VLCUnity.Editor
 
                     dirty = true;
                 }
-                
+
                 var cpu = pi.GetPlatformData(BuildTarget.StandaloneWindows64, "CPU");
                 if(cpu != "x86_64")
                 {
                     pi.SetPlatformData(BuildTarget.StandaloneWindows64, "CPU", "x86_64");
+                    dirty = true;
+                }
+
+                if(dirty)
+                {
+                    pi.SaveAndReimport();
+                }
+            }
+        }
+
+        void ConfigureMacOSNativePlugins()
+        {
+            PluginImporter[] importers = PluginImporter.GetAllImporters();
+            foreach (PluginImporter pi in importers)
+            {
+                if(!pi.isNativePlugin) continue;
+
+                if(!pi.assetPath.Contains(MACOS_PATH)) continue;
+                // pi.ClearSettings();
+
+                var dirty = false;
+
+                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
+                {
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+
+                    dirty = true;
+                }
+
+                // TODO
+                var cpu = pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU");
+                if(cpu != "x86_64")
+                {
+                    pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
                     dirty = true;
                 }
 
@@ -198,5 +246,69 @@ namespace Videolabs.VLCUnity.Editor
                 }
             }
         }
+
+        internal static void CopyAndReplaceDirectory(string srcPath, string dstPath)
+        {
+            if (Directory.Exists(dstPath))
+                Directory.Delete(dstPath);
+            if (File.Exists(dstPath))
+                File.Delete(dstPath);
+
+            Directory.CreateDirectory(dstPath);
+
+            foreach (var file in Directory.GetFiles(srcPath))
+                File.Copy(file, Path.Combine(dstPath, Path.GetFileName(file)));
+
+            foreach (var dir in Directory.GetDirectories(srcPath))
+                CopyAndReplaceDirectory(dir, Path.Combine(dstPath, Path.GetFileName(dir)));
+        }
+
+#if UNITY_IPHONE
+        [PostProcessBuildAttribute(1)]
+        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
+        {
+            Debug.Log("BUILD POSTPROCESS: " + path);
+
+            if (buildTarget == BuildTarget.iOS)
+                OnPostprocessBuildiPhone(path);
+        }
+
+        internal static void AddIOSPlugin(PBXProject proj, string target, string plugin)
+        {
+          Debug.Log("BUILD POSTPROCESS: adding plugin " + plugin);
+
+          string fileName = Path.GetFullPath(plugin);
+          string fileRef = proj.AddFile(fileName, plugin, PBXSourceTree.Source);
+          proj.AddFileToEmbedFrameworks(target, fileRef);
+        }
+
+        internal static void OnPostprocessBuildiPhone(string path)
+        {
+            string projPath = PBXProject.GetPBXProjectPath(path);
+            PBXProject proj = new PBXProject();
+
+            proj.ReadFromString(File.ReadAllText(projPath));
+            #if UNITY_2020_2_OR_NEWER
+            string target = proj.GetUnityMainTargetGuid();
+            #else
+            string target = proj.TargetGuidByName("Unity-iPhone");
+            #endif
+            proj.SetBuildProperty(target, "ENABLE_BITCODE", "NO");
+
+            string frameworkTarget = proj.GetUnityFrameworkTargetGuid();
+            proj.SetBuildProperty(frameworkTarget, "ENABLE_BITCODE", "NO");
+
+            PluginImporter[] importers = PluginImporter.GetAllImporters();
+            foreach (PluginImporter pi in importers)
+            {
+                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH))
+                {
+                    continue;
+                }
+                AddIOSPlugin(proj, target, pi.assetPath);
+            }
+            File.WriteAllText(projPath, proj.WriteToString());
+        }
+#endif
     }
 }

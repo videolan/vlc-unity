@@ -6,8 +6,10 @@ namespace LibVLCSharp
 {
     class OnLoad
     {
-#if UNITY_ANDROID
+#if UNITY_ANDROID || UNITY_MAC
         const string UnityPlugin = "libVLCUnityPlugin";
+#elif UNITY_IOS
+        const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
 #else
         const string UnityPlugin = "VLCUnityPlugin";
 #endif
@@ -28,7 +30,7 @@ namespace LibVLCSharp
         {
           //  Debug.Log("UnityEngine.QualitySettings.activeColorSpace: " + PlayerColorSpace);
             SetColorSpace(PlayerColorSpace);
-#if UNITY_ANDROID
+#if UNITY_ANDROID || UNITY_IOS
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
         }

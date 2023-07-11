@@ -37,7 +37,11 @@ static int s_color_space;
  * UNITY_INTERFACE_EXPORT and UNITY_INTERFACE_API
  */
 
-#if SUPPORT_D3D11 && !UWP
+#if defined(__APPLE__)
+# import <TargetConditionals.h>
+# include <cstdlib>
+#endif
+
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
 #if defined(SUPPORT_D3D11) && !defined(UWP)
@@ -47,8 +51,16 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* p
     if(e != 0)
         DEBUG("_putenv_s failed \n");
     else DEBUG("_putenv_s succeeded \n");
-}
+#elif defined(__APPLE__) && !TARGET_OS_IPHONE
+    DEBUG("SetPluginPath \n");
+    DEBUG("setenv with VLC_PLUGIN_PATH -> %s \n", path);
+    auto e = setenv("VLC_PLUGIN_PATH", path, 1);
+    if(e != 0)
+        DEBUG("setenv failed \n");
+    else DEBUG("setenv succeeded \n");
+
 #endif
+}
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_set_color_space(int color_space)
@@ -192,7 +204,7 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
-extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
     DEBUG("UnityPluginLoad");
     s_UnityInterfaces = unityInterfaces;
@@ -203,11 +215,20 @@ extern "C" void	UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
+{
+    VLCUnity_UnityPluginLoad(unityInterfaces);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginUnload()
 {
   s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
+{
+    VLCUnity_UnityPluginUnload();
+}
 
 static RenderAPI* EarlyRenderAPI = NULL;
 
