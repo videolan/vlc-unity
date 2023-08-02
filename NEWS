@@ -4,6 +4,14 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.1.8 Android, Windows and UWP release:
+- libvlc engine update with lots of fixes (notably mediacodec crashes) TODO: HASH,
+- libvlcsharp update,
+- android: remove debug log output on every frame,
+- android: no need to flip textures anymore (except when blitting to a RenderTexture, because Unity).
+- docs: document MRTK/VLC quirk,
+- CI: lots of fixes and improvements,
+
 0.1.7 Android, Windows and UWP release:
 - libvlc engine update 07/02/23 4cca6109e2
 - libvlcsharp update,
