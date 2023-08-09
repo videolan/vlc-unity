@@ -5,7 +5,7 @@ For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/m
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
 0.1.8 Android, Windows and UWP release:
-- libvlc engine update with lots of fixes (notably mediacodec crashes) TODO: HASH,
+- libvlc engine update with lots of fixes (notably mediacodec crashes) 06/08/23 https://code.videolan.org/videolan/vlc/-/commit/a03de829e1
 - libvlcsharp update,
 - android: remove debug log output on every frame,
 - android: no need to flip textures anymore (except when blitting to a RenderTexture, because Unity).
