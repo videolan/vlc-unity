@@ -92,10 +92,10 @@ void main()
     //FIXME: update the aPos coordinate where it should actually be drawn
     GLfloat vertices[] = {
         //aPos X               , aPos Y                 , aUV X  , aUV Y
-        0.f * xScale + xOffset , -1.f * yScale + yOffset, 0.f    , 1.f,
-        0.f * xScale + xOffset ,  0.f * yScale + yOffset, 0.f    , 0.f,
-        1.f * xScale + xOffset , -1.f * yScale + yOffset, 1.f    , 1.f,
-        1.f * xScale + xOffset ,  0.f * yScale + yOffset, 1.f    , 0.f
+        0.f * xScale + xOffset , -1.f * yScale + yOffset, 1.f    , 0.f,
+        0.f * xScale + xOffset ,  0.f * yScale + yOffset, 1.f    , 1.f,
+        1.f * xScale + xOffset , -1.f * yScale + yOffset, 0.f    , 0.f,
+        1.f * xScale + xOffset ,  0.f * yScale + yOffset, 0.f    , 1.f
     };
 
     // vertex shader
