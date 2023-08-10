@@ -136,9 +136,6 @@ namespace Videolabs.VLCUnity.Editor
                 if(!pi.assetPath.Contains(UWP_PATH)) continue;
 
                 var isX64 = pi.assetPath.Contains($"{UWP_PATH}/{UWP_ARCH[0]}");
-                var sdkPath = isX64 ? $"{UWP_PATH}/{UWP_ARCH[0]}/{SDK}" : $"{UWP_PATH}/{UWP_ARCH[1]}/{SDK}";
-
-                if(pi.assetPath.Contains(sdkPath)) continue;
 
                 // pi.ClearSettings();
                 var dirty = false;
