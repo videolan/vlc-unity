@@ -49,9 +49,11 @@ vlc_unity_ldflags = []
 
 vlc_unity_deps = [ libvlc_dep ]
 
-corevideo_dep = dependency('CoreVideo', required: host_system == 'darwin')
-corefoundation_dep = dependency('CoreFoundation', required: host_system == 'darwin')
-foundation_dep = dependency('Foundation', required: host_system == 'darwin')
+if host_system == 'darwin'
+    corevideo_dep = dependency('CoreVideo', required: true)
+    corefoundation_dep = dependency('CoreFoundation', required: true)
+    foundation_dep = dependency('Foundation', required: true)
+endif
 
 if host_system == 'darwin'
     add_project_arguments('-DGL_SILENCE_DEPRECATION=1', language: 'objcpp')
@@ -85,6 +87,10 @@ elif host_system == 'windows'
     endif
 elif host_system == 'linux'
     plugin_sources += [ egl_sources ]
+elif host_system == 'android'
+    vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log') ]
+    vlc_unity_cppflags += [ '-DSUPPORT_OPENGL_ES=1', '-DUNITY_ANDROID=1' ]
+    plugin_sources += [ android_sources, egl_sources ]
 endif
 
 if have_ios or have_tvos
@@ -113,6 +119,7 @@ if have_osx
 endif
 
 if get_option('watermark')
+  plugin_sources += [ watermark_sources ]
   vlc_unity_cppflags += [ '-DSHOW_WATERMARK' ]
 endif
 
@@ -120,7 +127,7 @@ vlc_unity_plugin = library(
     'VLCUnityPlugin',
     plugin_sources,
     include_directories: plugin_include_dirs,
-    version: '1.0.0', # TODO
+    version: '1.0.0', # TODO,
     dependencies: vlc_unity_deps,
     install: true
 )

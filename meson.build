@@ -100,7 +100,13 @@ if have_ios
     add_project_arguments('-DUNITY_IPHONE=1', language: ['c', 'cpp', 'objc'])
 endif
 
+if host_system == 'android' 
+    add_project_arguments('-DUNITY_ANDROID=1', language: ['c', 'cpp' ])
+endif
+
 if have_osx
+    add_project_arguments('-DUNITY_OSX=1', 
+        language: ['c', 'cpp', 'objc'])
     add_project_arguments('-mmacosx-version-min=10.11',
         language: ['c', 'cpp', 'objc'])
     add_project_link_arguments('-mmacosx-version-min=10.11',
