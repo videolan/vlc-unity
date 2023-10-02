@@ -2,7 +2,7 @@
 #include "RenderAPI.h"
 #include "Log.h"
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID)
 #  include "watermark.png.h"
 #  include <fstream>
 #endif

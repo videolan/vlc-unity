@@ -1,7 +1,7 @@
 project('VLC-Unity', ['cpp'],
     version: '4.0.0-dev',
     default_options: ['cpp_std=c++14'],
-    meson_version: '>=0.60.0')
+    meson_version: '>=0.56.0')
 
 vlc_copyright_years = '1996-2018'
 vlc_version_codename = 'Otto Chriek'
@@ -21,8 +21,7 @@ vlc_version_parts = vlc_version_full.split('-')[0].split('.')
 vlc_version_type  = vlc_version_full.split('-').get(1, '')
 
 if (vlc_version_parts.length() < 3 or vlc_version_parts.length() > 4)
-    error(f'Unexpected project version "@vlc_version_full@".',
-          'Expected a format of major.minor.revision[.extra][-dev]')
+    error('Unexpected project version @0@. Expected a format of major.minor.revision[.extra][-dev]'.format(vlc_version_full))
 endif
 
 vlc_version_major    = vlc_version_parts[0].to_int()
@@ -31,10 +30,11 @@ vlc_version_revision = vlc_version_parts[2].to_int()
 vlc_version_extra    = vlc_version_parts.get(3, '0').to_int()
 
 # Short version (major.minor.revision)
-vlc_version_short = f'@vlc_version_major@.@vlc_version_minor@.@vlc_version_revision@'
+vlc_version_short = '@0@.@1@.@2@'.format(vlc_version_major, vlc_version_minor, vlc_version_revision)
 
 # Normal VLC version (major.minor.revision[-dev])
-vlc_version = vlc_version_short + ((vlc_version_type != '') ? f'-@vlc_version_type@' : '')
+
+vlc_version = vlc_version_short + ((vlc_version_type != '') ? '-@0@'.format(vlc_version_type) : '')
 
 vlc_package_name = meson.project_name().to_lower()
 
@@ -164,7 +164,7 @@ endif
 
 cdata.set_quoted('VERSION',         vlc_version)
 cdata.set_quoted('PACKAGE_VERSION', vlc_version)
-cdata.set_quoted('VERSION_MESSAGE', f'@vlc_version@ @vlc_version_codename@')
+cdata.set_quoted('VERSION_MESSAGE', '@0@ @1@'.format(vlc_version, vlc_version_codename))
 
 cdata.set('VERSION_MAJOR',      vlc_version_major)
 cdata.set('VERSION_MINOR',      vlc_version_minor)
@@ -183,9 +183,9 @@ cdata.set('LIBVLC_ABI_MICRO', libvlc_abi_version_micro)
 
 cdata.set_quoted('PACKAGE',             vlc_package_name)
 cdata.set_quoted('PACKAGE_NAME',        vlc_package_name)
-cdata.set_quoted('PACKAGE_STRING',      f'@vlc_package_name@ @vlc_version@')
+cdata.set_quoted('PACKAGE_STRING',      '@0@ @1@'.format(vlc_package_name, vlc_version))
 cdata.set_quoted('COPYRIGHT_YEARS',     vlc_copyright_years)
-cdata.set_quoted('COPYRIGHT_MESSAGE',   f'Copyright © @vlc_copyright_years@ the VideoLAN team')
+cdata.set_quoted('COPYRIGHT_MESSAGE',   'Copyright © @0@ the VideoLAN team'.format(vlc_copyright_years))
 
 # Compiler and build system info
 cdata.set_quoted('VLC_COMPILER',        cc.get_id() + ' ' + cc.version())

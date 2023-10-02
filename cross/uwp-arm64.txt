@@ -1,0 +1,20 @@
+[binaries]
+c = 'aarch64-w64-mingw32-gcc'
+cpp = 'aarch64-w64-mingw32-g++'
+ar = 'aarch64-w64-mingw32-ar'
+strip = 'aarch64-w64-mingw32-strip'
+exe_wrapper = 'wine64'
+pkgconfig = 'pkg-config'
+
+[built-in options]
+c_args = ['-DWINAPI_FAMILY=WINAPI_FAMILY_APP']
+cpp_args = ['-DWINAPI_FAMILY=WINAPI_FAMILY_APP']
+
+[host_machine]
+system = 'windows'
+cpu_family = 'aarch64'
+cpu = 'armv8'
+endian = 'little'
+
+[properties]
+skip_sanity_check = true

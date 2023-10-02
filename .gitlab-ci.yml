@@ -9,10 +9,7 @@ variables:
     VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20230614051113
 
 .variables-trial: &variables-trial
-    ARGS_TRIAL: -t
-
-.variables-trial-opengl: &variables-trial-opengl
-    ARGS_TRIAL_OPENGL: -Dwatermark=true
+    ARGS_TRIAL: -Dwatermark=true
 
 .base-template:
     tags:
@@ -24,19 +21,12 @@ variables:
             - nightlies/*
         expire_in: 2 weeks
 
-.variables-windows-x64: &variables-windows-x64
-        ARCH: x86_64
-
-.variables-uwp-arm64: &variables-uwp-arm64
-        ARCH: ARM64
-
 .variables-windows-classic: &variables-windows-classic
-        PLATFORM: win
-        OUTPUT_PATH: Windows
+        PLATFORM: windows
+        CROSSFILE: windows-x86_64.txt
 
 .variables-windows-uwp: &variables-windows-uwp
         PLATFORM: uwp
-        OUTPUT_PATH: WSA/UWP
 
 # ANDROID
 
@@ -76,7 +66,7 @@ variables:
     stage: build-unity-plugin
     script:
         - export PATH="$HOME/sandbox/bin:$PATH"
-        - PKG_CONFIG_PATH=./vlc-android/libvlcjni/libvlc/jni/pkgconfig/${ANDROID_ABI} meson setup --cross-file=cross/android-${ANDROID_ABI}-ndk25.txt build_android_${ANDROID_ABI} ${ARGS_TRIAL_OPENGL} --buildtype release
+        - PKG_CONFIG_PATH=./vlc-android/libvlcjni/libvlc/jni/pkgconfig/${ANDROID_ABI} meson setup --cross-file=cross/android-${ANDROID_ABI}-ndk25.txt build_android_${ANDROID_ABI} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_android_${ANDROID_ABI}
     artifacts:
         paths:
@@ -132,14 +122,14 @@ unity-android-x86_64:
 unity-android-armv7-trial:
     extends: .unity-android-common
     variables:
-      <<: [*variables-android-armv7, *variables-trial-opengl]
+      <<: [*variables-android-armv7, *variables-trial]
     dependencies:
       - libvlc-android-armv7
 
 unity-android-armv8-trial:
     extends: .unity-android-common
     variables:
-      <<: [*variables-android-armv8, *variables-trial-opengl]
+      <<: [*variables-android-armv8, *variables-trial]
     dependencies:
       - libvlc-android-armv8
 
@@ -163,15 +153,13 @@ unity-android-armv8-trial:
         - cd ./vlc/$BUILD_FOLDER
         - make package-win-strip
         - rm -rf vlc-4.0.0-dev/lua/http
-        - 7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $ARTIFACT $OUTPUT
-        - cp $ARTIFACT ../../nightlies
     artifacts:
         paths:
-            - nightlies/*
+            - vlc/${BUILD_FOLDER}/vlc-4.0.0-dev
+            - vlc/${BUILD_FOLDER}/_win32
         expire_in: 2 weeks
     variables:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
-        OUTPUT: ./vlc-4.0.0-dev
 
 .unity-win-common:
     image:
@@ -181,16 +169,12 @@ unity-android-armv8-trial:
         - amd64
     stage: build-unity-plugin
     script:
-        - 7z x ./nightlies/vlc-4.0.0-dev-win64.7z -o./build
-        - mkdir -p Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}
-        - cp -R ./build/vlc-4.0.0-dev/{libvlc.dll,libvlccore.dll,hrtfs,lua,plugins} Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}
-        - cp -r ./build/vlc-4.0.0-dev/sdk/ PluginSource/
-        - ./build.sh -a ${ARCH} -p ${PLATFORM} -r ${ARGS_TRIAL}
-    after_script:
-        - cp Assets/VLCUnity/Plugins/${OUTPUT_PATH}/${ARCH}/VLCUnityPlugin.dll nightlies
+        - PKG_CONFIG_PATH=./vlc/${BUILD_FOLDER}/_win32/lib/pkgconfig meson setup build_${PLATFORM} --cross-file=cross/${CROSSFILE} ${ARGS_TRIAL} --buildtype release
+        - ninja -C build_${PLATFORM}
+        - mv build_${PLATFORM}/PluginSource/libVLCUnityPlugin-1.dll VLCUnityPlugin.dll
     artifacts:
         paths:
-            - nightlies/*
+            - VLCUnityPlugin.dll
         expire_in: 2 weeks
 
 libvlc-win-x86_64-debug:
@@ -243,35 +227,43 @@ unity-plugin-windows:
     dependencies:
       - libvlc-win-x86_64
     variables: 
-      <<: [*variables-windows-x64, *variables-windows-classic]
+        <<: [*variables-windows-classic]
+        BUILD_FOLDER: win64
 
 unity-plugin-windows-trial:
     extends: .unity-win-common
     dependencies:
       - libvlc-win-x86_64
     variables:
-      <<: [*variables-windows-x64, *variables-trial, *variables-windows-classic]
+        <<: [*variables-trial, *variables-windows-classic]
+        BUILD_FOLDER: win64
 
 unity-plugin-uwp-x64:
     extends: .unity-win-common
     dependencies:
       - libvlc-uwp-x64
     variables: 
-      <<: [*variables-windows-x64, *variables-windows-uwp]
-
-unity-plugin-uwp-arm64:
-    extends: .unity-win-common
-    dependencies:
-      - libvlc-uwp-arm64
-    variables: 
-      <<: [*variables-uwp-arm64, *variables-windows-uwp]
+        <<: [*variables-windows-uwp]
+        BUILD_FOLDER: win64-uwp
+        CROSSFILE: uwp-x86_64.txt
 
 unity-plugin-uwp-x64-trial:
     extends: .unity-win-common
     dependencies:
       - libvlc-uwp-x64
     variables:
-      <<: [*variables-windows-x64, *variables-trial, *variables-windows-uwp]
+        <<: [*variables-trial, *variables-windows-uwp]
+        BUILD_FOLDER: win64-uwp
+        CROSSFILE: uwp-x86_64.txt
+
+unity-plugin-uwp-arm64:
+    extends: .unity-win-common
+    dependencies:
+      - libvlc-uwp-arm64
+    variables: 
+        <<: [*variables-windows-uwp]
+        BUILD_FOLDER: winarm64-uwp
+        CROSSFILE: uwp-arm64.txt
 
 # libvlc mac
 
@@ -320,7 +312,7 @@ libvlc-macos-aarch64:
         - sed -i '' "1s|.*|prefix=$(pwd | sed 's#/#\\\/#g')|" lib/pkgconfig/libvlc.pc
         - export PATH="$HOME/sandbox/bin:$PATH"
         - cd ../../..
-        - PKG_CONFIG_PATH=./vlc/build/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL_OPENGL} --buildtype release
+        - PKG_CONFIG_PATH=./vlc/build/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${ARCH}
         - mv "build_${ARCH}/PluginSource/libVLCUnityPlugin.1.dylib" "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
     artifacts:
@@ -342,7 +334,7 @@ unity-plugin-macos-x86_64-trial:
     dependencies:
         - libvlc-macos-x86_64
     variables:
-      <<: [*variables-macos-x64, *variables-trial-opengl]
+      <<: [*variables-macos-x64, *variables-trial]
     tags:
         - monterey
         - amd64
@@ -405,7 +397,7 @@ libvlc-ios-arm64:
         - sed -i '' "1s|.*|prefix=$(pwd | sed 's#/#\\\/#g')|" lib/pkgconfig/libvlc.pc
         - cd ../../..
         - export PATH="$HOME/sandbox/bin:$PATH"
-        - PKG_CONFIG_PATH=./vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/pkgconfig meson setup --cross-file=cross/$SDKNAME.txt build_${SHORT_ARCH} ${ARGS_TRIAL_OPENGL} --buildtype release
+        - PKG_CONFIG_PATH=./vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/pkgconfig meson setup --cross-file=cross/$SDKNAME.txt build_${SHORT_ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${SHORT_ARCH}
         - ./copy_ios.sh vlc/build/vlc-$SDKNAME-$SHORT_ARCH $SHORT_ARCH
     artifacts:
@@ -422,7 +414,7 @@ unity-plugin-ios-aarch64:
 unity-plugin-ios-aarch64-trial:
     extends: .unity-plugin-ios-common
     variables:
-      <<: [*variables-ios-arm64, *variables-trial-opengl]
+      <<: [*variables-ios-arm64, *variables-trial]
     dependencies:
         - libvlc-ios-arm64
 
