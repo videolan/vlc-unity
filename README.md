@@ -1,12 +1,12 @@
 <h3 align="center">
-    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="/images/Social_Media_Image_1200x630.png"/></a>
+    <a href="https://videolabs.io/store/unity"><img src="/images/Social_Media_Image_1200x630.png"/></a>
 </h3>
 
 # VLC for Unity
 
 [![Join the chat at https://discord.gg/3h3K3JF](https://img.shields.io/discord/716939396464508958?label=discord)](https://discord.gg/3h3K3JF)
 
-This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Unity Store](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
+This repository contains the native Unity plugin that bridges [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with LibVLC for performance oriented video rendering in Unity3D applications and games. Available on the [Videolabs Store](https://videolabs.io/store).
 
 - [VLC for Unity](#VLC-for-Unity)
   - [LibVLC Features](#libVLC-Features)
@@ -61,7 +61,7 @@ And more.
 
 ## Installation
 
-The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://assetstore.unity.com/publishers/39987). This also ensures you get commercial support with your build.
+The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://videolabs.io/store/unity). This also ensures you get commercial support with your build.
 
 | Platform          |  Unity Store Asset                              |
 | ----------------- | ----------------------------------------------- |
@@ -69,9 +69,9 @@ The recommended way to install the VLC for Unity plugin is through the [Unity St
 | UWP               | [![VLCUnityBadge]][VLCUnityUWP]                 |
 | Android           | [![VLCUnityBadge]][VLCUnityAndroid]             |
 
-[VLCUnityWindows]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979
-[VLCUnityUWP]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-uwp-246153
-[VLCUnityAndroid]: https://assetstore.unity.com/packages/tools/video/vlc-for-unity-android-213786
+[VLCUnityWindows]: https://videolabs.io/store/unity
+[VLCUnityUWP]: https://videolabs.io/store/unity
+[VLCUnityAndroid]: https://videolabs.io/store/unity
 
 [VLCUnityBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
 
@@ -91,7 +91,7 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 ## Support
 
-Support is done on a volunteer base, professional support is only available for [paying customers](https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979).
+Support is done on a volunteer base, professional support is only available for [paying customers](https://videolabs.io/store).
 
 ### StackOverflow
 
@@ -198,5 +198,5 @@ Licensed under the LGPL 2.1 and proprietary license via [Videolabs](https://vide
 
 <br/>
 <div align="center">
-    <a href="https://assetstore.unity.com/packages/tools/video/vlc-for-unity-windows-133979"><img src="images/Icon_Image_160x160.png"/></a>
+    <a href="https://videolabs.io/store/unity"><img src="images/Icon_Image_160x160.png"/></a>
 </div>
