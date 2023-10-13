@@ -133,27 +133,6 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 Check out the [NEWS](NEWS) file for details about each release.
 
-## Building
-
-### Windows
-
-- Download and install https://github.com/mstorsjo/llvm-mingw on latest Debian (WSL or otherwise). Add it to path.
-- run `./get-libvlc-windows.sh` to download a win64 llvm libvlc 4 build.
-- Build with
-```
-./build.sh
-```
-This will produce a `VLCUnityPlugin.dll` which you can use with LibVLCSharp in your Unity project
-- Extract the `vlc-cache-gen.exe` binary from the nightly build archive. Drag and drop the `plugins` folder onto it. Or just run the Unity scene with `_libVLC = new LibVLC("--reset-plugins-cache");`. This will produce a `plugins.dat` file in the `plugins` folder.
-
-### Android
-
-After having built libvlc 4+ for android, extract the .jar classes from the JNI binding in addition to the .so binaries and type:
-
-```bash
-./build.sh -p android -a armeabi-v7a
-```
-
 ## Debugging
 
 Editor crash location: `C:\Users\YourUserName\AppData\Local\Temp\Unity\Editor\Crashes`
