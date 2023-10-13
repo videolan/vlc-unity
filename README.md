@@ -61,9 +61,9 @@ And more.
 
 ## Installation
 
-The recommended way to install the VLC for Unity plugin is through the [Unity Store](https://videolabs.io/store/unity). This also ensures you get commercial support with your build.
+The recommended way to install the VLC for Unity plugin is through the [Videolabs Store](https://videolabs.io/store/unity). This also ensures you get commercial support with your build.
 
-| Platform          |  Unity Store Asset                              |
+| Platform          |  Videolabs Store Asset                          |
 | ----------------- | ----------------------------------------------- |
 | Windows           | [![VLCUnityBadge]][VLCUnityWindows]             |
 | UWP               | [![VLCUnityBadge]][VLCUnityUWP]                 |
@@ -157,7 +157,7 @@ Distribution can be defined as _the way in which you acquire a piece of software
 The whole of the VLC for Unity asset is open-source. Which means that you can definitely build it yourself and use it, for free.
 Depending on your experience building native and managed code, it can be a challenging (yet rewarding) endeavor.
 
-For convenience, [Videolabs](https://videolabs.io/) provides the already built binaries through the Unity Store platform. Building and publishing these assets properly takes time and skill, this is the reason for the financial cost.
+For convenience, [Videolabs](https://videolabs.io/) provides the already built binaries through the Videolabs Store. Building and publishing these assets properly takes time and skill, this is the reason for the financial cost.
 
 ### Support
 
