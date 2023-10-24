@@ -102,7 +102,7 @@ namespace Videolabs.VLCUnity.Editor
 
                 var dirty = false;
 
-                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
+                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
                 {
                     pi.SetCompatibleWithAnyPlatform(false);
                     pi.SetCompatibleWithEditor(true);
@@ -111,12 +111,31 @@ namespace Videolabs.VLCUnity.Editor
                     dirty = true;
                 }
 
-                // TODO
-                var cpu = pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU");
-                if(cpu != "x86_64")
+                if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
                 {
-                    pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
-                    dirty = true;
+                    if(pi.GetCompatibleWithEditor())
+                    {
+                        pi.SetCompatibleWithEditor(false);
+                        dirty = true;
+                    }
+                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
+                        dirty = true;
+                    }
+                }
+                else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
+                {
+                    if(!pi.GetCompatibleWithEditor())
+                    {
+                        pi.SetCompatibleWithEditor(true);
+                        dirty = true;
+                    }
+                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
+                        dirty = true;
+                    }
                 }
 
                 if(dirty)
