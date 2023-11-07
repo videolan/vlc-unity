@@ -315,6 +315,7 @@ libvlc-macos-aarch64:
         - PKG_CONFIG_PATH=./vlc/build/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${ARCH}
         - mv "build_${ARCH}/PluginSource/libVLCUnityPlugin.1.dylib" "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
+        - install_name_tool -add_rpath @loader_path/ build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib
     artifacts:
         paths:
             - "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
