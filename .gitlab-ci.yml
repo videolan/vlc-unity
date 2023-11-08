@@ -281,9 +281,19 @@ unity-plugin-uwp-arm64:
         - git clone https://code.videolan.org/videolan/vlc && cd vlc   
         - mkdir build && cd build
         - ../extras/package/macosx/build.sh ${ARGS} -a ${ARCH}
+        # remove sym files
+        - rm -rf macos-install/lib/libvlc.dylib
+        - rm -rf macos-install/lib/libvlccore.dylib
+        - mv macos-install/lib/libvlc.12.dylib macos-install/lib/libvlc.dylib
+        - mv macos-install/lib/libvlccore.9.dylib macos-install/lib/libvlccore.dylib
     artifacts:
         paths:
-            - vlc/build/macos-install/*
+            - vlc/build/macos-install/include/*
+            - vlc/build/macos-install/libexec/*
+            - vlc/build/macos-install/lib/pkgconfig/*
+            - vlc/build/macos-install/lib/vlc/**/*.dylib
+            - vlc/build/macos-install/lib/libvlc.dylib
+            - vlc/build/macos-install/lib/libvlccore.dylib
         expire_in: 2 weeks
     variables:
         ARGS: -i z -c -g l
