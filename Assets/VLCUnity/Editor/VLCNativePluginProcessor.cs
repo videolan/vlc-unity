@@ -3,6 +3,7 @@
 #endif
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Linq;
 using System.IO;
 using UnityEngine;
@@ -52,7 +53,6 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureUWPNativePlugins();
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
-            ConfigureMacOSNativePlugins();
         }
 
         void ConfigureWindowsNativePlugins()
@@ -81,61 +81,6 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     pi.SetPlatformData(BuildTarget.StandaloneWindows64, "CPU", "x86_64");
                     dirty = true;
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
-            }
-        }
-
-        void ConfigureMacOSNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin) continue;
-
-                if(!pi.assetPath.Contains(MACOS_PATH)) continue;
-                // pi.ClearSettings();
-
-                var dirty = false;
-
-                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
-
-                    dirty = true;
-                }
-
-                if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
-                {
-                    if(pi.GetCompatibleWithEditor())
-                    {
-                        pi.SetCompatibleWithEditor(false);
-                        dirty = true;
-                    }
-                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-                else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
-                {
-                    if(!pi.GetCompatibleWithEditor())
-                    {
-                        pi.SetCompatibleWithEditor(true);
-                        dirty = true;
-                    }
-                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
-                    {
-                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
-                        dirty = true;
-                    }
                 }
 
                 if(dirty)
@@ -266,6 +211,120 @@ namespace Videolabs.VLCUnity.Editor
 
             foreach (var dir in Directory.GetDirectories(srcPath))
                 CopyAndReplaceDirectory(dir, Path.Combine(dstPath, Path.GetFileName(dir)));
+        }
+
+        [PostProcessBuildAttribute(1)]
+        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
+        {
+            if (buildTarget == BuildTarget.StandaloneOSX)
+                OnPostprocessBuildMac(path);
+        }
+
+        internal static void OnPostprocessBuildMac(string path)
+        {
+            PluginImporter[] importers = PluginImporter.GetAllImporters();
+
+            foreach (PluginImporter pi in importers)
+            {
+                if(!pi.isNativePlugin) continue;
+
+                if(!pi.assetPath.Contains(MACOS_PATH)) continue;
+                // pi.ClearSettings();
+
+                var dirty = false;
+
+                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
+                {
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+
+                    dirty = true;
+                }
+
+                // AnyCPU / macOS universal binary is not yet supported.
+                if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
+                {
+                    if(pi.GetCompatibleWithEditor())
+                    {
+                        pi.SetCompatibleWithEditor(false);
+                        dirty = true;
+                    }
+                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
+                        dirty = true;
+                    }
+                }
+                else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
+                {
+                    if(!pi.GetCompatibleWithEditor())
+                    {
+                        pi.SetCompatibleWithEditor(true);
+                        dirty = true;
+                    }
+                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
+                        dirty = true;
+                    }
+                }
+
+                if(dirty)
+                {
+                    pi.SaveAndReimport();
+                }
+            }
+
+            if(path.EndsWith(".app"))
+            {
+                // "Create XCode Project" is unchecked
+                return;
+            }
+
+            // XCode patching
+            var projectPath = Path.Combine(path, Path.GetFileName(path) + ".xcodeproj", "project.pbxproj");
+
+            string originalPbxprojContent = File.ReadAllText(projectPath);
+
+            Regex regex = new Regex(@"VALID_ARCHS\s*=\s*([^;]+)");
+            Match match = regex.Match(originalPbxprojContent);
+
+            bool appleSiliconBuild = false;
+
+            if (match.Success)
+            {
+                string arch = match.Groups[1].Value;
+                if(arch == "arm64")
+                {
+                    appleSiliconBuild = true;
+                }
+                else if(arch == "x86_64")
+                {
+                    appleSiliconBuild = false;
+                }
+                else // likely "arm64 x86_64"
+                {
+                    Debug.LogError("Universal macOS binary is not yet supported, reach out on our gitlab for updates");
+                }
+            }
+            else
+            {
+                Debug.LogError("No CPU target found while parsing the XCode project file.");
+            }
+
+            string pattern = @"(path\s*=\s*""[^""]*/Plugins/)([^""]+\.dylib)"";";
+            string replacement;
+            if (appleSiliconBuild)
+            {
+                replacement = @"$1ARM64/$2"";";
+            }
+            else
+            {
+                replacement = @"$1x86_64/$2"";";
+            }
+            string modifiedContent = Regex.Replace(originalPbxprojContent, pattern, replacement);
+            File.WriteAllText(projectPath, modifiedContent);
         }
 
 #if UNITY_IPHONE
