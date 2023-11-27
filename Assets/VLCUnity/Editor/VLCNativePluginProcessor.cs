@@ -313,15 +313,15 @@ namespace Videolabs.VLCUnity.Editor
                 Debug.LogError("No CPU target found while parsing the XCode project file.");
             }
 
-            string pattern = @"(path\s*=\s*""[^""]*/Plugins/)([^""]+\.dylib)"";";
+            string pattern = @"(path\s*=\s*""[^""]*/Plugins/)(ARM64/|x86_64/)?([^""]+\.dylib)"";";
             string replacement;
             if (appleSiliconBuild)
             {
-                replacement = @"$1ARM64/$2"";";
+                replacement = @"$1ARM64/$3"";";
             }
             else
             {
-                replacement = @"$1x86_64/$2"";";
+                replacement = @"$1x86_64/$3"";";
             }
             string modifiedContent = Regex.Replace(originalPbxprojContent, pattern, replacement);
             File.WriteAllText(projectPath, modifiedContent);
