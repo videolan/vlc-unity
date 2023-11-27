@@ -76,6 +76,11 @@ crashlytics-build.properties
 PluginSource/include/**
 PluginSource/sdk/**
 PluginSource/sdk.meta
-/Assets/VLCUnity/Plugins/**
+/Assets/VLCUnity/Plugins/**/*.meta
+/Assets/VLCUnity/Plugins/**/*.jar
+/Assets/VLCUnity/Plugins/**/*.dll
+/Assets/VLCUnity/Plugins/**/*.json
+/Assets/VLCUnity/Plugins/**/*.xml
+/Assets/VLCUnity/Plugins/**/*.dylib
 /Assets/AssetStoreTools/
 /Assets/AssetStoreTools.meta
