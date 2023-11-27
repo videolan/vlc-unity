@@ -272,15 +272,13 @@ namespace Videolabs.VLCUnity.Editor
         [PostProcessBuildAttribute(1)]
         public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
         {
-            Debug.Log("BUILD POSTPROCESS: " + path);
-
             if (buildTarget == BuildTarget.iOS)
                 OnPostprocessBuildiPhone(path);
         }
 
         internal static void AddIOSPlugin(PBXProject proj, string target, string plugin)
         {
-          Debug.Log("BUILD POSTPROCESS: adding plugin " + plugin);
+//          Debug.Log("BUILD POSTPROCESS: adding plugin " + plugin);
 
           string fileName = Path.GetFullPath(plugin);
           string fileRef = proj.AddFile(fileName, plugin, PBXSourceTree.Source);
@@ -310,7 +308,50 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     continue;
                 }
-                AddIOSPlugin(proj, target, pi.assetPath);
+
+                var isX64 = pi.assetPath.Contains("iOS/x86_64");
+
+                // pi.ClearSettings();
+                var dirty = false;
+                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                {
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(false);
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
+
+                    dirty = true;
+                }
+
+                var cpu = pi.GetPlatformData(BuildTarget.iOS, "CPU");
+
+                if(isX64)
+                {
+                    if(cpu != "X64")
+                    {
+                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "X64");
+                        dirty = true;
+                    }
+                }
+                else
+                {
+                    if(cpu != "ARM64")
+                    {
+                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "ARM64");
+                        dirty = true;
+                    }
+                }
+
+                if(dirty)
+                {
+                    pi.SaveAndReimport();
+                }
+
+                // XCode patching
+                if((PlayerSettings.iOS.sdkVersion == iOSSdkVersion.DeviceSDK && !isX64)
+                    || (PlayerSettings.iOS.sdkVersion == iOSSdkVersion.SimulatorSDK && isX64))
+                {
+                    AddIOSPlugin(proj, target, pi.assetPath);
+                }
             }
             File.WriteAllText(projPath, proj.WriteToString());
         }
