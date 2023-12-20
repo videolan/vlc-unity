@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -223,6 +224,7 @@ namespace Videolabs.VLCUnity.Editor
         internal static void OnPostprocessBuildMac(string path)
         {
             PluginImporter[] importers = PluginImporter.GetAllImporters();
+            var isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
 
             foreach (PluginImporter pi in importers)
             {
@@ -247,7 +249,7 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     if(pi.GetCompatibleWithEditor())
                     {
-                        pi.SetCompatibleWithEditor(false);
+                        pi.SetCompatibleWithEditor(isArm64Host);
                         dirty = true;
                     }
                     if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
@@ -260,7 +262,7 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     if(!pi.GetCompatibleWithEditor())
                     {
-                        pi.SetCompatibleWithEditor(true);
+                        pi.SetCompatibleWithEditor(!isArm64Host);
                         dirty = true;
                     }
                     if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
