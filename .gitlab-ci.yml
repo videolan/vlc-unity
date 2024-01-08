@@ -449,11 +449,10 @@ unity-plugin-ios-x86_64:
         - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-6.0.100-linux-x64.tar.gz -C $HOME/dotnet
         - export DOTNET_ROOT=$HOME/dotnet
         - export PATH=$PATH:$HOME/dotnet
-        - dotnet --version
         - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
         - cd lvs
         - git checkout -f master
-        - dotnet publish src/LibVLCSharp/LibVLCSharp.csproj ${ARGS} -c Release
+        - dotnet build src/LibVLCSharp/LibVLCSharp.csproj ${ARGS} -c Release
     after_script:
         - mkdir nightlies
         - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/publish nightlies
