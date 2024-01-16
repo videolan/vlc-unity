@@ -217,11 +217,14 @@ namespace Videolabs.VLCUnity.Editor
         [PostProcessBuildAttribute(1)]
         public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
         {
-            if (buildTarget == BuildTarget.StandaloneOSX)
-                OnPostprocessBuildMac(path);
+            if (buildTarget == BuildTarget.StandaloneOSX || buildTarget == BuildTarget.iOS)
+            {
+                OnPostprocessBuildMac(buildTarget, path);
+                OnPostprocessBuildiPhone(path);
+            }
         }
 
-        internal static void OnPostprocessBuildMac(string path)
+        internal static void OnPostprocessBuildMac(BuildTarget buildTarget, string path)
         {
             PluginImporter[] importers = PluginImporter.GetAllImporters();
             var isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
@@ -244,12 +247,25 @@ namespace Videolabs.VLCUnity.Editor
                 }
 
                 // AnyCPU / macOS universal binary is not yet supported.
+
+                var isEditorCompatible = pi.GetCompatibleWithEditor();
                 if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
                 {
-                    if(pi.GetCompatibleWithEditor())
+                    if(isArm64Host)
                     {
-                        pi.SetCompatibleWithEditor(isArm64Host);
-                        dirty = true;
+                        if(!isEditorCompatible)
+                        {
+                            pi.SetCompatibleWithEditor(true);
+                            dirty = true;
+                        }
+                    }
+                    else
+                    {
+                        if(isEditorCompatible)
+                        {
+                            pi.SetCompatibleWithEditor(false);
+                            dirty = true;
+                        }
                     }
                     if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
                     {
@@ -259,10 +275,21 @@ namespace Videolabs.VLCUnity.Editor
                 }
                 else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
                 {
-                    if(!pi.GetCompatibleWithEditor())
+                    if(!isArm64Host)
                     {
-                        pi.SetCompatibleWithEditor(!isArm64Host);
-                        dirty = true;
+                        if(!isEditorCompatible)
+                        {
+                            pi.SetCompatibleWithEditor(true);
+                            dirty = true;
+                        }
+                    }
+                    else
+                    {
+                        if(isEditorCompatible)
+                        {
+                            pi.SetCompatibleWithEditor(false);
+                            dirty = true;
+                        }
                     }
                     if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
                     {
@@ -277,7 +304,7 @@ namespace Videolabs.VLCUnity.Editor
                 }
             }
 
-            if(path.EndsWith(".app"))
+            if(path.EndsWith(".app") || buildTarget != BuildTarget.StandaloneOSX)
             {
                 // "Create XCode Project" is unchecked
                 return;
@@ -326,14 +353,6 @@ namespace Videolabs.VLCUnity.Editor
             }
             string modifiedContent = Regex.Replace(originalPbxprojContent, pattern, replacement);
             File.WriteAllText(projectPath, modifiedContent);
-        }
-
-#if UNITY_IPHONE
-        [PostProcessBuildAttribute(1)]
-        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
-        {
-            if (buildTarget == BuildTarget.iOS)
-                OnPostprocessBuildiPhone(path);
         }
 
         internal static void AddIOSPlugin(PBXProject proj, string target, string plugin)
@@ -415,6 +434,5 @@ namespace Videolabs.VLCUnity.Editor
             }
             File.WriteAllText(projPath, proj.WriteToString());
         }
-#endif
     }
 }
