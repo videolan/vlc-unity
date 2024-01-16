@@ -238,7 +238,6 @@ namespace Videolabs.VLCUnity.Editor
                 if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
                 {
                     pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(true);
                     pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
 
                     dirty = true;
