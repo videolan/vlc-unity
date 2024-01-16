@@ -359,6 +359,16 @@ unity-plugin-macos-aarch64:
         - monterey
         - macos-m1
 
+unity-plugin-macos-aarch64-trial:
+    extends: .unity-plugin-macos-common
+    dependencies:
+        - libvlc-macos-aarch64
+    variables:
+      <<: [*variables-macos-aarch64, *variables-trial]
+    tags:
+        - monterey
+        - macos-m1
+
 # libvlc iOS
 
 .variables-ios-x64: &variables-ios-x64
