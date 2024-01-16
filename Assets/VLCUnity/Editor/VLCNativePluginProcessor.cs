@@ -54,6 +54,43 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureUWPNativePlugins();
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
+            ConfigureLibVLCSharp(target, path);
+        }
+
+        static void ConfigureLibVLCSharp(BuildTarget buildTarget, string path)
+        {
+            var libvlcsharpDlls = PluginImporter.GetAllImporters().Where(pi => pi.assetPath.EndsWith("LibVLCSharp.dll")).ToList();
+         
+            foreach(var pi in libvlcsharpDlls)
+            {
+                var dirty = false;
+                
+                if(pi.assetPath.Contains(IOS_PATH))
+                {
+                    if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(false);
+                        pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
+                        dirty = true;
+                    }
+                }
+                else
+                {
+                    if(!pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(true);
+                        pi.SetCompatibleWithEditor(true);
+                        pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
+                        dirty = true;
+                    }
+                }
+
+                if(dirty)
+                {
+                    pi.SaveAndReimport();
+                }
+            }
         }
 
         void ConfigureWindowsNativePlugins()
@@ -222,6 +259,8 @@ namespace Videolabs.VLCUnity.Editor
                 OnPostprocessBuildMac(buildTarget, path);
                 OnPostprocessBuildiPhone(path);
             }
+
+            ConfigureLibVLCSharp(buildTarget, path);
         }
 
         internal static void OnPostprocessBuildMac(BuildTarget buildTarget, string path)
