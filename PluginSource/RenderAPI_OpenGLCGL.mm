@@ -93,8 +93,7 @@ RenderAPI_OpenGLCGL::RenderAPI_OpenGLCGL(UnityGfxRenderer apiType)
 
 void RenderAPI_OpenGLCGL::swap()
 {
-    //DEBUG("output callback SWAP");
-    DEBUG("[GLCGL] swapping");
+    //DEBUG("[GLCGL] swapping");
     std::lock_guard<std::mutex> lock(text_lock);
     updated = true;
 
