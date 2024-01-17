@@ -54,42 +54,35 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureUWPNativePlugins();
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
-            ConfigureLibVLCSharp(target, path);
+            ConfigureLibVLCSharp();
         }
 
-        static void ConfigureLibVLCSharp(BuildTarget buildTarget, string path)
+        static void ConfigureLibVLCSharp()
         {
             var libvlcsharpDlls = PluginImporter.GetAllImporters().Where(pi => pi.assetPath.EndsWith("LibVLCSharp.dll")).ToList();
          
             foreach(var pi in libvlcsharpDlls)
-            {
-                var dirty = false;
-                
+            {                
                 if(pi.assetPath.Contains(IOS_PATH))
                 {
-                    if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
-                    {
-                        pi.SetCompatibleWithAnyPlatform(false);
-                        pi.SetCompatibleWithEditor(false);
-                        pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
-                        dirty = true;
-                    }
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(false);
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
                 }
                 else
                 {
-                    if(!pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                    foreach(BuildTarget platform in System.Enum.GetValues(typeof(BuildTarget)))
                     {
-                        pi.SetCompatibleWithAnyPlatform(true);
-                        pi.SetCompatibleWithEditor(true);
-                        pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
-                        dirty = true;
+                        if(platform != BuildTarget.iOS)
+                        {
+                            pi.SetCompatibleWithPlatform(platform, true);
+                        }
                     }
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
                 }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
+                pi.SaveAndReimport();
             }
         }
 
@@ -259,8 +252,6 @@ namespace Videolabs.VLCUnity.Editor
                 OnPostprocessBuildMac(buildTarget, path);
                 OnPostprocessBuildiPhone(path);
             }
-
-            ConfigureLibVLCSharp(buildTarget, path);
         }
 
         internal static void OnPostprocessBuildMac(BuildTarget buildTarget, string path)
