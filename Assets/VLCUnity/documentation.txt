@@ -49,8 +49,13 @@ For the Unity UWP target, we support:
 
 If you need 32 bit versions, feel free to email us with information regarding your use case at unity@videolabs.io
 
-
 In the publisher manifest, make sure the 'InternetClient' capability is enabled so that VLC can access remote streams.
+
+## iOS
+
+For the initial release, only ARM64 device builds are provided. Simulator support is not yet included.
+
+It is possible to test things via the Editor on macOS beforehand though, on both Apple Silicon and Apple Intel macOS.
 
 ## General
 

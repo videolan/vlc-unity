@@ -58,6 +58,10 @@ And more.
   - Minimum OS version: Android 4.2 (API 17).
   - ABIs supposed: armeabi-v7a, arm64-v8a, x86, x86_64.
   - Graphics API: OpenGL ES 2/3
+- iOS:
+  - Minimum OS version: iOS 9.
+  - ABI supported: ARM64. Simulator support will come later.
+  - Graphics API: Metal
 
 ## Installation
 
@@ -65,13 +69,12 @@ The recommended way to install the VLC for Unity plugin is through the [Videolab
 
 | Platform          |  Videolabs Store Asset                          |
 | ----------------- | ----------------------------------------------- |
-| Windows           | [![VLCUnityBadge]][VLCUnityWindows]             |
-| UWP               | [![VLCUnityBadge]][VLCUnityUWP]                 |
-| Android           | [![VLCUnityBadge]][VLCUnityAndroid]             |
+| Windows           | [![VLCUnityBadge]][VideolabsUnityStore]         |
+| UWP               | [![VLCUnityBadge]][VideolabsUnityStore]         |
+| Android           | [![VLCUnityBadge]][VideolabsUnityStore]         |
+| iOS               | [![VLCUnityBadge]][VideolabsUnityStore]         |
 
-[VLCUnityWindows]: https://videolabs.io/store/unity
-[VLCUnityUWP]: https://videolabs.io/store/unity
-[VLCUnityAndroid]: https://videolabs.io/store/unity
+[VideolabsUnityStore]: https://videolabs.io/store/unity
 
 [VLCUnityBadge]: https://img.shields.io/badge/Made%20with-Unity-57b9d3.svg?style=flat&logo=unity
 
@@ -115,7 +118,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Future platforms support
 
-- macOS, iOS, tvOS,
+- macOS, tvOS,
 - Browser,
 - Linux.
 
