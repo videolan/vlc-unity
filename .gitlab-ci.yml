@@ -455,7 +455,7 @@ unity-plugin-ios-x86_64:
         - dotnet build src/LibVLCSharp/LibVLCSharp.csproj ${ARGS} -c Release
     after_script:
         - mkdir nightlies
-        - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0/publish nightlies
+        - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0 nightlies
     artifacts:
         paths:
             - nightlies/*
