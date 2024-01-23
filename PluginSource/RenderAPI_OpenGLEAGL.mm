@@ -1,5 +1,5 @@
 /*****************************************************************************
- * RenderAPI_OpenGLEAGL.mm: MacOS OpenGL renderer to Metal
+ * RenderAPI_OpenGLEAGL.mm: iOS OpenGL renderer to Metal
  *****************************************************************************
  * Copyright (C) 2023 Videolabs
  *
