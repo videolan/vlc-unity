@@ -21,7 +21,7 @@
 #  include <mutex>
 //#endif
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
 #  include "RenderAPI_OpenGLWatermark.h"
 #endif
 
@@ -58,7 +58,7 @@ private:
     size_t idx_display = 2;
     bool updated = false;
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
     OpenGLWatermark watermark;
 #endif
 };

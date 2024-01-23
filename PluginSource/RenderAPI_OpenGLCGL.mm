@@ -97,7 +97,7 @@ void RenderAPI_OpenGLCGL::swap()
     std::lock_guard<std::mutex> lock(text_lock);
     updated = true;
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
     watermark.draw(that->fbo[that->idx_render], that->width, that->height);
 #endif
 

@@ -30,7 +30,7 @@ bool RenderAPI_OpenGLBase::setup(void **opaque,
 
     bool ret = true;
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
     //setup is called with no OpengGL context set
     that->makeCurrent(true);
 
@@ -59,7 +59,7 @@ void RenderAPI_OpenGLBase::cleanup(void* opaque)
 
     that->releaseFrameBufferResources();
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
     that->watermark.cleanup();
 #endif
 }
@@ -119,7 +119,7 @@ void RenderAPI_OpenGLBase::swap(void* opaque)
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
 
-#ifdef SHOW_WATERMARK
+#if defined(SHOW_WATERMARK)
     that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
 #endif
 
