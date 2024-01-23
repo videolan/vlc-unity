@@ -57,7 +57,7 @@ bool OpenGLWatermark::setup()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, watermark_raw);
 
     //I'm not sure we need a mipmap
-    glGenerateMipmap(GL_TEXTURE_2D);
+ //   glGenerateMipmap(GL_TEXTURE_2D); // this gives an error 502 on iOS
 
     //create OpenGL program
     static const char *vertexShaderSource = R"raw(
@@ -175,7 +175,7 @@ void OpenGLWatermark::draw(GLuint framebuffer, unsigned width, unsigned height)
     GLint oldProgram, oldVbo, oldTexture;
     GLboolean oldBlend;
     glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgram);
-    glGetIntegerv(GL_ARRAY_BUFFER, &oldVbo);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &oldVbo);
     glGetBooleanv(GL_BLEND, &oldBlend);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &oldTexture);
 

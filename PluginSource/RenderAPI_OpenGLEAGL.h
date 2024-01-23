@@ -8,6 +8,9 @@
 #import <CoreVideo/CVMetalTextureCache.h>
 #import <CoreVideo/CoreVideo.h>
 #include <mutex>
+//#if defined(SHOW_WATERMARK)
+#include "RenderAPI_OpenGLWatermark.h"
+//#endif
 
 typedef struct libvlc_media_player_t libvlc_media_player_t;
 
@@ -60,7 +63,7 @@ public:
 
     bool makeCurrent(bool current);
     static void* get_proc_address(void* /*data*/, const char* current);
-    void swap();
+    void swap(void* opaque);
 
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);
@@ -86,6 +89,10 @@ private:
     size_t idx_swap = 1;
     size_t idx_display = 2;
     bool updated;
+
+//#if defined(SHOW_WATERMARK)
+    OpenGLWatermark watermark;
+//#endif
 };
 
 #endif /* RENDER_API_OPENGL_CGL_H */

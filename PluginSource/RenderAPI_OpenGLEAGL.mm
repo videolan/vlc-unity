@@ -54,7 +54,7 @@ bool makeCurrent(void* data, bool current)
 void swap(void *data)
 {
     auto that = static_cast<RenderAPI_OpenGLEAGL*>(data);
-    that->swap();
+    that->swap(data);
 }
 
 }
@@ -76,18 +76,19 @@ RenderAPI_OpenGLEAGL::RenderAPI_OpenGLEAGL(UnityGfxRenderer apiType)
     (void)cvret;
 }
 
-void RenderAPI_OpenGLEAGL::swap()
+void RenderAPI_OpenGLEAGL::swap(void* opaque)
 {
-    //DEBUG("[GLEAGL] swapping");
-    std::lock_guard<std::mutex> lock(text_lock);
-    updated = true;
+    DEBUG("[GLEAGL] swapping");
+    RenderAPI_OpenGLEAGL* that = reinterpret_cast<RenderAPI_OpenGLEAGL*>(opaque);
+    std::lock_guard<std::mutex> lock(that->text_lock);
+    that->updated = true;
 
-#ifdef SHOW_WATERMARK
-    watermark.draw(that->fbo[that->idx_render], that->width, that->height);
-#endif
+// #if defined(SHOW_WATERMARK)
+    that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
+// #endif
+    std::swap(that->idx_swap, that->idx_render);
+    glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 
-    std::swap(idx_swap, idx_render);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo[idx_render]);
 }
 
 
@@ -137,7 +138,17 @@ bool RenderAPI_OpenGLEAGL::setup(void **opaque, const libvlc_video_setup_device_
     that->width = 0;
     that->height = 0;
 
-    return true;
+    bool ret = true;
+
+//#if defined(SHOW_WATERMARK)
+    //setup is called with no OpengGL context set
+    that->makeCurrent(true);
+
+    ret &= that->watermark.setup();
+
+    that->makeCurrent(false);
+//#endif
+    return ret;
 }
 
 void RenderAPI_OpenGLEAGL::cleanup(void* opaque)
@@ -146,6 +157,9 @@ void RenderAPI_OpenGLEAGL::cleanup(void* opaque)
 
     auto *that = static_cast<RenderAPI_OpenGLEAGL*>(opaque);
     that->releaseFrameBufferResources();
+//#if defined(SHOW_WATERMARK)
+     that->watermark.cleanup();
+//#endif
 }
 
 bool RenderAPI_OpenGLEAGL::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
