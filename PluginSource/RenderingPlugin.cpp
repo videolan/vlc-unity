@@ -95,7 +95,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     mp = libvlc_media_player_new(inst);
 
-#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID)
+#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID) && !defined(UNITY_IPHONE)
 #if !UWP
     std::ofstream outfile;
     outfile.open("logo.png", std::ofstream::binary);
