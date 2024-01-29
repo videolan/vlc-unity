@@ -83,9 +83,9 @@ void RenderAPI_OpenGLEAGL::swap(void* opaque)
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
 
-// #if defined(SHOW_WATERMARK)
+#if defined(SHOW_WATERMARK)
     that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
-// #endif
+#endif
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 
@@ -140,14 +140,14 @@ bool RenderAPI_OpenGLEAGL::setup(void **opaque, const libvlc_video_setup_device_
 
     bool ret = true;
 
-//#if defined(SHOW_WATERMARK)
+#if defined(SHOW_WATERMARK)
     //setup is called with no OpengGL context set
     that->makeCurrent(true);
 
     ret &= that->watermark.setup();
 
     that->makeCurrent(false);
-//#endif
+#endif
     return ret;
 }
 
@@ -157,9 +157,9 @@ void RenderAPI_OpenGLEAGL::cleanup(void* opaque)
 
     auto *that = static_cast<RenderAPI_OpenGLEAGL*>(opaque);
     that->releaseFrameBufferResources();
-//#if defined(SHOW_WATERMARK)
+#if defined(SHOW_WATERMARK)
      that->watermark.cleanup();
-//#endif
+#endif
 }
 
 bool RenderAPI_OpenGLEAGL::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
