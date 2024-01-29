@@ -78,7 +78,6 @@ RenderAPI_OpenGLEAGL::RenderAPI_OpenGLEAGL(UnityGfxRenderer apiType)
 
 void RenderAPI_OpenGLEAGL::swap(void* opaque)
 {
-    DEBUG("[GLEAGL] swapping");
     RenderAPI_OpenGLEAGL* that = reinterpret_cast<RenderAPI_OpenGLEAGL*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
