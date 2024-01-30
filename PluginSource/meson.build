@@ -134,5 +134,6 @@ vlc_unity_plugin = library(
     dependencies: vlc_unity_deps,
     install: true,
     link_args: vlc_unity_ldflags,
-    cpp_args: vlc_unity_cppflags + vlc_unity_cxxflags
+    cpp_args: vlc_unity_cppflags + vlc_unity_cxxflags,
+    objcpp_args: vlc_unity_cppflags + vlc_unity_cxxflags
 )
