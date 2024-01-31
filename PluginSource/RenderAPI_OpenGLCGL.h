@@ -59,7 +59,7 @@ public:
 
     bool makeCurrent(bool current);
     static void* get_proc_address(void* /*data*/, const char* current);
-    void swap();
+    void swap(void* opaque);
 
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);

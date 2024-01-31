@@ -54,7 +54,7 @@ bool makeCurrent(void* data, bool current)
 void swap(void *data)
 {
     auto that = static_cast<RenderAPI_OpenGLCGL*>(data);
-    that->swap();
+    that->swap(data);
 }
 
 }
@@ -91,18 +91,15 @@ RenderAPI_OpenGLCGL::RenderAPI_OpenGLCGL(UnityGfxRenderer apiType)
     (void)cvret;
 }
 
-void RenderAPI_OpenGLCGL::swap()
+void RenderAPI_OpenGLCGL::swap(void* opaque)
 {
     //DEBUG("[GLCGL] swapping");
-    std::lock_guard<std::mutex> lock(text_lock);
-    updated = true;
+    RenderAPI_OpenGLCGL* that = reinterpret_cast<RenderAPI_OpenGLCGL*>(opaque);
+    std::lock_guard<std::mutex> lock(that->text_lock);
+    that->updated = true;
 
-#if defined(SHOW_WATERMARK)
-    watermark.draw(that->fbo[that->idx_render], that->width, that->height);
-#endif
-
-    std::swap(idx_swap, idx_render);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo[idx_render]);
+    std::swap(that->idx_swap, that->idx_render);
+    glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }
 
 
