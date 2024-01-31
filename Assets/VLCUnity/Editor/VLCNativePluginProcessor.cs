@@ -250,7 +250,9 @@ namespace Videolabs.VLCUnity.Editor
             if (buildTarget == BuildTarget.StandaloneOSX || buildTarget == BuildTarget.iOS)
             {
                 OnPostprocessBuildMac(buildTarget, path);
+#if UNITY_IPHONE
                 OnPostprocessBuildiPhone(path);
+#endif
             }
         }
 
@@ -385,10 +387,9 @@ namespace Videolabs.VLCUnity.Editor
             File.WriteAllText(projectPath, modifiedContent);
         }
 
+#if UNITY_IPHONE
         internal static void AddIOSPlugin(PBXProject proj, string target, string plugin)
         {
-//          Debug.Log("BUILD POSTPROCESS: adding plugin " + plugin);
-
           string fileName = Path.GetFullPath(plugin);
           string fileRef = proj.AddFile(fileName, plugin, PBXSourceTree.Source);
           proj.AddFileToEmbedFrameworks(target, fileRef);
@@ -464,5 +465,6 @@ namespace Videolabs.VLCUnity.Editor
             }
             File.WriteAllText(projPath, proj.WriteToString());
         }
+#endif
     }
 }
