@@ -54,6 +54,7 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureUWPNativePlugins();
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
+            ConfigureMacOSNativePlugins();
             ConfigureLibVLCSharp();
         }
 
@@ -228,35 +229,7 @@ namespace Videolabs.VLCUnity.Editor
             }
         }
 
-        internal static void CopyAndReplaceDirectory(string srcPath, string dstPath)
-        {
-            if (Directory.Exists(dstPath))
-                Directory.Delete(dstPath);
-            if (File.Exists(dstPath))
-                File.Delete(dstPath);
-
-            Directory.CreateDirectory(dstPath);
-
-            foreach (var file in Directory.GetFiles(srcPath))
-                File.Copy(file, Path.Combine(dstPath, Path.GetFileName(file)));
-
-            foreach (var dir in Directory.GetDirectories(srcPath))
-                CopyAndReplaceDirectory(dir, Path.Combine(dstPath, Path.GetFileName(dir)));
-        }
-
-        [PostProcessBuildAttribute(1)]
-        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
-        {
-            if (buildTarget == BuildTarget.StandaloneOSX || buildTarget == BuildTarget.iOS)
-            {
-                OnPostprocessBuildMac(buildTarget, path);
-#if UNITY_IPHONE
-                OnPostprocessBuildiPhone(path);
-#endif
-            }
-        }
-
-        internal static void OnPostprocessBuildMac(BuildTarget buildTarget, string path)
+        void ConfigureMacOSNativePlugins()
         {
             PluginImporter[] importers = PluginImporter.GetAllImporters();
             var isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
@@ -335,7 +308,38 @@ namespace Videolabs.VLCUnity.Editor
                     pi.SaveAndReimport();
                 }
             }
+        }
 
+        internal static void CopyAndReplaceDirectory(string srcPath, string dstPath)
+        {
+            if (Directory.Exists(dstPath))
+                Directory.Delete(dstPath);
+            if (File.Exists(dstPath))
+                File.Delete(dstPath);
+
+            Directory.CreateDirectory(dstPath);
+
+            foreach (var file in Directory.GetFiles(srcPath))
+                File.Copy(file, Path.Combine(dstPath, Path.GetFileName(file)));
+
+            foreach (var dir in Directory.GetDirectories(srcPath))
+                CopyAndReplaceDirectory(dir, Path.Combine(dstPath, Path.GetFileName(dir)));
+        }
+
+        [PostProcessBuildAttribute(1)]
+        public static void OnPostprocessBuild(BuildTarget buildTarget, string path)
+        {
+            if (buildTarget == BuildTarget.StandaloneOSX || buildTarget == BuildTarget.iOS)
+            {
+                OnPostprocessBuildMac(buildTarget, path);
+#if UNITY_IPHONE
+                OnPostprocessBuildiPhone(path);
+#endif
+            }
+        }
+
+        internal static void OnPostprocessBuildMac(BuildTarget buildTarget, string path)
+        {
             if(path.EndsWith(".app") || buildTarget != BuildTarget.StandaloneOSX)
             {
                 // "Create XCode Project" is unchecked
