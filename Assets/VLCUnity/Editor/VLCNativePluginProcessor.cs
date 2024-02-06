@@ -72,16 +72,17 @@ namespace Videolabs.VLCUnity.Editor
                 }
                 else
                 {
-                    foreach(BuildTarget platform in System.Enum.GetValues(typeof(BuildTarget)))
-                    {
-                        if(platform != BuildTarget.iOS)
-                        {
-                            pi.SetCompatibleWithPlatform(platform, true);
-                        }
-                    }
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.XboxOne, true);
+
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
+
                     pi.SetCompatibleWithAnyPlatform(false);
                     pi.SetCompatibleWithEditor(true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
                 }
                 pi.SaveAndReimport();
             }
