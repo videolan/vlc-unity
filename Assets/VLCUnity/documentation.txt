@@ -57,6 +57,14 @@ For the initial release, only ARM64 device builds are provided. Simulator suppor
 
 It is possible to test things via the Editor on macOS beforehand though, on both Apple Silicon and Apple Intel macOS.
 
+## macOS
+
+Both Apple Silicon (ARM64) and Intel Macs builds are supported, in Editor and through XCode.
+
+The following build scenarios are currently unsupported for the beta release:
+- Triggering a "Build And Run" from the macOS Unity Editor directly is currently unsupported for macOS targets (builds only, editor runs or XCode builds work fine).
+- Universal builds (binaries with both Intel64 and Apple Silicon binaries) currently are not supported nor tested.
+
 ## General
 
 The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to get started quickly. 
