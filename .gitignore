@@ -83,5 +83,6 @@ PluginSource/sdk.meta
 /Assets/VLCUnity/Plugins/**/*.xml
 /Assets/VLCUnity/Plugins/**/*.dylib
 /Assets/VLCUnity/Plugins/**/*.luac
+/Assets/VLCUnity/Plugins/**/*.framework
 /Assets/AssetStoreTools/
 /Assets/AssetStoreTools.meta
