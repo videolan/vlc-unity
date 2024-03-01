@@ -30,7 +30,7 @@ cat <<EOF | plutil -convert binary1 -o - -- -
 	<key>CFBundleExecutable</key>
 	<string>${EXECUTABLE_NAME}</string>
 	<key>CFBundleName</key>
-  <string>${DISPLAY_NAME}</string>
+  	<string>${DISPLAY_NAME}</string>
 	<key>CFBundleIdentifier</key>
 	<string>${PRODUCT_BUNDLE_IDENTIFIER}</string>
 	<key>CFBundleName</key>
@@ -43,6 +43,8 @@ cat <<EOF | plutil -convert binary1 -o - -- -
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>MinimumOSVersion</key>
+	<string>9.0</string>
 </dict>
 </plist>
 EOF
