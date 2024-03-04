@@ -4,6 +4,10 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.2.0 iOS
+- Used newer Unity Editor to export iOS asset so that frameworks are included (cf https://forum.unity.com/threads/package-export-in-the-editor-does-not-include-ios-frameworks.1500851/)
+- Fixed plist error in XCode Itunes Connect validation. https://code.videolan.org/videolan/vlc-unity/-/commit/dddd6610991a809ef6f9ac0cb0fbb6fc6cf81eb0
+
 0.1.9 iOS
 - Initial release for iOS with device support only (simulator will come later).
 - Beta macOS support with most build scenarios supported to be able to test with editor or on the mac.
