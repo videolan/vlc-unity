@@ -55,6 +55,7 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
             ConfigureMacOSNativePlugins();
+            ConfigureiOSNativePlugins();
             ConfigureLibVLCSharp();
         }
 
@@ -311,6 +312,55 @@ namespace Videolabs.VLCUnity.Editor
             }
         }
 
+        void ConfigureiOSNativePlugins()
+        {
+            PluginImporter[] importers = PluginImporter.GetAllImporters();
+            foreach (PluginImporter pi in importers)
+            {
+                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH))
+                {
+                    continue;
+                }
+
+                var isX64 = pi.assetPath.Contains("iOS/x86_64");
+
+                // pi.ClearSettings();
+                var dirty = false;
+                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                {
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(false);
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
+
+                    dirty = true;
+                }
+
+                var cpu = pi.GetPlatformData(BuildTarget.iOS, "CPU");
+
+                if(isX64)
+                {
+                    if(cpu != "X64")
+                    {
+                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "X64");
+                        dirty = true;
+                    }
+                }
+                else
+                {
+                    if(cpu != "ARM64")
+                    {
+                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "ARM64");
+                        dirty = true;
+                    }
+                }
+
+                if(dirty)
+                {
+                    pi.SaveAndReimport();
+                }
+            }
+        }
+
         internal static void CopyAndReplaceDirectory(string srcPath, string dstPath)
         {
             if (Directory.Exists(dstPath))
@@ -425,41 +475,6 @@ namespace Videolabs.VLCUnity.Editor
                 }
 
                 var isX64 = pi.assetPath.Contains("iOS/x86_64");
-
-                // pi.ClearSettings();
-                var dirty = false;
-                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
-
-                    dirty = true;
-                }
-
-                var cpu = pi.GetPlatformData(BuildTarget.iOS, "CPU");
-
-                if(isX64)
-                {
-                    if(cpu != "X64")
-                    {
-                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "X64");
-                        dirty = true;
-                    }
-                }
-                else
-                {
-                    if(cpu != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
 
                 // XCode patching
                 if((PlayerSettings.iOS.sdkVersion == iOSSdkVersion.DeviceSDK && !isX64)
