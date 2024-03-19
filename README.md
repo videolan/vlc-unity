@@ -62,6 +62,10 @@ And more.
   - Minimum OS version: iOS 9.
   - ABI supported: ARM64. Simulator support will come later.
   - Graphics API: Metal
+- macOS:
+  - Minimum OS version: macOS 10.11.
+  - ABI supported: Intel x64, Apple Silicon ARM64.
+  - Graphics API: Metal
 
 ## Installation
 
@@ -73,6 +77,7 @@ The recommended way to install the VLC for Unity plugin is through the [Videolab
 | UWP               | [![VLCUnityBadge]][VideolabsUnityStore]         |
 | Android           | [![VLCUnityBadge]][VideolabsUnityStore]         |
 | iOS               | [![VLCUnityBadge]][VideolabsUnityStore]         |
+| macOS             | [![VLCUnityBadge]][VideolabsUnityStore]         |
 
 [VideolabsUnityStore]: https://videolabs.io/store/unity
 
@@ -118,7 +123,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Future platforms support
 
-- macOS, tvOS,
+- tvOS,
 - Browser,
 - Linux.
 
@@ -126,7 +131,6 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 - Vulkan,
 - WebGL
-- Metal.
 
 ### Other improvements
 
