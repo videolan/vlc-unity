@@ -61,8 +61,7 @@ It is possible to test things via the Editor on macOS beforehand though, on both
 
 Both Apple Silicon (ARM64) and Intel Macs builds are supported, in Editor and through XCode.
 
-The following build scenarios are currently unsupported for the beta release:
-- Triggering a "Build And Run" from the macOS Unity Editor directly is currently unsupported for macOS targets (builds only, editor runs or XCode builds work fine).
+The following build scenario is currently unsupported for the beta release:
 - Universal builds (binaries with both Intel64 and Apple Silicon binaries) currently are not supported nor tested.
 
 ## General
@@ -126,3 +125,21 @@ We also provide support through StackOverflow, you may browse the [libvlcsharp](
 
 /!\ There seems to be issues when using VLC Unity and MRTK in the same Unity project. Both LibVLCSharp and MRTK rely on System.Numerics.Vectors and this triggers an issue with IL2CPP. 
 Removing one of the System.Numerics.Vectors.dll in your project seems to be a valid workaround (but be aware of versioning mismatch).
+
+## Asset import management
+
+All releases include binaries for all platforms.
+
+The free trial contains binaries that are watermarked on all platforms.
+
+The Windows paid version contains binaries that are watermarked on all platforms, _except_ on Windows. The iOS paid version contains binaries that are watermarked on all platforms, _except_ iOS. And so on...
+
+VLC Unity is provided as standalone .unitypackage files, that you can import using the Unity Editor. 
+
+In the scenario that you have bought multiple plugins, let's say Android and Windows, you want to have no watermark on Android and Windows inside your single project.
+This can be achieved by selectively importing binaries of the plugins during the import process. Let's walk through the necessary steps:
+
+1. So first, import the Windows asset for example, but untick the Android specific binaries. All binaries will be included in your project except for the Android ones from the Windows asset (which are watermarked).
+2. Then, import the Android asset, and untick all binaries except for the Android ones (which are watermark-free).
+
+This way you will have imported your paid, watermark-free binaries for Windows and Android into your project but still retain the free, watermark binaries for all other platforms, such as UWP, macOS and iOS.

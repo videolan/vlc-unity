@@ -34,5 +34,8 @@ To be complete, the android asset for every ABIs needs:
 
 Currently the only supported platforms are:
 
-- Windows classic (win64, not UWP),
+- Windows classic (win64).
 - Android (all ABIs).
+- UWP (win64, ARM64).
+- iOS (arm64).
+- macOS (arm64, x64).
