@@ -99,6 +99,8 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 ## Support
 
+If you encounter a problem with VLC for Unity, please [open an issue](https://code.videolan.org/videolan/vlc-unity/-/issues) using the **issue template**. The template provides a structure that you can fill in to give us all the necessary information for us to troubleshoot your issue.
+
 Support is done on a volunteer base, professional support is only available for [paying customers](https://videolabs.io/store).
 
 ### StackOverflow
@@ -180,11 +182,14 @@ VLC for Unity combines wide and powerful bricks of software. Bugs happen and fea
 | Feature request for VLC                   | Paid                     |
 | Performance optimization for VLC or Unity | Paid                     |
 
+If you encounter a problem with VLC for Unity, please [open an issue](https://code.videolan.org/videolan/vlc-unity/-/issues) using the **issue template**. The template provides a structure that you can fill in to give us all the necessary information for us to troubleshoot your issue.
+
 **Important note**
 
 VLC is a large ecosystem run by the VideoLAN non-profit and a community of volunteers.
 [Videolabs](https://videolabs.io/) is an independent company providing development services around VLC open source technologies.
 While [Videolabs](https://videolabs.io/) does ship and sell the Unity integration, Videolabs declines all responsibility for issues specific to VLC.
+
 However, Videolabs being the main contributors to VLC improvements, feel free to reach out in case of related commercial projects.
 
 ### More services
