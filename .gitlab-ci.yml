@@ -397,7 +397,11 @@ unity-plugin-macos-aarch64-trial:
     tags:
         - monterey
     script:
-        - git clone https://code.videolan.org/videolan/vlc && cd vlc 
+        - git clone https://code.videolan.org/videolan/vlc && cd vlc
+        # get latest live555 patches
+        - curl -O https://code.videolan.org/videolan/VLCKit/-/raw/master/libvlc/patches/0001-Revert-contrib-live555-update-to-2022.07.14.patch
+        - curl -O https://code.videolan.org/videolan/VLCKit/-/raw/master/libvlc/patches/0002-contrib-use-live555-version-that-is-compatible-with-.patch
+        - git apply 0001-Revert-contrib-live555-update-to-2022.07.14.patch && git apply 0002-contrib-use-live555-version-that-is-compatible-with-.patch
         - mkdir build && cd build
         - ../extras/package/apple/build.sh --sdk=$SDKNAME --arch=$ARCH -j8 --enable-shared
         - cd ../..
