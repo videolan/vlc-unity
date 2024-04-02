@@ -265,6 +265,15 @@ unity-plugin-uwp-arm64:
         BUILD_FOLDER: winarm64-uwp
         CROSSFILE: uwp-arm64.txt
 
+unity-plugin-uwp-arm64-trial:
+    extends: .unity-win-common
+    dependencies:
+      - libvlc-uwp-arm64
+    variables: 
+        <<: [*variables-trial, *variables-windows-uwp]
+        BUILD_FOLDER: winarm64-uwp
+        CROSSFILE: uwp-arm64.txt
+
 # libvlc mac
 
 .variables-macos-x64: &variables-macos-x64
