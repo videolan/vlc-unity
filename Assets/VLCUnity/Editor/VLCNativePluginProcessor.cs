@@ -41,6 +41,7 @@ namespace Videolabs.VLCUnity.Editor
         const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
         const string MACOS_PATH  = "VLCUnity/Plugins/MacOS";
         const string IOS_PATH = "VLCUnity/Plugins/iOS/";
+        const string IOS_LOADPLUGIN_SOURCE = "LoadPlugin.mm";
 
 #if UNITY_SUPPORTS_BUILD_REPORT
         public void OnPreprocessBuild(BuildReport report)
@@ -469,7 +470,7 @@ namespace Videolabs.VLCUnity.Editor
             PluginImporter[] importers = PluginImporter.GetAllImporters();
             foreach (PluginImporter pi in importers)
             {
-                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH))
+                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH) || pi.assetPath.Contains(IOS_LOADPLUGIN_SOURCE))
                 {
                     continue;
                 }
