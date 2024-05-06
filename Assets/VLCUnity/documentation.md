@@ -61,7 +61,9 @@ You can export the global certificate from your Windows machine using the certlm
 
 For the initial release, only ARM64 device builds are provided. Simulator support is not yet included.
 
-It is possible to test things via the Editor on macOS beforehand though, on both Apple Silicon and Apple Intel macOS.
+It is possible to test things via the Editor on macOS beforehand though, on both Apple Silicon and Apple Intel macOS. And for Apple Silicon users, iOS apps can be ran on the mac.
+
+> For Apple validation errors regarding OS Minimal version of the plugin when pushing to the AppStore, see this issue for a solution: https://code.videolan.org/videolan/vlc-unity/-/issues/227
 
 ## macOS
 
