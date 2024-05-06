@@ -49,7 +49,13 @@ For the Unity UWP target, we support:
 
 If you need 32 bit versions, feel free to email us with information regarding your use case at unity@videolabs.io
 
-In the publisher manifest, make sure the 'InternetClient' capability is enabled so that VLC can access remote streams.
+> In the publisher manifest, make sure the 'InternetClient' capability is enabled so that VLC can access remote streams.
+
+For Hololens support and HTTPS, be aware that the Hololens device has very few SSL certificate by default. This means some HTTPS streams may not work since gnutls cannot find the required certificate. You have 2 options:
+1. Install the certificat globally on the device. This is a viable option only if you own the distribution (e.g. can install the required certificate on all client's Hololens devices). This guide should prove helpful: https://learn.microsoft.com/en-us/hololens/certificate-manager
+2. Ship your game with the required certificate and tell LibVLC to load using `--gnutls-dir-trust=PATH_TO_CERT_FOLDER` where `PATH_TO_CERT_FOLDER` is a folder inside your appx that contains the cert.
+
+You can export the global certificate from your Windows machine using the certlm.exe app. Look for `GlobalSign Root CA` and export the .per.
 
 ## iOS
 
