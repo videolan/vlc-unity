@@ -4,6 +4,10 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.2.0 Android
+
+- Engine update https://code.videolan.org/videolan/vlc/-/commit/9bf69cf
+
 0.2.1 iOS
 - Fix various Editor iOS build configuration when on Windows
 - Fix RTSP support using live555
