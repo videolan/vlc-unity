@@ -468,8 +468,8 @@ unity-plugin-ios-x86_64:
         - amd64
     stage: build-libvlc
     script:
-        - wget https://download.visualstudio.microsoft.com/download/pr/17b6759f-1af0-41bc-ab12-209ba0377779/e8d02195dbf1434b940e0f05ae086453/dotnet-sdk-6.0.100-linux-x64.tar.gz
-        - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-6.0.100-linux-x64.tar.gz -C $HOME/dotnet
+        - wget https://download.visualstudio.microsoft.com/download/pr/db901b0a-3144-4d07-b8ab-6e7a43e7a791/4d9d1b39b879ad969c6c0ceb6d052381/dotnet-sdk-8.0.401-linux-x64.tar.gz
+        - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-8.0.401-linux-x64.tar.gz -C $HOME/dotnet
         - export DOTNET_ROOT=$HOME/dotnet
         - export PATH=$PATH:$HOME/dotnet
         - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
