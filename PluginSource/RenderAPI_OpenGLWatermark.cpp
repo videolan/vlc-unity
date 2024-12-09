@@ -11,7 +11,7 @@ static const int imageHeight = 180;
 
 static const float xOffset = -1.f;
 static const float yOffset = 1.f;
-static const float scale = .8f;
+static const float scale = 2.0f;
 
 void checkCompileErrors(GLuint shader, std::string type)
 {
