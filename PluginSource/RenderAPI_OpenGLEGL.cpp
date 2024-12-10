@@ -79,6 +79,13 @@ void RenderAPI_OpenEGL::retrieveOpenGLContext()
     }
 }
 
+void RenderAPI_OpenEGL::ensureCurrentContext()
+{
+    if(eglGetCurrentContext() == EGL_NO_CONTEXT) {
+        makeCurrent(true);
+    }
+}
+
 void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
 	if (type == kUnityGfxDeviceEventInitialize) {

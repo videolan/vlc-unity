@@ -14,7 +14,7 @@ public:
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
 	virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     virtual void retrieveOpenGLContext() override;
-
+    virtual void ensureCurrentContext() override;
     virtual bool makeCurrent(bool current) override;
 
     static void* get_proc_address(void* /*data*/, const char* current);

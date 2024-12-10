@@ -57,11 +57,13 @@ void RenderAPI_OpenGLBase::cleanup(void* opaque)
     DEBUG("output callback cleanup");
     DEBUG("destroy_fbo");
 
+    that->ensureCurrentContext();
     that->releaseFrameBufferResources();
 
 #if defined(SHOW_WATERMARK)
     that->watermark.cleanup();
 #endif
+    that->makeCurrent(false);
 }
 
 bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
