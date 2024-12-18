@@ -2,6 +2,10 @@
 #include "Log.h"
 #include <cassert>
 
+#if defined(UNITY_ANDROID)
+#define EGL_CONTEXT_OPENGL_NO_ERROR_KHR 0x31B3
+#endif
+
 EGLContext RenderAPI_OpenEGL::unity_context = EGL_NO_CONTEXT;
 
 namespace {
@@ -139,24 +143,49 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             return;
         }
 
-        const EGLint ctx_attr[] = {
-            EGL_CONTEXT_CLIENT_VERSION, egl_version,
-            EGL_NONE
-        };
-
         m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
         if ( m_surface == EGL_NO_SURFACE || eglGetError() != EGL_SUCCESS ) {
             DEBUG("[EGL] eglCreatePbufferSurface() returned error %x", eglGetError());
             return;
         }
 
-        m_context = eglCreateContext(m_display, config,  unity_context, ctx_attr);
-        if ( m_context == EGL_NO_CONTEXT ||  eglGetError() != EGL_SUCCESS ) {
-            DEBUG("[EGL] eglCreateContext() returned error %x", eglGetError());
+        // Regular context creation
+        EGLint ctx_attr[3];
+        ctx_attr[0] = EGL_CONTEXT_CLIENT_VERSION;
+        ctx_attr[1] = egl_version;
+        ctx_attr[2] = EGL_NONE;
+
+        m_context = eglCreateContext(m_display, config, unity_context, ctx_attr);
+        if (m_context != EGL_NO_CONTEXT && eglGetError() == EGL_SUCCESS) {
+            DEBUG("[EGL] kUnityGfxDeviceEventInitialize success disp=%p m_surf=%p m_ctx=%p", m_display, m_surface, m_context);
+            return;
+        }
+        DEBUG("[EGL] eglCreateContext() failed for regular context creation, error %x", eglGetError());
+
+#if defined(UNITY_ANDROID)
+        // Low overhead mode context creation
+        const EGLint low_overhead_attr_size = 5;
+        EGLint ctx_attr_low_overhead[low_overhead_attr_size];
+        const char* extensions = eglQueryString(m_display, EGL_EXTENSIONS);
+        if (extensions == NULL) {
+            DEBUG("[EGL] eglQueryString(EGL_EXTENSIONS) not found, required for low overhead mode");
             return;
         }
 
-        DEBUG("[EGL] kUnityGfxDeviceEventInitialize success disp=%p m_surf=%p m_ctx=%p", m_display, m_surface, m_context);
+        ctx_attr_low_overhead[0] = EGL_CONTEXT_CLIENT_VERSION;
+        ctx_attr_low_overhead[1] = egl_version;
+        ctx_attr_low_overhead[2] = EGL_CONTEXT_OPENGL_NO_ERROR_KHR;
+        ctx_attr_low_overhead[3] = EGL_TRUE;
+        ctx_attr_low_overhead[4] = EGL_NONE;
+
+        m_context = eglCreateContext(m_display, config, unity_context, ctx_attr_low_overhead);
+        if (m_context != EGL_NO_CONTEXT || eglGetError() == EGL_SUCCESS) {
+            DEBUG("[EGL] kUnityGfxDeviceEventInitialize success disp=%p m_surf=%p m_ctx=%p", m_display, m_surface, m_context);
+        }
+        else{
+            DEBUG("[EGL] eglCreateContext() failed for low overhead context, error %x", eglGetError());
+        }
+#endif
 	} else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[EGL] kUnityGfxDeviceEventShutdown");
         eglDestroyContext(m_display, m_context);
