@@ -5,6 +5,10 @@ For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/m
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
 0.2.2 iOS
+0.1.9 macOS
+0.2.1 Android
+0.1.9 UWP
+0.2.0 Windows
 - engine update from 21/01/2025, bug fixes and performance optimizations
 - android: cleanup needs a makeCurrent
 - Oculus: support low overhead mode
