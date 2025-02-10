@@ -39,7 +39,6 @@ namespace Videolabs.VLCUnity.Editor
         const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
         const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
         const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
-        const string MACOS_PATH  = "VLCUnity/Plugins/MacOS";
         const string IOS_PATH = "VLCUnity/Plugins/iOS/";
         const string IOS_LOADPLUGIN_SOURCE = "LoadPlugin.mm";
 
@@ -55,7 +54,6 @@ namespace Videolabs.VLCUnity.Editor
             ConfigureUWPNativePlugins();
             ConfigureWindowsNativePlugins();
             ConfigureAndroidNativePlugins();
-            ConfigureMacOSNativePlugins();
             ConfigureiOSNativePlugins();
             ConfigureLibVLCSharp();
         }
@@ -221,87 +219,6 @@ namespace Videolabs.VLCUnity.Editor
                     if(pi.GetPlatformData(BuildTarget.Android, "CPU") != "X86_64")
                     {
                         pi.SetPlatformData(BuildTarget.Android, "CPU", "X86_64");
-                        dirty = true;
-                    }
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
-            }
-        }
-
-        void ConfigureMacOSNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            var isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
-
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin) continue;
-
-                if(!pi.assetPath.Contains(MACOS_PATH)) continue;
-                // pi.ClearSettings();
-
-                var dirty = false;
-
-                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
-
-                    dirty = true;
-                }
-
-                // AnyCPU / macOS universal binary is not yet supported.
-
-                var isEditorCompatible = pi.GetCompatibleWithEditor();
-                if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
-                {
-                    if(isArm64Host)
-                    {
-                        if(!isEditorCompatible)
-                        {
-                            pi.SetCompatibleWithEditor(true);
-                            dirty = true;
-                        }
-                    }
-                    else
-                    {
-                        if(isEditorCompatible)
-                        {
-                            pi.SetCompatibleWithEditor(false);
-                            dirty = true;
-                        }
-                    }
-                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-                else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
-                {
-                    if(!isArm64Host)
-                    {
-                        if(!isEditorCompatible)
-                        {
-                            pi.SetCompatibleWithEditor(true);
-                            dirty = true;
-                        }
-                    }
-                    else
-                    {
-                        if(isEditorCompatible)
-                        {
-                            pi.SetCompatibleWithEditor(false);
-                            dirty = true;
-                        }
-                    }
-                    if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
-                    {
-                        pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
                         dirty = true;
                     }
                 }
@@ -487,5 +404,94 @@ namespace Videolabs.VLCUnity.Editor
             File.WriteAllText(projPath, proj.WriteToString());
         }
 #endif
+    }
+
+    class MacOSPluginPostprocessor : AssetPostprocessor
+    {
+        private const string MACOS_PATH = "VLCUnity/Plugins/MacOS";
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            bool isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(MACOS_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    // Ensure the plugin is macOS-only
+                    if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+                    }
+                    // AnyCPU / macOS universal binary is not yet supported.
+                    var isEditorCompatible = pi.GetCompatibleWithEditor();
+                    if(pi.assetPath.Contains($"{MACOS_PATH}/ARM64/"))
+                    {
+                        if(isArm64Host)
+                        {
+                            if(!isEditorCompatible)
+                            {
+                                pi.SetCompatibleWithEditor(true);
+                            }
+                        }
+                        else
+                        {
+                            if(isEditorCompatible)
+                            {
+                                pi.SetCompatibleWithEditor(false);
+                            }
+                        }
+                        if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
+                        {
+                            pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
+                        }
+                    }
+                    else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
+                    {
+                        if(!isArm64Host)
+                        {
+                            if(!isEditorCompatible)
+                            {
+                                pi.SetCompatibleWithEditor(true);
+                            }
+                        }
+                        else
+                        {
+                            if(isEditorCompatible)
+                            {
+                                pi.SetCompatibleWithEditor(false);
+                            }
+                        }
+                        if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
+                        {
+                            pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
+                        }
+                    }
+                    pi.SaveAndReimport();
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                ClearConsole(); // hack to clear console after false errors show up.
+            }
+        }
+        static void ClearConsole()
+        {
+            var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
+            var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            clearMethod?.Invoke(null, null);
+        }
     }
 }
