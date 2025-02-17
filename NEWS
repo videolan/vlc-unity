@@ -4,6 +4,9 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.2.2 Android
+- engine update from 17/02 to include a memory leak fix for https://code.videolan.org/videolan/vlc-unity/-/issues/233
+
 0.2.2 iOS
 0.1.9 macOS
 0.2.1 Android
