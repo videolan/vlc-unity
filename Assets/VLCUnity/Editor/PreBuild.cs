@@ -35,19 +35,12 @@ namespace Videolabs.VLCUnity.Editor
 
         public void OnPreprocessBuild(BuildTarget target, string path)
         {
-            if(target != BuildTarget.Android) return;
-
-            if(IsVulkanConfigured)
+            if(target == BuildTarget.Android)
             {
-                ShowAbortDialog(AndroidVulkanErrorMessage);
-            }
-        }
-
-        static void ShowAbortDialog(string message)
-        {
-            if (!EditorUtility.DisplayDialog("Continue Build?", message, "Continue", "Cancel"))
-            {
-                throw new BuildFailedException(message);
+                if(IsVulkanConfigured)
+                {
+                    throw new BuildFailedException(AndroidVulkanErrorMessage);
+                }
             }
         }
 
