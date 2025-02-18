@@ -108,17 +108,32 @@ jobject RenderAPI_Android::createWindowSurface()
 {
     DEBUG("Entering createWindowSurface");
 
-    jclass cls_JavaClass = jni_env->FindClass("org/videolan/libvlc/AWindow");
+    jclass activityThread = jni_env->FindClass("android/app/ActivityThread");
+    jmethodID currentApplication = jni_env->GetStaticMethodID(activityThread, "currentApplication", "()Landroid/app/Application;");
+    jobject app = jni_env->CallStaticObjectMethod(activityThread, currentApplication);
+
+    jclass contextClass = jni_env->FindClass("android/content/Context");
+    jmethodID getClassLoader = jni_env->GetMethodID(contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+    jobject classLoader = jni_env->CallObjectMethod(app, getClassLoader);
+
+    jclass classLoaderClass = jni_env->FindClass("java/lang/ClassLoader");
+    jmethodID loadClass = jni_env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+
+    jstring className = jni_env->NewStringUTF("org.videolan.libvlc.AWindow");
+    jclass cls_JavaClass = (jclass)jni_env->CallObjectMethod(classLoader, loadClass, className);
+    jni_env->DeleteLocalRef(className);
+
+    if(cls_JavaClass == nullptr)
+    {
+        DEBUG("Failed to find class org.videolan.libvlc.AWindow");
+        abort();
+    }
     // find constructor method
     jmethodID mid_JavaClass = jni_env->GetMethodID (cls_JavaClass, "<init>", "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");
-    // create object instance
-    DEBUG("Calling jni_env->NewObject(cls_JavaClass, mid_JavaClass, nullptr)...");
 
+    // create object instance
     jobject obj_JavaClass = jni_env->NewObject(cls_JavaClass, mid_JavaClass, nullptr);
     // return object with a global reference
-
-    DEBUG("Calling jni_env->NewGlobalRef(obj_JavaClass)");
-
     return jni_env->NewGlobalRef(obj_JavaClass);
 }
 
