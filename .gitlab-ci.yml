@@ -51,6 +51,10 @@ variables:
             - vlc-android/libvlcjni/libvlc/jni
             - vlc-android/libvlcjni/vlc/include
             - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/classes.jar
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 .unity-android-common:
     extends: .base-template
@@ -67,6 +71,10 @@ variables:
             - vlc-android/libvlcjni/libvlc/jni/libs/${ANDROID_ABI}/libc++_shared.so
             - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/classes.jar
             - build_android_${ANDROID_ABI}/PluginSource/libVLCUnityPlugin.so
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 # libvlc android
 
@@ -160,6 +168,10 @@ unity-android-armv8-trial:
         expire_in: 2 weeks
     variables:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 .unity-win-common:
     image:
@@ -176,6 +188,10 @@ unity-android-armv8-trial:
         paths:
             - VLCUnityPlugin.dll
         expire_in: 2 weeks
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 libvlc-win-x86_64-debug:
     extends: .libvlc-win-common
@@ -306,6 +322,10 @@ unity-plugin-uwp-arm64-trial:
         expire_in: 2 weeks
     variables:
         ARGS: -i z -c -g l
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 libvlc-macos-x86_64:
     extends: .libvlc-macos-common
@@ -339,6 +359,10 @@ libvlc-macos-aarch64:
         paths:
             - "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
         expire_in: 2 weeks
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 unity-plugin-macos-x86_64:
     extends: .unity-plugin-macos-common
@@ -410,6 +434,10 @@ unity-plugin-macos-aarch64-trial:
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/*
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/include/*
         expire_in: 2 weeks
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 libvlc-ios-x86_64:
     extends: .libvlc-ios-common
@@ -438,6 +466,10 @@ libvlc-ios-arm64:
         paths:
             - Assets/VLCUnity/Plugins/iOS
         expire_in: 2 weeks
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+        changes:
+            - "!Assets/VLCUnity/**/*"
 
 unity-plugin-ios-aarch64:
     extends: .unity-plugin-ios-common
