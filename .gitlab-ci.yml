@@ -21,13 +21,6 @@ variables:
             - nightlies/*
         expire_in: 2 weeks
 
-.variables-windows-classic: &variables-windows-classic
-        PLATFORM: windows
-        CROSSFILE: windows-x86_64.txt
-
-.variables-windows-uwp: &variables-windows-uwp
-        PLATFORM: uwp
-
 # ANDROID
 
 .variables-android-armv7: &variables-android-armv7
@@ -133,7 +126,14 @@ unity-android-armv8-trial:
     dependencies:
       - libvlc-android-armv8
 
-# Windows Classic
+# Windows
+
+.variables-windows-classic: &variables-windows-classic
+        PLATFORM: windows
+        CROSSFILE: windows-x86_64.txt
+
+.variables-windows-uwp: &variables-windows-uwp
+        PLATFORM: uwp
 
 .libvlc-win-common:
     tags:
