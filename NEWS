@@ -4,6 +4,14 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+0.2.3 Android
+0.2.0 macOS
+0.2.1 Windows
+- engine update from 08/04
+- Add support for GameActivity (Unity 6)
+- samples: update and improve 360 sample,
+- editor: error on d3d12 and vulkan config selection
+
 0.2.2 Android
 - engine update from 17/02 to include a memory leak fix for https://code.videolan.org/videolan/vlc-unity/-/issues/233
 
