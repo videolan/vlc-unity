@@ -50,7 +50,6 @@ variables:
     script: |
         git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
         git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
-        git revert 5e2b2af821d14738bc470414a8d0c72d9955d168 --no-edit
         git clone https://code.videolan.org/videolan/vlc/ --depth=1
         git apply ../../patches/no-libvlcjni-build.patch
         cd ..
