@@ -6,7 +6,7 @@ variables:
     VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-ucrt:20240617101054
     VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-msvcrt:20240617101054
     VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20240402131352
-    VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20240522152555
+    VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20250403202200
 
 .variables-trial: &variables-trial
     ARGS_TRIAL: -Dwatermark=true
