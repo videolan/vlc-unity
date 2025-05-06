@@ -111,7 +111,6 @@ public class VLCThreeSixty : MonoBehaviour
         Yaw = _mediaPlayerScreen.Viewpoint.Yaw;
         Pitch = _mediaPlayerScreen.Viewpoint.Pitch;
         Roll = _mediaPlayerScreen.Viewpoint.Roll;
-        var fov = 80;
 
         if (Input.GetKey(KeyCode.RightArrow)) RotateView(20f, 80 * 40 / range, 0);
         else if (Input.GetKey(KeyCode.LeftArrow)) RotateView(-20f, -80 * 40 / range, 0);
