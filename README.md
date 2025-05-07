@@ -158,15 +158,15 @@ The VLC for Unity integration makes use of several software components to provid
 
 Distribution can be defined as _the way in which you acquire a piece of software_, in this case, a VLC for Unity asset.
 
-| Distribution                        | $$$ Cost                 |
-| ----------------------------------- | -------------------------|
-| Build from source                   | Free                     |
-| Download from the Unity Asset Store | 100$ per target platform |
+| Distribution                        | $$$ Cost                               |
+| ----------------------------------- | ---------------------------------------|
+| Build from source                   | Free                                   |
+| Download from the Videolabs Store   | 700$ per year (all platforms included) |
 
 The whole of the VLC for Unity asset is open-source. Which means that you can definitely build it yourself and use it, for free.
 Depending on your experience building native and managed code, it can be a challenging (yet rewarding) endeavor.
 
-For convenience, [Videolabs](https://videolabs.io/) provides the already built binaries through the Videolabs Store. Building and publishing these assets properly takes time and skill, this is the reason for the financial cost.
+For convenience, [Videolabs](https://videolabs.io/) provides the already built binaries through the Videolabs Store. Building, maintaining and publishing these assets properly takes time and skill, this is the reason for the financial cost.
 
 ### Support
 
