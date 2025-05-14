@@ -2,11 +2,6 @@
 #include "RenderAPI.h"
 #include "Log.h"
 
-#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID)
-#  include "watermark.png.h"
-#  include <fstream>
-#endif
-
 #include <map>
 
 #if defined(SUPPORT_D3D11)
@@ -94,24 +89,6 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     libvlc_media_player_t * mp;
 
     mp = libvlc_media_player_new(inst);
-
-#if defined(SHOW_WATERMARK) && !defined(UNITY_ANDROID) && !defined(UNITY_IPHONE)
-#if !UWP
-    std::ofstream outfile;
-    outfile.open("logo.png", std::ofstream::binary);
-    outfile.write((const char*)watermark_png, watermark_png_len);
-    outfile.close();
-
-    libvlc_video_set_logo_string(mp, libvlc_logo_file, "logo.png");
-    libvlc_video_set_logo_int(mp, libvlc_logo_enable, 1);
-    libvlc_video_set_logo_int(mp, libvlc_logo_position, 10);
-#else
-    libvlc_video_set_marquee_string(mp, libvlc_marquee_Text, "Videolabs");
-    libvlc_video_set_marquee_int(mp, libvlc_marquee_Enable, 1);
-    libvlc_video_set_marquee_int(mp, libvlc_marquee_Position, 9);
-    libvlc_video_set_logo_int(mp, libvlc_marquee_Size, 32);
-#endif
-#endif
 
     RenderAPI* s_CurrentAPI;
 

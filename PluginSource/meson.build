@@ -69,6 +69,8 @@ elif host_system == 'windows'
       cc.find_library('d3d11'),
       #cc.find_library('d3d11compiler_47'),
       cc.find_library('dxgi'),
+      cc.find_library('d2d1'),
+      cc.find_library('dwrite')
     ]
 
     if has_windows_uwp
