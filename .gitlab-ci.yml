@@ -27,7 +27,8 @@ variables:
       when: always
     - if: '$CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
-        - "!Assets/VLCUnity/**/*"
+        - "PluginSource/**/*"
+        - ".gitlab-ci.yml"
 
 # ANDROID
 
