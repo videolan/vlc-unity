@@ -4,6 +4,18 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+2025-2 (All platforms)
+0.2.1 macOS
+0.2.2 Windows
+0.2.4 Android
+0.2.3 iOS
+0.2.0 UWP
+- engine update from 19/05 with many bug fixes and improvements
+- get_time while paused core fix: https://code.videolan.org/videolan/vlc/-/merge_requests/7219
+- PTS VPx core crash fix: https://code.videolan.org/videolan/vlc/-/merge_requests/7213
+- Android build against NDK 27
+- Trial: GPU watermark on Windows
+
 First all-platform release, 2025-1
 - updated engines for all platforms
 
