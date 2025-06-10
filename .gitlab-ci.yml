@@ -1,6 +1,7 @@
 stages:
     - build-libvlc
     - build-unity-plugin
+    - package
 
 variables:
     VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-ucrt:20240617101054
@@ -73,9 +74,6 @@ variables:
         - ninja -C build_android_${ANDROID_ABI}
     artifacts:
         paths:
-            - vlc-android/libvlcjni/libvlc/jni/libs/${ANDROID_ABI}/libvlc.so
-            - vlc-android/libvlcjni/libvlc/jni/libs/${ANDROID_ABI}/libc++_shared.so
-            - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/classes.jar
             - build_android_${ANDROID_ABI}/PluginSource/libVLCUnityPlugin.so
     <<: *default_rules
 
@@ -160,14 +158,15 @@ unity-android-armv8-trial:
         fi
         extras/package/win32/build.sh $ARGS
     after_script:
-        - mkdir nightlies
         - cd ./vlc/$BUILD_FOLDER
         - make package-win-strip
         - rm -rf vlc-4.0.0-dev/lua/http
+        - cd ../..
+        - mv vlc vlc-${BUILD_FOLDER}
     artifacts:
         paths:
-            - vlc/${BUILD_FOLDER}/vlc-4.0.0-dev
-            - vlc/${BUILD_FOLDER}/_win32
+            - vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/vlc-4.0.0-dev
+            - vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32
         expire_in: 2 weeks
     variables:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
@@ -181,23 +180,24 @@ unity-android-armv8-trial:
         - amd64
     stage: build-unity-plugin
     script:
-        - PKG_CONFIG_PATH=./vlc/${BUILD_FOLDER}/_win32/lib/pkgconfig meson setup build_${PLATFORM} --cross-file=cross/${CROSSFILE} ${ARGS_TRIAL} --buildtype release
+        - sed -i "s|^prefix=.*|prefix=$(realpath ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32)|" ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32/lib/pkgconfig/libvlc.pc
+        - PKG_CONFIG_PATH=./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32/lib/pkgconfig meson setup build_${PLATFORM} --cross-file=cross/${CROSSFILE} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${PLATFORM}
-        - mv build_${PLATFORM}/PluginSource/libVLCUnityPlugin-1.dll VLCUnityPlugin.dll
+        - mv build_${PLATFORM}/PluginSource/libVLCUnityPlugin-1.dll vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
     artifacts:
         paths:
-            - VLCUnityPlugin.dll
+            - vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
         expire_in: 2 weeks
     <<: *default_rules
 
-libvlc-win-x86_64-debug:
-    extends: .libvlc-win-common
-    image:
-        name: $VLC_WIN_LLVM_IMAGE
-    variables:
-        ARGS: -c -z -d -x -a x86_64 -g l
-        ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
-        BUILD_FOLDER: win64
+# libvlc-win-x86_64-debug:
+#     extends: .libvlc-win-common
+#     image:
+#         name: $VLC_WIN_LLVM_IMAGE
+#     variables:
+#         ARGS: -c -z -d -x -a x86_64 -g l
+#         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
+#         BUILD_FOLDER: win64
 
 libvlc-win-x86_64:
     extends: .libvlc-win-common
@@ -226,14 +226,14 @@ libvlc-uwp-arm64:
         ARTIFACT: vlc-4.0.0-dev-win64.7z
         BUILD_FOLDER: winarm64-uwp
 
-libvlc-uwp-x64-debug:
-    extends: .libvlc-win-common
-    image:
-        name: $VLC_UWP_LLVM_IMAGE
-    variables:
-        ARGS: -w -u -c -z -d -x -a x86_64 -S 0x0A000007 -g l
-        ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
-        BUILD_FOLDER: win64-uwp
+# libvlc-uwp-x64-debug:
+#     extends: .libvlc-win-common
+#     image:
+#         name: $VLC_UWP_LLVM_IMAGE
+#     variables:
+#         ARGS: -w -u -c -z -d -x -a x86_64 -S 0x0A000007 -g l
+#         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
+#         BUILD_FOLDER: win64-uwp
 
 unity-plugin-windows:
     extends: .unity-win-common
@@ -308,14 +308,17 @@ unity-plugin-uwp-arm64-trial:
         - rm -rf macos-install/lib/libvlccore.dylib
         - mv macos-install/lib/libvlc.12.dylib macos-install/lib/libvlc.dylib
         - mv macos-install/lib/libvlccore.9.dylib macos-install/lib/libvlccore.dylib
+        # move to ARCH folder
+        - mkdir -p ../../macos-${ARCH}
+        - mv macos-install ../../macos-${ARCH}
     artifacts:
         paths:
-            - vlc/build/macos-install/include/*
-            - vlc/build/macos-install/libexec/*
-            - vlc/build/macos-install/lib/pkgconfig/*
-            - vlc/build/macos-install/lib/vlc/**/*.dylib
-            - vlc/build/macos-install/lib/libvlc.dylib
-            - vlc/build/macos-install/lib/libvlccore.dylib
+            - macos-${ARCH}/macos-install/include/*
+            - macos-${ARCH}/macos-install/libexec/*
+            - macos-${ARCH}/macos-install/lib/pkgconfig/*
+            - macos-${ARCH}/macos-install/lib/vlc/**/*.dylib
+            - macos-${ARCH}/macos-install/lib/libvlc.dylib
+            - macos-${ARCH}/macos-install/lib/libvlccore.dylib
         expire_in: 2 weeks
     variables:
         ARGS: -i z -c -g l
@@ -341,17 +344,17 @@ libvlc-macos-aarch64:
     stage: build-unity-plugin
     script:
         # patch libvlc.pc to build the plugin
-        - cd vlc/build/macos-install
+        - cd macos-${ARCH}/macos-install
         - sed -i '' "1s|.*|prefix=$(pwd | sed 's#/#\\\/#g')|" lib/pkgconfig/libvlc.pc
         - export PATH="$HOME/sandbox/bin:$PATH"
-        - cd ../../..
-        - PKG_CONFIG_PATH=./vlc/build/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL} --buildtype release
+        - cd ../..
+        - PKG_CONFIG_PATH=./macos-${ARCH}/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${ARCH}
         - mv "build_${ARCH}/PluginSource/libVLCUnityPlugin.1.dylib" "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
         - install_name_tool -add_rpath @loader_path/ build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib
     artifacts:
         paths:
-            - "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
+            - build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib
         expire_in: 2 weeks
     <<: *default_rules
 
@@ -395,11 +398,11 @@ unity-plugin-macos-aarch64-trial:
 
 # libvlc iOS
 
-.variables-ios-x64: &variables-ios-x64
-        ARCH: x86_64
-        SDKNAME: iphonesimulator
-        VLC_PATH: /Users/videolanci/sandbox/bin
-        SHORT_ARCH: x86_64
+# .variables-ios-x64: &variables-ios-x64
+#         ARCH: x86_64
+#         SDKNAME: iphonesimulator
+#         VLC_PATH: /Users/videolanci/sandbox/bin
+#         SHORT_ARCH: x86_64
 
 .variables-ios-arm64: &variables-ios-arm64
         ARCH: aarch64
@@ -427,9 +430,9 @@ unity-plugin-macos-aarch64-trial:
         expire_in: 2 weeks
     <<: *default_rules
 
-libvlc-ios-x86_64:
-    extends: .libvlc-ios-common
-    variables: *variables-ios-x64
+# libvlc-ios-x86_64:
+#     extends: .libvlc-ios-common
+#     variables: *variables-ios-x64
 
 libvlc-ios-arm64:
     extends: .libvlc-ios-common
@@ -469,12 +472,79 @@ unity-plugin-ios-aarch64-trial:
     dependencies:
         - libvlc-ios-arm64
 
-unity-plugin-ios-x86_64:
-    extends: .unity-plugin-ios-common
-    variables: *variables-ios-x64
-    dependencies:
-        - libvlc-ios-x86_64
+# unity-plugin-ios-x86_64:
+#     extends: .unity-plugin-ios-common
+#     variables: *variables-ios-x64
+#     dependencies:
+#         - libvlc-ios-x86_64
     
+# Packaging
+
+.package-unity-plugins:
+    stage: package
+    tags:
+        - docker
+        - amd64
+    script:
+        - chmod +x package-unity-plugin.sh
+        - ./package-unity-plugin.sh $TYPE
+    artifacts:
+        paths:
+            - Plugins/
+        expire_in: 1 week
+
+package-unity-plugins-pro:
+    extends: .package-unity-plugins
+    variables:
+        TYPE: pro
+    dependencies:
+        - libvlc-android-armv7
+        - libvlc-android-armv8
+        - libvlc-android-x86_64
+        - libvlc-android-x86
+        - libvlc-win-x86_64
+        - libvlc-uwp-x64
+        - libvlc-uwp-arm64
+        - libvlc-macos-x86_64
+        - libvlc-macos-aarch64
+        - libvlcsharp-all
+        - libvlcsharp-ios
+        - unity-android-armv7
+        - unity-android-armv8
+        - unity-android-x86
+        - unity-android-x86_64
+        - unity-plugin-ios-aarch64
+        - unity-plugin-macos-x86_64
+        - unity-plugin-macos-aarch64
+        - unity-plugin-windows
+        - unity-plugin-uwp-x64
+        - unity-plugin-uwp-arm64
+
+package-unity-plugins-trial:
+    extends: .package-unity-plugins
+    variables:
+        TYPE: trial
+    dependencies:
+        - libvlc-android-armv7
+        - libvlc-android-armv8
+        - libvlc-android-x86_64
+        - libvlc-android-x86
+        - libvlc-win-x86_64
+        - libvlc-uwp-x64
+        - libvlc-uwp-arm64
+        - libvlc-macos-x86_64
+        - libvlc-macos-aarch64
+        - libvlcsharp-all
+        - libvlcsharp-ios
+        - unity-android-armv7-trial
+        - unity-android-armv8-trial
+        - unity-plugin-ios-aarch64-trial
+        - unity-plugin-macos-x86_64-trial
+        - unity-plugin-macos-aarch64-trial
+        - unity-plugin-windows-trial
+        - unity-plugin-uwp-x64-trial
+        - unity-plugin-uwp-arm64-trial
+
 # LibVLCSharp
 
 .libvlcsharp-unity:
@@ -494,19 +564,21 @@ unity-plugin-ios-x86_64:
         - git checkout -f master
         - dotnet build src/LibVLCSharp/LibVLCSharp.csproj ${ARGS} -c Release
     after_script:
-        - mkdir nightlies
-        - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0 nightlies
+        - mkdir lvs-${BUILD_FOLDER}
+        - cp -r tmp/lvs/src/LibVLCSharp/bin/Release/netstandard2.0 lvs-${BUILD_FOLDER}
     artifacts:
         paths:
-            - nightlies/*
+            - lvs-${BUILD_FOLDER}
         expire_in: 2 weeks
 
 libvlcsharp-all:
     extends: .libvlcsharp-unity
     variables:
         ARGS: /p:UNITY=true
+        BUILD_FOLDER: all
 
 libvlcsharp-ios:
     extends: .libvlcsharp-unity
     variables:
         ARGS: /p:UNITY_IOS=true
+        BUILD_FOLDER: ios
