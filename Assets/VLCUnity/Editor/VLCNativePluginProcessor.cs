@@ -136,10 +136,12 @@ namespace Videolabs.VLCUnity.Editor
 
                 // pi.ClearSettings();
                 var dirty = false;
-                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.WSAPlayer))
+                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.WSAPlayer) || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
                 {
                     pi.SetCompatibleWithAnyPlatform(false);
                     pi.SetCompatibleWithEditor(false);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, false);
+
                     pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
 
                     dirty = true;
