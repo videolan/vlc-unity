@@ -12,16 +12,6 @@ variables:
 .variables-trial: &variables-trial
     ARGS_TRIAL: -Dwatermark=true
 
-.base-template:
-    tags:
-        - docker
-        - amd64
-    stage: build-libvlc
-    artifacts:
-        paths:
-            - nightlies/*
-        expire_in: 2 weeks
-
 .default_rules: &default_rules
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
@@ -30,6 +20,12 @@ variables:
       changes:
         - "PluginSource/**/*"
         - ".gitlab-ci.yml"
+
+.base-template:
+    tags:
+        - docker
+        - amd64
+    <<: *default_rules
 
 # ANDROID
 
@@ -46,6 +42,7 @@ variables:
         ANDROID_ABI: x86_64
 
 .libvlc-android-common:
+    stage: build-libvlc
     extends: .base-template
     image:
         name: $VLC_ANDROID_IMAGE
@@ -61,7 +58,6 @@ variables:
             - vlc-android/libvlcjni/libvlc/jni
             - vlc-android/libvlcjni/vlc/include
             - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/classes.jar
-    <<: *default_rules
 
 .unity-android-common:
     extends: .base-template
@@ -75,7 +71,6 @@ variables:
     artifacts:
         paths:
             - build_android_${ANDROID_ABI}/PluginSource/libVLCUnityPlugin.so
-    <<: *default_rules
 
 # libvlc android
 
@@ -145,9 +140,7 @@ unity-android-armv8-trial:
         PLATFORM: uwp
 
 .libvlc-win-common:
-    tags:
-        - docker
-        - amd64
+    extends: .base-template
     stage: build-libvlc
     script: |
         git clone https://code.videolan.org/videolan/vlc/ && cd vlc
@@ -170,14 +163,11 @@ unity-android-armv8-trial:
         expire_in: 2 weeks
     variables:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
-    <<: *default_rules
 
 .unity-win-common:
     image:
         name: $VLC_WIN_LLVM_IMAGE
-    tags:
-        - docker
-        - amd64
+    extends: .base-template
     stage: build-unity-plugin
     script:
         - sed -i "s|^prefix=.*|prefix=$(realpath ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32)|" ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32/lib/pkgconfig/libvlc.pc
@@ -188,7 +178,6 @@ unity-android-armv8-trial:
         paths:
             - vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
         expire_in: 2 weeks
-    <<: *default_rules
 
 # libvlc-win-x86_64-debug:
 #     extends: .libvlc-win-common
@@ -298,6 +287,7 @@ unity-plugin-uwp-arm64-trial:
         VLC_PATH: /Users/videolanci/sandbox/bin
 
 .libvlc-macos-common:
+    extends: .base-template
     stage: build-libvlc
     script:
         - git clone https://code.videolan.org/videolan/vlc && cd vlc   
@@ -322,7 +312,6 @@ unity-plugin-uwp-arm64-trial:
         expire_in: 2 weeks
     variables:
         ARGS: -i z -c -g l
-    <<: *default_rules
 
 libvlc-macos-x86_64:
     extends: .libvlc-macos-common
@@ -341,6 +330,7 @@ libvlc-macos-aarch64:
 # unity plugin mac
 
 .unity-plugin-macos-common:
+    extends: .base-template
     stage: build-unity-plugin
     script:
         # patch libvlc.pc to build the plugin
@@ -356,7 +346,6 @@ libvlc-macos-aarch64:
         paths:
             - build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib
         expire_in: 2 weeks
-    <<: *default_rules
 
 unity-plugin-macos-x86_64:
     extends: .unity-plugin-macos-common
@@ -411,6 +400,7 @@ unity-plugin-macos-aarch64-trial:
         SHORT_ARCH: arm64
 
 .libvlc-ios-common:
+    extends: .base-template
     stage: build-libvlc
     tags:
         - monterey
@@ -428,7 +418,6 @@ unity-plugin-macos-aarch64-trial:
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/*
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/include/*
         expire_in: 2 weeks
-    <<: *default_rules
 
 # libvlc-ios-x86_64:
 #     extends: .libvlc-ios-common
@@ -441,6 +430,7 @@ libvlc-ios-arm64:
 # unity plugin iOS
 
 .unity-plugin-ios-common:
+    extends: .base-template
     stage: build-unity-plugin
     tags:
         - monterey
@@ -457,7 +447,6 @@ libvlc-ios-arm64:
         paths:
             - Assets/VLCUnity/Plugins/iOS
         expire_in: 2 weeks
-    <<: *default_rules
 
 unity-plugin-ios-aarch64:
     extends: .unity-plugin-ios-common
@@ -482,9 +471,7 @@ unity-plugin-ios-aarch64-trial:
 
 .package-unity-plugins:
     stage: package
-    tags:
-        - docker
-        - amd64
+    extends: .base-template
     script:
         - chmod +x package-unity-plugin.sh
         - ./package-unity-plugin.sh $TYPE
@@ -550,9 +537,7 @@ package-unity-plugins-trial:
 .libvlcsharp-unity:
     image:
         name: $VLC_DEBIAN_IMAGE
-    tags:
-        - docker
-        - amd64
+    extends: .base-template
     stage: build-libvlc
     script:
         - wget https://download.visualstudio.microsoft.com/download/pr/db901b0a-3144-4d07-b8ab-6e7a43e7a791/4d9d1b39b879ad969c6c0ceb6d052381/dotnet-sdk-8.0.401-linux-x64.tar.gz
