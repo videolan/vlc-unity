@@ -60,8 +60,9 @@ public class VLCPlayerExample : MonoBehaviour
 
 	void OnDestroy()
 	{
-		//Dispose of mediaPlayer, or it will stay in nemory and keep playing audio
+		//Clean up all resources
 		DestroyMediaPlayer();
+		DestroyTextures();
 	}
 
 	void Update()
@@ -106,8 +107,12 @@ public class VLCPlayerExample : MonoBehaviour
 	public void Open()
 	{
 		Log("VLCPlayerExample Open");
-		if (mediaPlayer.Media != null)
-			mediaPlayer.Media.Dispose();
+		var currentMedia = mediaPlayer.Media;
+		if (currentMedia != null)
+		{
+			currentMedia.Dispose();
+			currentMedia = null;
+		}
 
 		var trimmedPath = path.Trim(new char[]{'"'});//Windows likes to copy paths with quotes but Uri does not like to open them
 		mediaPlayer.Media = new Media(new Uri(trimmedPath));
@@ -132,8 +137,7 @@ public class VLCPlayerExample : MonoBehaviour
 		Log("VLCPlayerExample Stop");
 		mediaPlayer?.Stop();
 
-		_vlcTexture = null;
-		texture = null;
+		DestroyTextures();
 	}
 
 	public void Seek(long timeDelta)
@@ -290,7 +294,29 @@ public class VLCPlayerExample : MonoBehaviour
 		mediaPlayer = null;
 	}
 
-	//Resize the output textures to the size of the video
+	void DestroyTextures()
+	{
+		Log("VLCPlayerExample DestroyTextures");
+		
+		if (screen != null && screen.material != null)
+			screen.material.mainTexture = null;
+		if (canvasScreen != null)
+			canvasScreen.texture = null;
+
+		if (texture != null)
+		{
+			texture.Release();
+			DestroyImmediate(texture);
+			texture = null;
+		}
+
+		if (_vlcTexture != null)
+		{
+			DestroyImmediate(_vlcTexture);
+			_vlcTexture = null;
+		}
+	}
+
 	void ResizeOutputTextures(uint px, uint py)
 	{
 		var texptr = mediaPlayer.GetTexture(px, py, out bool updated);
@@ -304,8 +330,10 @@ public class VLCPlayerExample : MonoBehaviour
 				py = swap;
 			}
 
-			_vlcTexture = Texture2D.CreateExternalTexture((int)px, (int)py, TextureFormat.RGBA32, false, true, texptr); //Make a texture of the proper size for the video to output to
-			texture = new RenderTexture(_vlcTexture.width, _vlcTexture.height, 0, RenderTextureFormat.ARGB32); //Make a renderTexture the same size as vlctex
+			DestroyTextures();
+
+			_vlcTexture = Texture2D.CreateExternalTexture((int)px, (int)py, TextureFormat.RGBA32, false, true, texptr);
+			texture = new RenderTexture(_vlcTexture.width, _vlcTexture.height, 0, RenderTextureFormat.ARGB32);
 
 			if (screen != null)
 				screen.material.mainTexture = texture;
