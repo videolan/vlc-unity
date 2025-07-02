@@ -42,6 +42,7 @@ public:
     ID2D1RenderTarget        *d2dRenderTarget       = nullptr; // Per-texture D2D render target
     ID2D1SolidColorBrush     *textBrush             = nullptr; // Per-texture text brush
 #endif // SHOW_WATERMARK
+    int                      rwt_bit_depth          = false;
 
     void Cleanup();
     void Update(unsigned width, unsigned height, ID3D11Device *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
@@ -62,6 +63,7 @@ public:
     virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
     void setColorSpace(int color_space) override;
+    void setbitDepthFormat(int bit_depth) override;
 
     /* VLC callbacks */
     bool UpdateOutput(const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *out);
@@ -111,6 +113,7 @@ private:
     CRITICAL_SECTION m_outputLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
 
     bool m_linear = false;
+    int m_bit_depth = 8;
 };
 
 // VLC C-style callbacks
@@ -172,6 +175,8 @@ RenderAPI_D3D11::RenderAPI_D3D11()
     read_write[1].reset(new ReadWriteTexture());
     current_texture = read_write[0].get();
     m_textureForUnity = nullptr;
+    read_write[0]->rwt_bit_depth = m_bit_depth;
+    read_write[1]->rwt_bit_depth = m_bit_depth;
 }
 
 RenderAPI_D3D11::~RenderAPI_D3D11()
@@ -273,6 +278,16 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
     this->width = width;
     this->height = height;
 
+    DXGI_FORMAT renderFormat;
+    if(rwt_bit_depth == 16)
+    {
+        renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
+    }
+    else
+    {
+        renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    }
+
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
@@ -280,7 +295,7 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
     texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.CPUAccessFlags = 0;
     texDesc.ArraySize = 1;
-    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.Format = renderFormat;
     texDesc.Height = height;
     texDesc.Width = width;
     texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
@@ -583,7 +598,16 @@ bool RenderAPI_D3D11::UpdateOutput(const libvlc_video_render_cfg_t *cfg, libvlc_
 {
     DEBUG("Entering UpdateOutput_cb.\n");
 
-    DXGI_FORMAT renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT renderFormat;
+    if(m_bit_depth == 16)
+    {
+        renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
+    }
+    else
+    {
+        renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    }
+
     this->Update(cfg->width, cfg->height);
 
     out->dxgi_format = renderFormat;
@@ -685,7 +709,7 @@ bool RenderAPI_D3D11::MakeCurrent(bool enter)
 bool RenderAPI_D3D11::SelectPlane(size_t plane, void *output)
 {
     (void)output;
-    if (plane != 0 || m_d3dctxVLC == NULL) // we only support one packed RGBA plane (DXGI_FORMAT_R8G8B8A8_UNORM)
+    if (plane != 0 || m_d3dctxVLC == NULL) // we only support one packed RGBA plane
         return false;
 
     if (current_texture && current_texture->m_textureRenderTarget)
@@ -762,6 +786,11 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
 void RenderAPI_D3D11::setColorSpace(int color_space)
 {
     m_linear = color_space == 1;
+}
+
+void RenderAPI_D3D11::setbitDepthFormat(int bit_depth)
+{
+    m_bit_depth = bit_depth;
 }
 
 // #endif // #if SUPPORT_D3D11

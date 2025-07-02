@@ -36,6 +36,9 @@ public:
     virtual void setColorSpace(int color_space) {
         (void)color_space;
     }
+    virtual void setbitDepthFormat(int bit_depth) {
+        (void)bit_depth;
+    }
 };
 
 

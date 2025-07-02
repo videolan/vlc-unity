@@ -63,6 +63,27 @@ libvlc_unity_set_color_space(int color_space)
     s_color_space = color_space;
 }
 
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_set_bit_depth_format(libvlc_media_player_t* mp, int bit_depth)
+{
+#if !defined(SUPPORT_D3D11)
+    return;
+#endif
+    if(mp == NULL)
+        return;
+
+    if(bit_depth != 8 /* && bit_depth != 10 */ && bit_depth != 16)
+        return;
+
+    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+    if(!s_CurrentAPI)
+    {
+        return;
+    }
+
+    s_CurrentAPI->setbitDepthFormat(bit_depth);
+}
+
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
 {
     DEBUG("%s", toPrint);
@@ -120,6 +141,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     
     s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
     s_CurrentAPI->setColorSpace(s_color_space);
+
     DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
     s_CurrentAPI->setVlcContext(mp);
 
