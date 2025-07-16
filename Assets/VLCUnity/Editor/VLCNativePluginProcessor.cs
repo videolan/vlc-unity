@@ -32,15 +32,7 @@ namespace Videolabs.VLCUnity.Editor
 #endif
     {
         public int callbackOrder { get { return 0; } }
-
-        const string SDK = "sdk";
-        string[] UWP_ARCH = { "x86_64", "ARM64" };
-
-        const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
-        const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
-        const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
         const string IOS_PATH = "VLCUnity/Plugins/iOS/";
-        const string IOS_LOADPLUGIN_SOURCE = "LoadPlugin.mm";
 
 #if UNITY_SUPPORTS_BUILD_REPORT
         public void OnPreprocessBuild(BuildReport report)
@@ -51,10 +43,6 @@ namespace Videolabs.VLCUnity.Editor
 
         public void OnPreprocessBuild(BuildTarget target, string path)
         {
-            ConfigureUWPNativePlugins();
-            ConfigureWindowsNativePlugins();
-            ConfigureAndroidNativePlugins();
-            ConfigureiOSNativePlugins();
             ConfigureLibVLCSharp();
         }
 
@@ -85,199 +73,6 @@ namespace Videolabs.VLCUnity.Editor
                     pi.SetCompatibleWithEditor(true);
                 }
                 pi.SaveAndReimport();
-            }
-        }
-
-        void ConfigureWindowsNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin) continue;
-
-                if(!pi.assetPath.Contains(WINDOWS_PATH)) continue;
-                // pi.ClearSettings();
-
-                var dirty = false;
-
-                if(pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
-
-                    dirty = true;
-                }
-
-                var cpu = pi.GetPlatformData(BuildTarget.StandaloneWindows64, "CPU");
-                if(cpu != "x86_64")
-                {
-                    pi.SetPlatformData(BuildTarget.StandaloneWindows64, "CPU", "x86_64");
-                    dirty = true;
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
-            }
-        }
-
-        void ConfigureUWPNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin) continue;
-
-                if(!pi.assetPath.Contains(UWP_PATH)) continue;
-
-                var isX64 = pi.assetPath.Contains($"{UWP_PATH}/{UWP_ARCH[0]}");
-
-                // pi.ClearSettings();
-                var dirty = false;
-                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.WSAPlayer) || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, false);
-
-                    pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
-
-                    dirty = true;
-                }
-
-                var cpu = pi.GetPlatformData(BuildTarget.WSAPlayer, "CPU");
-
-                if(isX64)
-                {
-                    if(cpu != "X64")
-                    {
-                        pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", "X64");
-                        dirty = true;
-                    }
-                }
-                else
-                {
-                    if(cpu != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
-            }
-        }
-
-        void ConfigureAndroidNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin) continue;
-
-                if(!pi.assetPath.Contains(ANDROID_PATH)) continue;
-
-                var dirty = false;
-                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.Android))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
-
-                    dirty = true;
-                }
-
-                if(pi.assetPath.Contains($"{ANDROID_PATH}/armeabi-v7a/"))
-                {
-                    if(pi.GetPlatformData(BuildTarget.Android, "CPU") != "ARMv7")
-                    {
-                        pi.SetPlatformData(BuildTarget.Android, "CPU", "ARMv7");
-                        dirty = true;
-                    }
-                }
-                else if(pi.assetPath.Contains($"{ANDROID_PATH}/arm64-v8a/"))
-                {
-                    if(pi.GetPlatformData(BuildTarget.Android, "CPU") != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.Android, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-                else if(pi.assetPath.Contains($"{ANDROID_PATH}/x86/"))
-                {
-                    if(pi.GetPlatformData(BuildTarget.Android, "CPU") != "X86")
-                    {
-                        pi.SetPlatformData(BuildTarget.Android, "CPU", "X86");
-                        dirty = true;
-                    }
-                }
-                else if(pi.assetPath.Contains($"{ANDROID_PATH}/x86_64/"))
-                {
-                    if(pi.GetPlatformData(BuildTarget.Android, "CPU") != "X86_64")
-                    {
-                        pi.SetPlatformData(BuildTarget.Android, "CPU", "X86_64");
-                        dirty = true;
-                    }
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
-            }
-        }
-
-        void ConfigureiOSNativePlugins()
-        {
-            PluginImporter[] importers = PluginImporter.GetAllImporters();
-            foreach (PluginImporter pi in importers)
-            {
-                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH))
-                {
-                    continue;
-                }
-
-                var isX64 = pi.assetPath.Contains("iOS/x86_64");
-
-                // pi.ClearSettings();
-                var dirty = false;
-                if(pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
-
-                    dirty = true;
-                }
-
-                var cpu = pi.GetPlatformData(BuildTarget.iOS, "CPU");
-
-                if(isX64)
-                {
-                    if(cpu != "X64")
-                    {
-                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "X64");
-                        dirty = true;
-                    }
-                }
-                else
-                {
-                    if(cpu != "ARM64")
-                    {
-                        pi.SetPlatformData(BuildTarget.iOS, "CPU", "ARM64");
-                        dirty = true;
-                    }
-                }
-
-                if(dirty)
-                {
-                    pi.SaveAndReimport();
-                }
             }
         }
 
@@ -408,9 +203,152 @@ namespace Videolabs.VLCUnity.Editor
 #endif
     }
 
+    class iOSPluginPostprocessor : AssetPostprocessor
+    {
+        const string IOS_PATH = "VLCUnity/Plugins/iOS/";
+
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(IOS_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    var isX64 = pi.assetPath.Contains("iOS/x86_64");
+
+                    var dirty = false;
+                    
+                    if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.iOS))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(false);
+                        pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
+                        dirty = true;
+                    }
+
+                    var cpu = pi.GetPlatformData(BuildTarget.iOS, "CPU");
+
+                    if (isX64)
+                    {
+                        if (cpu != "X64")
+                        {
+                            pi.SetPlatformData(BuildTarget.iOS, "CPU", "X64");
+                            dirty = true;
+                        }
+                    }
+                    else
+                    {
+                        if (cpu != "ARM64")
+                        {
+                            pi.SetPlatformData(BuildTarget.iOS, "CPU", "ARM64");
+                            dirty = true;
+                        }
+                    }
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+    }
+
+    class AndroidPluginPostprocessor : AssetPostprocessor
+    {
+        const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(ANDROID_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    var dirty = false;
+                    
+                    if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.Android))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(false);
+                        pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
+                        dirty = true;
+                    }
+
+                    if (pi.assetPath.Contains($"{ANDROID_PATH}/armeabi-v7a/"))
+                    {
+                        if (pi.GetPlatformData(BuildTarget.Android, "CPU") != "ARMv7")
+                        {
+                            pi.SetPlatformData(BuildTarget.Android, "CPU", "ARMv7");
+                            dirty = true;
+                        }
+                    }
+                    else if (pi.assetPath.Contains($"{ANDROID_PATH}/arm64-v8a/"))
+                    {
+                        if (pi.GetPlatformData(BuildTarget.Android, "CPU") != "ARM64")
+                        {
+                            pi.SetPlatformData(BuildTarget.Android, "CPU", "ARM64");
+                            dirty = true;
+                        }
+                    }
+                    else if (pi.assetPath.Contains($"{ANDROID_PATH}/x86/"))
+                    {
+                        if (pi.GetPlatformData(BuildTarget.Android, "CPU") != "X86")
+                        {
+                            pi.SetPlatformData(BuildTarget.Android, "CPU", "X86");
+                            dirty = true;
+                        }
+                    }
+                    else if (pi.assetPath.Contains($"{ANDROID_PATH}/x86_64/"))
+                    {
+                        if (pi.GetPlatformData(BuildTarget.Android, "CPU") != "X86_64")
+                        {
+                            pi.SetPlatformData(BuildTarget.Android, "CPU", "X86_64");
+                            dirty = true;
+                        }
+                    }
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
+
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+    }
+
     class MacOSPluginPostprocessor : AssetPostprocessor
     {
         private const string MACOS_PATH = "VLCUnity/Plugins/MacOS";
+
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
             bool isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
@@ -428,11 +366,14 @@ namespace Videolabs.VLCUnity.Editor
                     PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
                     if (pi == null || !pi.isNativePlugin) continue;
 
+                    var dirty = false;
+                    
                     // Ensure the plugin is macOS-only
                     if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneOSX))
                     {
                         pi.SetCompatibleWithAnyPlatform(false);
                         pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+                        dirty = true;
                     }
                     // AnyCPU / macOS universal binary is not yet supported.
                     var isEditorCompatible = pi.GetCompatibleWithEditor();
@@ -443,6 +384,7 @@ namespace Videolabs.VLCUnity.Editor
                             if(!isEditorCompatible)
                             {
                                 pi.SetCompatibleWithEditor(true);
+                                dirty = true;
                             }
                         }
                         else
@@ -450,11 +392,13 @@ namespace Videolabs.VLCUnity.Editor
                             if(isEditorCompatible)
                             {
                                 pi.SetCompatibleWithEditor(false);
+                                dirty = true;
                             }
                         }
                         if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "ARM64")
                         {
                             pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
+                            dirty = true;
                         }
                     }
                     else if(pi.assetPath.Contains($"{MACOS_PATH}/x86_64/"))
@@ -464,6 +408,7 @@ namespace Videolabs.VLCUnity.Editor
                             if(!isEditorCompatible)
                             {
                                 pi.SetCompatibleWithEditor(true);
+                                dirty = true;
                             }
                         }
                         else
@@ -471,14 +416,20 @@ namespace Videolabs.VLCUnity.Editor
                             if(isEditorCompatible)
                             {
                                 pi.SetCompatibleWithEditor(false);
+                                dirty = true;
                             }
                         }
                         if(pi.GetPlatformData(BuildTarget.StandaloneOSX, "CPU") != "x86_64")
                         {
                             pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
+                            dirty = true;
                         }
                     }
-                    pi.SaveAndReimport();
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
                 }
             }
             finally
@@ -486,14 +437,212 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.StopAssetEditing();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
-                ClearConsole(); // hack to clear console after false errors show up.
+                // the macOS editor is wrongly showing errors about duplicate architecture libvlc binaries being both Editor-compatible. Its confused, builds just fine and clears errors automatically after. We clear these errors immediately as to not confuse the user
+                ClearMacOSPluginErrors();
             }
         }
-        static void ClearConsole()
+
+        static void ClearMacOSPluginErrors()
         {
-            var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
-            var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-            clearMethod?.Invoke(null, null);
+            try
+            {
+                var consoleWindowType = typeof(EditorWindow).Assembly.GetType("UnityEditor.ConsoleWindow");
+                var fieldInfo = consoleWindowType?.GetField("ms_ConsoleWindow", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                var consoleWindow = fieldInfo?.GetValue(null);
+
+                if (consoleWindow != null)
+                {
+                    var listViewStateField = consoleWindowType.GetField("m_ListView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    var listViewState = listViewStateField?.GetValue(consoleWindow);
+
+                    var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
+                    var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+
+                    var getCountMethod = logEntries?.GetMethod("GetCount", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                    var getEntryMethod = logEntries?.GetMethod("GetEntryInternal", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+
+                    if (getCountMethod != null && getEntryMethod != null)
+                    {
+                        int count = (int)getCountMethod.Invoke(null, null);
+                        var logEntryType = System.Type.GetType("UnityEditor.LogEntry, UnityEditor");
+                        var messageField = logEntryType?.GetField("message");
+                        var fileField = logEntryType?.GetField("file");
+
+                        var preservedEntries = new System.Collections.Generic.List<object>();
+
+                        for (int i = 0; i < count; i++)
+                        {
+                            var logEntry = System.Activator.CreateInstance(logEntryType);
+                            getEntryMethod.Invoke(null, new object[] { i, logEntry });
+
+                            string message = messageField?.GetValue(logEntry) as string ?? "";
+                            string file = fileField?.GetValue(logEntry) as string ?? "";
+
+                            bool isMacOSPluginError = message.Contains(MACOS_PATH);
+
+                            if (!isMacOSPluginError)
+                            {
+                                preservedEntries.Add(logEntry);
+                            }
+                        }
+
+                        clearMethod?.Invoke(null, null);
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    class WindowsPluginPostprocessor : AssetPostprocessor
+    {
+        const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(WINDOWS_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    var dirty = false;
+
+                    if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(true);
+                        pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+
+                        dirty = true;
+                    }
+
+                    var cpu = pi.GetPlatformData(BuildTarget.StandaloneWindows64, "CPU");
+                    if (cpu != "x86_64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneWindows64, "CPU", "x86_64");
+                        dirty = true;
+                    }
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+    }
+
+    class UWPPluginPostprocessor : AssetPostprocessor
+    {
+        static string[] UWP_ARCH = { "x86_64", "ARM64" };
+
+        const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(UWP_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    var isX64 = pi.assetPath.Contains($"{UWP_PATH}/{UWP_ARCH[0]}");
+
+                    // pi.ClearSettings();
+                    var dirty = false;
+                    if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.WSAPlayer) || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(false);
+                        pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, false);
+
+                        pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
+
+                        dirty = true;
+                    }
+
+                    var cpu = pi.GetPlatformData(BuildTarget.WSAPlayer, "CPU");
+
+                    if (isX64)
+                    {
+                        if (cpu != "X64")
+                        {
+                            pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", "X64");
+                            dirty = true;
+                        }
+                    }
+                    else
+                    {
+                        if (cpu != "ARM64")
+                        {
+                            pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", "ARM64");
+                            dirty = true;
+                        }
+                    }
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+    }
+
+    class VLCUnityPluginPreprocessor : AssetPostprocessor
+    {
+        void OnPreprocessAsset()
+        {
+            // Only process VLCUnityPlugin.dll files to workaround incorrect Unity Editor error
+            if (!assetPath.EndsWith("VLCUnityPlugin.dll"))
+                return;
+
+            PluginImporter pi = assetImporter as PluginImporter;
+            if (pi == null || !pi.isNativePlugin) 
+                return;
+
+            if (assetPath.Contains("VLCUnity/Plugins/Windows/x86_64"))
+            {
+                pi.SetCompatibleWithAnyPlatform(false);
+                pi.SetCompatibleWithEditor(true);
+                pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+            }
+            else if (assetPath.Contains("VLCUnity/Plugins/WSA/UWP"))
+            {
+                pi.SetCompatibleWithAnyPlatform(false);
+                pi.SetCompatibleWithEditor(false);
+                pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
+                
+                var isX64 = assetPath.Contains("VLCUnity/Plugins/WSA/UWP/x86_64");
+                pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", isX64 ? "X64" : "ARM64");
+            }
         }
     }
 }
