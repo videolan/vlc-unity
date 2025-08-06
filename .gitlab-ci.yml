@@ -7,7 +7,7 @@ variables:
     VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-ucrt:20240617101054
     VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-msvcrt:20240617101054
     VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20240402131352
-    VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20250403202200
+    VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20250626142950
 
 .variables-trial: &variables-trial
     ARGS_TRIAL: -Dwatermark=true
@@ -50,14 +50,13 @@ variables:
         git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
         git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
         git clone https://code.videolan.org/videolan/vlc/ --depth=1
-        git apply ../../patches/no-libvlcjni-build.patch
         cd ..
         ANDROID_HOME=/sdk/android-sdk-linux ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI}
     artifacts:
         paths:
             - vlc-android/libvlcjni/libvlc/jni
             - vlc-android/libvlcjni/vlc/include
-            - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/classes.jar
+            - vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/syncReleaseLibJars/classes.jar
 
 .unity-android-common:
     extends: .base-template
