@@ -209,9 +209,9 @@ namespace Videolabs.VLCUnity.Editor
 
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
-            AssetDatabase.StartAssetEditing();
             try
             {
+                AssetDatabase.StartAssetEditing();
                 foreach (string assetPath in importedAssets)
                 {
                     if (!assetPath.Contains(IOS_PATH))
@@ -273,9 +273,9 @@ namespace Videolabs.VLCUnity.Editor
         const string ANDROID_PATH = "VLCUnity/Plugins/Android/libs";
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
-            AssetDatabase.StartAssetEditing();
             try
             {
+                AssetDatabase.StartAssetEditing();
                 foreach (string assetPath in importedAssets)
                 {
                     if (!assetPath.Contains(ANDROID_PATH))
@@ -353,9 +353,9 @@ namespace Videolabs.VLCUnity.Editor
         {
             bool isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
 
-            AssetDatabase.StartAssetEditing();
             try
             {
+                AssetDatabase.StartAssetEditing();
                 foreach (string assetPath in importedAssets)
                 {
                     if (!assetPath.Contains(MACOS_PATH))
@@ -501,9 +501,9 @@ namespace Videolabs.VLCUnity.Editor
         const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
-            AssetDatabase.StartAssetEditing();
             try
             {
+                AssetDatabase.StartAssetEditing();
                 foreach (string assetPath in importedAssets)
                 {
                     if (!assetPath.Contains(WINDOWS_PATH))
@@ -554,9 +554,9 @@ namespace Videolabs.VLCUnity.Editor
         const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
-            AssetDatabase.StartAssetEditing();
             try
             {
+                AssetDatabase.StartAssetEditing();
                 foreach (string assetPath in importedAssets)
                 {
                     if (!assetPath.Contains(UWP_PATH))
