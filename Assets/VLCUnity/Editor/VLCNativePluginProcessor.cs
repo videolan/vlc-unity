@@ -345,6 +345,22 @@ namespace Videolabs.VLCUnity.Editor
         }
     }
 
+    static class PluginErrorCleaner
+    {
+        internal static void ClearPluginErrors()
+        {
+            try
+            {
+                var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
+                var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                clearMethod?.Invoke(null, null);
+            }
+            catch
+            {
+            }
+        }
+    }
+
     class MacOSPluginPostprocessor : AssetPostprocessor
     {
         private const string MACOS_PATH = "VLCUnity/Plugins/MacOS";
@@ -437,62 +453,9 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.StopAssetEditing();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
-                // the macOS editor is wrongly showing errors about duplicate architecture libvlc binaries being both Editor-compatible. Its confused, builds just fine and clears errors automatically after. We clear these errors immediately as to not confuse the user
-                ClearMacOSPluginErrors();
             }
-        }
-
-        static void ClearMacOSPluginErrors()
-        {
-            try
-            {
-                var consoleWindowType = typeof(EditorWindow).Assembly.GetType("UnityEditor.ConsoleWindow");
-                var fieldInfo = consoleWindowType?.GetField("ms_ConsoleWindow", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-                var consoleWindow = fieldInfo?.GetValue(null);
-
-                if (consoleWindow != null)
-                {
-                    var listViewStateField = consoleWindowType.GetField("m_ListView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                    var listViewState = listViewStateField?.GetValue(consoleWindow);
-
-                    var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
-                    var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-
-                    var getCountMethod = logEntries?.GetMethod("GetCount", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                    var getEntryMethod = logEntries?.GetMethod("GetEntryInternal", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-
-                    if (getCountMethod != null && getEntryMethod != null)
-                    {
-                        int count = (int)getCountMethod.Invoke(null, null);
-                        var logEntryType = System.Type.GetType("UnityEditor.LogEntry, UnityEditor");
-                        var messageField = logEntryType?.GetField("message");
-                        var fileField = logEntryType?.GetField("file");
-
-                        var preservedEntries = new System.Collections.Generic.List<object>();
-
-                        for (int i = 0; i < count; i++)
-                        {
-                            var logEntry = System.Activator.CreateInstance(logEntryType);
-                            getEntryMethod.Invoke(null, new object[] { i, logEntry });
-
-                            string message = messageField?.GetValue(logEntry) as string ?? "";
-                            string file = fileField?.GetValue(logEntry) as string ?? "";
-
-                            bool isMacOSPluginError = message.Contains(MACOS_PATH);
-
-                            if (!isMacOSPluginError)
-                            {
-                                preservedEntries.Add(logEntry);
-                            }
-                        }
-
-                        clearMethod?.Invoke(null, null);
-                    }
-                }
-            }
-            catch
-            {
-            }
+            // the macOS editor is wrongly showing errors about duplicate architecture libvlc binaries being both Editor-compatible. Its confused, builds just fine and clears errors automatically after. We clear these errors immediately as to not confuse the user
+            PluginErrorCleaner.ClearPluginErrors();
         }
     }
 
@@ -544,6 +507,8 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+            // Clear false positive plugin errors about Windows plugin conflicts
+            PluginErrorCleaner.ClearPluginErrors();
         }
     }
 
@@ -613,6 +578,8 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+            // Clear false positive plugin errors about Windows plugin conflicts
+            PluginErrorCleaner.ClearPluginErrors();
         }
     }
 
