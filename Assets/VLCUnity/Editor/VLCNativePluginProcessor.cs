@@ -32,50 +32,12 @@ namespace Videolabs.VLCUnity.Editor
 #endif
     {
         public int callbackOrder { get { return 0; } }
-        const string IOS_PATH = "VLCUnity/Plugins/iOS/";
 
 #if UNITY_SUPPORTS_BUILD_REPORT
         public void OnPreprocessBuild(BuildReport report)
         {
-            OnPreprocessBuild(report.summary.platform, report.summary.outputPath);
         }
 #endif
-
-        public void OnPreprocessBuild(BuildTarget target, string path)
-        {
-            ConfigureLibVLCSharp();
-        }
-
-        static void ConfigureLibVLCSharp()
-        {
-            var libvlcsharpDlls = PluginImporter.GetAllImporters().Where(pi => pi.assetPath.EndsWith("LibVLCSharp.dll")).ToList();
-         
-            foreach(var pi in libvlcsharpDlls)
-            {                
-                if(pi.assetPath.Contains(IOS_PATH))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
-                }
-                else
-                {
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.XboxOne, true);
-
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
-
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(true);
-                }
-                pi.SaveAndReimport();
-            }
-        }
-
         internal static void CopyAndReplaceDirectory(string srcPath, string dstPath)
         {
             if (Directory.Exists(dstPath))
@@ -609,6 +571,39 @@ namespace Videolabs.VLCUnity.Editor
                 
                 var isX64 = assetPath.Contains("VLCUnity/Plugins/WSA/UWP/x86_64");
                 pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", isX64 ? "X64" : "ARM64");
+            }
+        }
+    }
+
+    class LibVLCSharpPluginPreprocessor : AssetPostprocessor
+    {
+        const string IOS_PATH = "VLCUnity/Plugins/iOS/";
+        void OnPreprocessAsset()
+        {
+            var libvlcsharpDlls = PluginImporter.GetAllImporters().Where(pi => pi.assetPath.EndsWith("LibVLCSharp.dll")).ToList();
+
+            foreach (var pi in libvlcsharpDlls)
+            {
+                if (pi.assetPath.Contains(IOS_PATH))
+                {
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(false);
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
+                }
+                else
+                {
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.XboxOne, true);
+
+                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
+
+                    pi.SetCompatibleWithAnyPlatform(false);
+                    pi.SetCompatibleWithEditor(true);
+                }
             }
         }
     }
