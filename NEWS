@@ -4,11 +4,13 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
-2025-3 (TBD)
-- 16 bit color depth format support on Windows with new TextureHelper
+2025-3 (All platforms)
+- 16 bit color depth format support on Windows with new TextureHelper (see Minimal scene for example use)
 - sample scenes: fix texture leaks
 - Editor: Force Windows compatibility to false when UWP support is not available in Editor
-- CI packaging improvements
+- CI packaging improvements for faster development testing and releases
+- Editor: super-fast Asset import (reduced from minutes to seconds)
+- libvlc engine update for all platforms (11/08), including further VPX handling improvements
 
 2025-2 (All platforms)
 0.2.1 macOS
