@@ -21,6 +21,7 @@
 #include <dxgi1_2.h>
 
 #include <memory>
+#include <random>
 
 #if !defined(UWP)
 // #include <comdef.h> // enable for debugging
@@ -28,6 +29,14 @@
 
 #define SCREEN_WIDTH  100
 #define SCREEN_HEIGHT  100
+
+// Watermark position enum
+enum class WatermarkPosition
+{
+    BOTTOM_CENTER = 0,
+    CENTER = 1,
+    TOP_CENTER = 2
+};
 
 class ReadWriteTexture
 {
@@ -100,6 +109,7 @@ private:
     IDWriteFactory          *dwriteFactory          = nullptr;
     IDWriteTextFormat       *textFormat             = nullptr;
     float fontSize = 124.0f;
+    WatermarkPosition       m_watermarkPosition     = WatermarkPosition::BOTTOM_CENTER;
 #endif // SHOW_WATERMARK
 
     CRITICAL_SECTION m_sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
@@ -639,17 +649,46 @@ void RenderAPI_D3D11::Swap()
 
         float padding = 10.0f;
         float approxTextWidth = textLength * (fontSize * 0.5f);
-        float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
-        float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
-        float textRectRight = textRectLeft + approxTextWidth;
-        float textRectBottom = textureJustWrittenByVLC->height - padding;
-
-        D2D1_RECT_F textRect = D2D1::RectF(
-            textRectLeft,
-            textRectTop,
-            textRectRight,
-            textRectBottom
-        );
+        
+        D2D1_RECT_F textRect;
+        
+        switch (m_watermarkPosition) {
+            case WatermarkPosition::BOTTOM_CENTER:
+            {
+                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
+                float textRectRight = textRectLeft + approxTextWidth;
+                float textRectBottom = textureJustWrittenByVLC->height - padding;
+                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                break;
+            }
+            case WatermarkPosition::CENTER:
+            {
+                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                float textRectTop = (textureJustWrittenByVLC->height - fontSize) / 2.0f;
+                float textRectRight = textRectLeft + approxTextWidth;
+                float textRectBottom = textRectTop + fontSize;
+                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                break;
+            }
+            case WatermarkPosition::TOP_CENTER:
+            {
+                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                float textRectTop = padding;
+                float textRectRight = textRectLeft + approxTextWidth;
+                float textRectBottom = padding + fontSize;
+                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                break;
+            }
+            default:
+                // Fallback to bottom center
+                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
+                float textRectRight = textRectLeft + approxTextWidth;
+                float textRectBottom = textureJustWrittenByVLC->height - padding;
+                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                break;
+        }
 
         float centerX = textRect.left + (textRect.right - textRect.left) / 2.0f;
         D2D1_MATRIX_3X2_F mirrorTransform =
@@ -724,6 +763,17 @@ bool RenderAPI_D3D11::Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_v
 {
     (void)cfg;
     DEBUG("Setup m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
+    
+#if defined(SHOW_WATERMARK)
+    // Randomly select watermark position
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 2);
+    
+    int randomPosition = dis(gen);
+    m_watermarkPosition = static_cast<WatermarkPosition>(randomPosition);
+#endif // SHOW_WATERMARK
+    
     if (out && m_d3dctxVLC)
     {
         out->d3d11.device_context = m_d3dctxVLC;
