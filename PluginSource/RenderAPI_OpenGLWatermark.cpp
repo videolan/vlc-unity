@@ -2,15 +2,14 @@
 #include "watermark.raw.h"
 #include <string>
 #include <cassert>
+#include <random>
+#include <chrono>
 #include "Log.h"
 
 namespace {
 
 static const int imageWidth = 600;
 static const int imageHeight = 180;
-
-static const float xOffset = -1.f;
-static const float yOffset = 1.f;
 static const float scale = 2.0f;
 
 void checkCompileErrors(GLuint shader, std::string type)
@@ -86,18 +85,6 @@ void main()
 }
 )raw";
 
-    static const float xScale = scale;
-    static const float yScale = (xScale * imageHeight) / imageWidth;
-
-    //FIXME: update the aPos coordinate where it should actually be drawn
-    GLfloat vertices[] = {
-        //aPos X               , aPos Y                 , aUV X  , aUV Y
-        0.f * xScale + xOffset , -1.f * yScale + yOffset, 1.f    , 0.f,
-        0.f * xScale + xOffset ,  0.f * yScale + yOffset, 1.f    , 1.f,
-        1.f * xScale + xOffset , -1.f * yScale + yOffset, 0.f    , 0.f,
-        1.f * xScale + xOffset ,  0.f * yScale + yOffset, 0.f    , 1.f
-    };
-
     // vertex shader
     GLuint vertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex, 1, &vertexShaderSource, NULL);
@@ -126,22 +113,14 @@ void main()
 
     //create and bind our geometry
     glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    //upload geometry
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
+    
     //vertex position attributes
     posAttrib = glGetAttribLocation(program, "aPos");
-    glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE,
-        4*sizeof(float), 0);
-
     //texture position attributes
     uvAttrib = glGetAttribLocation(program, "aUV");
-    glEnableVertexAttribArray(uvAttrib);
-    glVertexAttribPointer(uvAttrib, 2, GL_FLOAT, GL_FALSE,
-        4*sizeof(float), (GLvoid*)(2*sizeof(float)));
+    
+    // Initialize vertex buffer with random position
+    randomizePosition();
 
     // Specify the texture of the watermark
     GLint textUniform = glGetUniformLocation(program, "texture");
@@ -219,4 +198,54 @@ void OpenGLWatermark::draw(GLuint framebuffer, unsigned width, unsigned height)
     if (!oldBlend)
         glDisable(GL_BLEND);
     glViewport(oldViewport[0], oldViewport[1], (GLsizei)oldViewport[2], (GLsizei)oldViewport[3]);
+}
+
+void OpenGLWatermark::randomizePosition()
+{
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    
+    std::uniform_int_distribution<int> positionDist(0, 2);
+    int position = positionDist(gen);
+    
+    xOffset = -scale * 0.5f;
+    
+    switch(position) {
+        case 0: // Center top
+            yOffset = -0.4f;
+            break;
+        case 1: // Center
+            yOffset = 0.2f;
+            break;
+        case 2: // Center bottom
+           yOffset = 0.7f;
+            break;
+    }
+    
+    updateVertexBuffer();
+}
+
+void OpenGLWatermark::updateVertexBuffer()
+{
+    static const float xScale = scale;
+    static const float yScale = (xScale * imageHeight) / imageWidth;
+
+    GLfloat vertices[] = {
+        //aPos X               , aPos Y                 , aUV X  , aUV Y
+        0.f * xScale + xOffset , -1.f * yScale + yOffset, 1.f    , 0.f,
+        0.f * xScale + xOffset ,  0.f * yScale + yOffset, 1.f    , 1.f,
+        1.f * xScale + xOffset , -1.f * yScale + yOffset, 0.f    , 0.f,
+        1.f * xScale + xOffset ,  0.f * yScale + yOffset, 0.f    , 1.f
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE,
+        4*sizeof(float), 0);
+
+    glEnableVertexAttribArray(uvAttrib);
+    glVertexAttribPointer(uvAttrib, 2, GL_FLOAT, GL_FALSE,
+        4*sizeof(float), (GLvoid*)(2*sizeof(float)));
 }
