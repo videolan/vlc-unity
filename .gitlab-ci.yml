@@ -164,8 +164,6 @@ unity-android-armv8-trial:
         WINE_SDK_PATH: /usr/include/wine/wine/windows/
 
 .unity-win-common:
-    image:
-        name: $VLC_WIN_LLVM_IMAGE
     extends: .base-template
     stage: build-unity-plugin
     script:
@@ -225,6 +223,8 @@ libvlc-uwp-arm64:
 
 unity-plugin-windows:
     extends: .unity-win-common
+    image:
+        name: $VLC_WIN_LLVM_IMAGE
     dependencies:
       - libvlc-win-x86_64
     variables: 
@@ -233,6 +233,8 @@ unity-plugin-windows:
 
 unity-plugin-windows-trial:
     extends: .unity-win-common
+    image:
+        name: $VLC_WIN_LLVM_IMAGE
     dependencies:
       - libvlc-win-x86_64
     variables:
@@ -241,6 +243,8 @@ unity-plugin-windows-trial:
 
 unity-plugin-uwp-x64:
     extends: .unity-win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
     dependencies:
       - libvlc-uwp-x64
     variables: 
@@ -250,6 +254,8 @@ unity-plugin-uwp-x64:
 
 unity-plugin-uwp-x64-trial:
     extends: .unity-win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
     dependencies:
       - libvlc-uwp-x64
     variables:
@@ -259,6 +265,8 @@ unity-plugin-uwp-x64-trial:
 
 unity-plugin-uwp-arm64:
     extends: .unity-win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
     dependencies:
       - libvlc-uwp-arm64
     variables: 
@@ -268,6 +276,8 @@ unity-plugin-uwp-arm64:
 
 unity-plugin-uwp-arm64-trial:
     extends: .unity-win-common
+    image:
+        name: $VLC_UWP_LLVM_IMAGE
     dependencies:
       - libvlc-uwp-arm64
     variables: 
