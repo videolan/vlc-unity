@@ -305,6 +305,8 @@ public class VLCPlayerExample : MonoBehaviour
 
 		if (texture != null)
 		{
+			if (RenderTexture.active == texture)
+				RenderTexture.active = null;
 			texture.Release();
 			DestroyImmediate(texture);
 			texture = null;
