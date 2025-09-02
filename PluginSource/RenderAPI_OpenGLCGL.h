@@ -8,6 +8,10 @@
 #import <CoreVideo/CoreVideo.h>
 #include <mutex>
 
+#if defined(SHOW_WATERMARK)
+#include "RenderAPI_OpenGLWatermark.h"
+#endif
+
 typedef struct libvlc_media_player_t libvlc_media_player_t;
 
 struct RenderAPICoreVideoBuffer
@@ -85,6 +89,10 @@ private:
     size_t idx_swap = 1;
     size_t idx_display = 2;
     bool updated;
+
+#if defined(SHOW_WATERMARK)
+    OpenGLWatermark watermark;
+#endif
 };
 
 #endif /* RENDER_API_OPENGL_CGL_H */

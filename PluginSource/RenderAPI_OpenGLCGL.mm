@@ -61,7 +61,7 @@ void swap(void *data)
 
 RenderAPI* CreateRenderAPI_OpenGLCGL(UnityGfxRenderer apiType)
 {
-    return new RenderAPI_OpenGLCGL(apiType);
+    return static_cast<RenderAPI*>(new RenderAPI_OpenGLCGL(apiType));
 }
 
 RenderAPI_OpenGLCGL::RenderAPI_OpenGLCGL(UnityGfxRenderer apiType)
@@ -97,6 +97,10 @@ void RenderAPI_OpenGLCGL::swap(void* opaque)
     RenderAPI_OpenGLCGL* that = reinterpret_cast<RenderAPI_OpenGLCGL*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
+
+#if defined(SHOW_WATERMARK)
+    that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
+#endif
 
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
@@ -149,7 +153,17 @@ bool RenderAPI_OpenGLCGL::setup(void **opaque, const libvlc_video_setup_device_c
     that->width = 0;
     that->height = 0;
 
-    return true;
+    bool ret = true;
+
+#if defined(SHOW_WATERMARK)
+    that->makeCurrent(true);
+
+    ret &= that->watermark.setup();
+
+    that->makeCurrent(false);
+#endif
+
+    return ret;
 }
 
 void RenderAPI_OpenGLCGL::cleanup(void* opaque)
@@ -158,12 +172,23 @@ void RenderAPI_OpenGLCGL::cleanup(void* opaque)
 
     auto *that = static_cast<RenderAPI_OpenGLCGL*>(opaque);
     that->releaseFrameBufferResources();
+#if defined(SHOW_WATERMARK)
+    if(CGLGetCurrentContext() != that->m_context)
+    {
+        that->makeCurrent(true);
+    }
+    that->watermark.cleanup();
+    that->makeCurrent(false);
+#endif
 }
 
 bool RenderAPI_OpenGLCGL::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
 {
     DEBUG("[GLCGL] call resize");
     auto *that = static_cast<RenderAPI_OpenGLCGL*>(opaque);
+
+    GLint oldFramebuffer;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFramebuffer);
 
     if (cfg->width != that->width || cfg->height != that->height)
         that->releaseFrameBufferResources();
@@ -182,10 +207,10 @@ bool RenderAPI_OpenGLCGL::resize(void* opaque, const libvlc_video_render_cfg_t *
 
         glBindTexture(GL_TEXTURE_RECTANGLE, that->buffers[i].texture_name);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, that->buffers[i].texture_name, 0);
@@ -198,12 +223,11 @@ bool RenderAPI_OpenGLCGL::resize(void* opaque, const libvlc_video_render_cfg_t *
         }
     }
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, oldFramebuffer);
 
     that->width = cfg->width;
     that->height = cfg->height;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 
     output->opengl_format = GL_RGBA;
     output->full_range = true;

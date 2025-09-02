@@ -140,12 +140,18 @@ void main()
 
 void OpenGLWatermark::cleanup()
 {
-    glDeleteTextures(1, &tex);
-    tex = 0;
-    glDeleteBuffers(1, &vbo);
-    vbo = 0;
-    glDeleteProgram(program);
-    program = 0;
+    if (tex != 0) {
+        glDeleteTextures(1, &tex);
+        tex = 0;
+    }
+    if (vbo != 0) {
+        glDeleteBuffers(1, &vbo);
+        vbo = 0;
+    }
+    if (program != 0) {
+        glDeleteProgram(program);
+        program = 0;
+    }
 }
 
 void OpenGLWatermark::draw(GLuint framebuffer, unsigned width, unsigned height)
