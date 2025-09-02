@@ -32,6 +32,7 @@ namespace Videolabs.VLCUnity.Editor
 #endif
     {
         public int callbackOrder { get { return 0; } }
+        const string IOS_PATH = "VLCUnity/Plugins/iOS/";
 
 #if UNITY_SUPPORTS_BUILD_REPORT
         public void OnPreprocessBuild(BuildReport report)
@@ -146,7 +147,7 @@ namespace Videolabs.VLCUnity.Editor
             PluginImporter[] importers = PluginImporter.GetAllImporters();
             foreach (PluginImporter pi in importers)
             {
-                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH) || pi.assetPath.Contains(IOS_LOADPLUGIN_SOURCE))
+                if(!pi.isNativePlugin || !pi.assetPath.Contains(IOS_PATH) || pi.assetPath.Contains("LoadPlugin.mm"))
                 {
                     continue;
                 }
