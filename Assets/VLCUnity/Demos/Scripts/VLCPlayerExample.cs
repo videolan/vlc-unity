@@ -26,6 +26,8 @@ public class VLCPlayerExample : MonoBehaviour
 	Texture2D _vlcTexture = null; //This is the texture libVLC writes to directly. It's private.
 	public RenderTexture texture = null; //We copy it into this texture which we actually use in unity.
 
+	private VLCAudioSource vlcAudioSource; // The VLCAudioSource component that handles audio conversion
+
 
 	public string path = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi"; //Can be a web path or a local path
 
@@ -33,6 +35,7 @@ public class VLCPlayerExample : MonoBehaviour
 	public bool flipTextureX = true;
 	public bool flipTextureY = true;
 	public bool playOnAwake = true; //Open path and Play during Awake
+	public bool useUnityAudio = false; // Direct Audio through a Unity AudioSource
 
 	public bool logToConsole = false; //Log function calls and LibVLC logs to Unity console
 
@@ -49,6 +52,10 @@ public class VLCPlayerExample : MonoBehaviour
 			screen = GetComponent<Renderer>();
 		if (canvasScreen == null)
 			canvasScreen = GetComponent<RawImage>();
+
+		// Setup Audio
+		if(useUnityAudio)
+			vlcAudioSource = gameObject.AddComponent<VLCAudioSource>();
 
 		//Setup Media Player
 		CreateMediaPlayer();
@@ -283,6 +290,8 @@ public class VLCPlayerExample : MonoBehaviour
 			DestroyMediaPlayer();
 		}
 		mediaPlayer = new MediaPlayer(libVLC);
+		if(useUnityAudio)
+			vlcAudioSource.Attach(mediaPlayer);
 	}
 
 	//Dispose of the MediaPlayer object.
