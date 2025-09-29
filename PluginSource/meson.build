@@ -91,6 +91,9 @@ elif host_system == 'windows'
 elif host_system == 'linux'
     plugin_sources += [ opengl_sources_base, egl_sources ]
 elif host_system == 'android'
+    if get_option('static_android')
+        vlc_unity_ldflags += [ '-static-libstdc++' ]
+    endif
     vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log') ]
     vlc_unity_cppflags += [ '-DSUPPORT_OPENGL_ES=1', '-DUNITY_ANDROID=1' ]
     plugin_sources += [ opengl_sources_base, android_sources, egl_sources ]

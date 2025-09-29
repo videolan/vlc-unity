@@ -2,3 +2,8 @@ option('watermark',
     type: 'boolean',
     value: false,
     description: 'Display the Videolabs watermark')
+
+option('static_android',
+    type: 'boolean',
+    value: false,
+    description: 'Enable or disable static Android build')
