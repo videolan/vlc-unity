@@ -71,7 +71,6 @@ for ARCH in "${ANDROID_ARCHS[@]}"; do
   mkdir -p "$DEST_DIR"
   cp "$SRC_DIR/libVLCUnityPlugin.so" "$DEST_DIR/"
   cp "$SRC_DIR2/libvlc.so" "$DEST_DIR/"
-  cp "$SRC_DIR2/libc++_shared.so" "$DEST_DIR/"
 done
 
 cp vlc-android/libvlcjni/libvlc/build/intermediates/aar_main_jar/release/syncReleaseLibJars/classes.jar Plugins/Android/libs/armeabi-v7a

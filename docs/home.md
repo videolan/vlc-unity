@@ -20,16 +20,6 @@ This is a list of things to check until the release is more automated. Though th
 - check that editor and standalone demo scenes work,
 - check final package size size (~50MB),
 
-### Android
-
-To be complete, the android asset for every ABIs needs:
-
-- classes.jar (only one file for all arch)
-- libc++_shared.so (per arch)
-- libvlc.so (per arch)
-- libVLCUnityPlugin.so (per arch)
-- LibVLCSharp and related DLLs (one file for all platform and architectures)
-
 ## Platform support
 
 Currently the only supported platforms are:
