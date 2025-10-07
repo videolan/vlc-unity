@@ -1,5 +1,8 @@
 using System;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using LibVLCSharp;
 using UnityEngine;
 
@@ -19,18 +22,20 @@ public class VLCAudioSource : MonoBehaviour
     private AudioSource audioSource;
     // The audio clip that will receive the converted VLC audio
     private AudioClip audioClip;
-    // The samples from VLC
-    private float[] samples;
-    // The buffer size for Unity audio
+    // The buffer size for Unity audio (power of 2 for fast modulo)
     private int bufferSize;
+    // Mask for fast modulo operations (bufferSize - 1)
+    private int bufferMask;
     // The unity audio buffer
     private float[] buffer;
-    // The writing position for the buffer
+    // Pinned buffer handle to avoid repeated pinning
+    private GCHandle bufferHandle;
+    // Pinned buffer pointer
+    private IntPtr bufferPtr;
+    // The writing position for the buffer (atomic access)
     private int writePosition;
-    // The reading position for the buffer
+    // The reading position for the buffer (atomic access)
     private int readPosition;
-    // Lock object for the buffer
-    private readonly object bufferLock = new object();
 
     public void Attach(MediaPlayer mediaPlayer)
     {
@@ -42,71 +47,126 @@ public class VLCAudioSource : MonoBehaviour
         mediaPlayer.SetAudioFormat("FL32", (uint) SampleRate, (uint) Channels);
         // Audio Callbacks for VLC to our functions
         mediaPlayer.SetAudioCallbacks(OnAudioCallback, null, null, OnFlush, null);
-        // Create the buffer array
-        bufferSize = SampleRate * Channels;
+        // Create the buffer array (use power of 2 for fast modulo operations)
+        int desiredSize = SampleRate * Channels;
+        bufferSize = Mathf.NextPowerOfTwo(desiredSize);
+        bufferMask = bufferSize - 1;
         buffer = new float[bufferSize];
+        bufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        bufferPtr = bufferHandle.AddrOfPinnedObject();
         // Create the audio clip and initialize the AudioSource
         audioClip = AudioClip.Create("VLCAudio", bufferSize, Channels, SampleRate, true, OnAudioRead);
         audioSource.clip = audioClip;
         audioSource.Play();
     }
 
-    private void OnAudioCallback(IntPtr data, IntPtr samplesPtr, uint count, long pts)
+    private void OnDestroy()
     {
-        // Gets the number of floats in the samples
-        int floatCount = (int) count * Channels;
-        // Ensures the samples buffer has enough storage to hold them
-        if (samples == null || samples.Length != floatCount)
-            samples = new float[floatCount];
-        // Copies VLC PCM data to the samples array
-        Marshal.Copy(samplesPtr, samples, 0, floatCount);
-        // Lock the buffer (thread safety)
-        lock (bufferLock)
+        if (bufferHandle.IsAllocated)
         {
-            // Write each sample into the Unity buffer at the current position
-            for (int i = 0; i < floatCount; i++)
-            {
-                buffer[writePosition] = samples[i];
-                writePosition = (writePosition + 1) % buffer.Length;
-                // If the write position catches up to the read position, move read position forward
-                if (writePosition == readPosition)
-                    readPosition = (readPosition + 1) % buffer.Length;
-            }
+            bufferHandle.Free();
         }
     }
 
-    private void OnAudioRead(float[] data)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private unsafe void OnAudioCallback(IntPtr data, IntPtr samplesPtr, uint count, long pts)
     {
-        // Lock the buffer (thread safety again)
-        lock (bufferLock)
+        int floatCount = (int) count * Channels;
+
+        int wp = Volatile.Read(ref writePosition);
+        int rp = Volatile.Read(ref readPosition);
+        int spaceToEnd = buffer.Length - wp;
+
+        float* src = (float*)samplesPtr;
+        float* dst = (float*)bufferPtr;
+
+        if (floatCount <= spaceToEnd)
         {
-            // For every sample Unity requests
-            for (int i = 0; i < data.Length; i++)
+            // No wrap-around - single direct memory copy
+            Buffer.MemoryCopy(src, dst + wp, (buffer.Length - wp) * sizeof(float), floatCount * sizeof(float));
+            int newWp = (wp + floatCount) & bufferMask;
+            Volatile.Write(ref writePosition, newWp);
+        }
+        else
+        {
+            // Wrap-around - two memory copies
+            Buffer.MemoryCopy(src, dst + wp, spaceToEnd * sizeof(float), spaceToEnd * sizeof(float));
+            int remaining = floatCount - spaceToEnd;
+            Buffer.MemoryCopy(src + spaceToEnd, dst, remaining * sizeof(float), remaining * sizeof(float));
+            int newWp = remaining & bufferMask;
+            Volatile.Write(ref writePosition, newWp);
+        }
+
+        // Handle buffer overflow - if we overwrote unread data, advance read position
+        // This is safe because we're the only writer
+        int newWp2 = Volatile.Read(ref writePosition);
+        int availableSpace = (rp - newWp2 - 1) & bufferMask;
+        if (floatCount > availableSpace)
+        {
+            Volatile.Write(ref readPosition, (newWp2 + 1) & bufferMask);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private unsafe void OnAudioRead(float[] data)
+    {
+        int rp = Volatile.Read(ref readPosition);
+        int wp = Volatile.Read(ref writePosition);
+        int available = (wp - rp) & bufferMask;
+        int toRead = available < data.Length ? available : data.Length;
+
+        float* src = (float*)bufferPtr;
+
+        fixed (float* dst = data)
+        {
+            if (toRead > 0)
             {
-                // If there is data available
-                if (readPosition != writePosition)
+                int spaceToEnd = buffer.Length - rp;
+
+                if (toRead <= spaceToEnd)
                 {
-                    // Copy the data
-                    data[i] = buffer[readPosition];
-                    // Advance the read position
-                    readPosition = (readPosition + 1) % buffer.Length;
+                    // No wrap-around - single memory copy
+                    Buffer.MemoryCopy(src + rp, dst, data.Length * sizeof(float), toRead * sizeof(float));
+                    Volatile.Write(ref readPosition, (rp + toRead) & bufferMask);
                 }
                 else
                 {
-                    // Otherwise, fill with silence
-                    data[i] = 0f;
+                    // Wrap-around - two memory copies
+                    Buffer.MemoryCopy(src + rp, dst, data.Length * sizeof(float), spaceToEnd * sizeof(float));
+                    int remaining = toRead - spaceToEnd;
+                    Buffer.MemoryCopy(src, dst + spaceToEnd, (data.Length - spaceToEnd) * sizeof(float), remaining * sizeof(float));
+                    Volatile.Write(ref readPosition, remaining & bufferMask);
+                }
+            }
+
+            // Fill remaining with silence if underrun using SIMD
+            if (toRead < data.Length)
+            {
+                int silenceCount = data.Length - toRead;
+                float* silencePtr = dst + toRead;
+
+                int simdLength = Vector<float>.Count;
+                int vectorCount = silenceCount / simdLength;
+
+                for (int i = 0; i < vectorCount; i++)
+                {
+                    *(Vector<float>*)(silencePtr + i * simdLength) = Vector<float>.Zero;
+                }
+
+                // Handle remaining elements
+                int remaining = silenceCount - (vectorCount * simdLength);
+                for (int i = 0; i < remaining; i++)
+                {
+                    silencePtr[vectorCount * simdLength + i] = 0f;
                 }
             }
         }
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void OnFlush(IntPtr data, long l)
     {
-        // Lock the buffer (more thread safety)
-        lock (bufferLock)
-        {
-            // Set read and write position to 0 (clears buffer)
-            readPosition = writePosition = 0;
-        }
+        Volatile.Write(ref writePosition, 0);
+        Volatile.Write(ref readPosition, 0);
     }
 }
