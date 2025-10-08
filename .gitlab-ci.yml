@@ -172,6 +172,38 @@ unity-android-x86_64-static:
     dependencies:
       - libvlc-android-x86_64-static
 
+# Unity Android with Vulkan support (API 26+)
+unity-android-armv8-vulkan:
+    extends: .unity-android-common
+    variables:
+      <<: *variables-android-armv8
+      ANDROID_ABI: arm64-v8a
+    script:
+        - export PATH="$HOME/sandbox/bin:$PATH"
+        - PKG_CONFIG_PATH=./vlc-android/libvlcjni/libvlc/jni/pkgconfig/${ANDROID_ABI} meson setup --cross-file=cross/android-${ANDROID_ABI}-ndk25-vulkan.txt build_android_${ANDROID_ABI}_vulkan ${STATIC_BUILD} ${ARGS_TRIAL} --buildtype release
+        - ninja -C build_android_${ANDROID_ABI}_vulkan
+    artifacts:
+        paths:
+            - build_android_${ANDROID_ABI}_vulkan/PluginSource/libVLCUnityPlugin.so
+    dependencies:
+      - libvlc-android-armv8
+
+unity-android-armv8-vulkan-static:
+    extends: .unity-android-common
+    variables:
+      <<: *variables-android-armv8
+      ANDROID_ABI: arm64-v8a
+      STATIC_BUILD: "-Dstatic_android=true"
+    script:
+        - export PATH="$HOME/sandbox/bin:$PATH"
+        - PKG_CONFIG_PATH=./vlc-android/libvlcjni/libvlc/jni/pkgconfig/${ANDROID_ABI} meson setup --cross-file=cross/android-${ANDROID_ABI}-ndk25-vulkan.txt build_android_${ANDROID_ABI}_vulkan ${STATIC_BUILD} ${ARGS_TRIAL} --buildtype release
+        - ninja -C build_android_${ANDROID_ABI}_vulkan
+    artifacts:
+        paths:
+            - build_android_${ANDROID_ABI}_vulkan/PluginSource/libVLCUnityPlugin.so
+    dependencies:
+      - libvlc-android-armv8-static
+
 unity-android-armv7-trial-static:
     extends: .unity-android-common
     variables:
@@ -566,6 +598,7 @@ package-unity-plugins-pro:
         - libvlcsharp-ios
         - unity-android-armv7-static
         - unity-android-armv8-static
+        - unity-android-armv8-vulkan-static
         - unity-android-x86-static
         - unity-android-x86_64-static
         - unity-plugin-ios-aarch64

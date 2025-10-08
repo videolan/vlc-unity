@@ -1,0 +1,17 @@
+# Android ARM64-v8a cross-compilation file with Vulkan support (API 26+)
+
+[binaries]
+c = 'aarch64-linux-android26-clang'
+cpp = 'aarch64-linux-android26-clang++'
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+pkgconfig = 'pkg-config'
+
+[properties]
+needs_exe_wrapper = true
+
+[host_machine]
+system = 'android'
+cpu_family = 'aarch64'
+endian = 'little'
+cpu = 'aarch64'

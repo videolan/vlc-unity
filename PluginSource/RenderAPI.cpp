@@ -23,6 +23,14 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 	}
 #endif // if SUPPORT_OPENGL_UNIFIED
 
+#if defined(UNITY_ANDROID)
+    if (apiType == kUnityGfxRendererVulkan)
+    {
+        extern RenderAPI* CreateRenderAPI_Vulkan(UnityGfxRenderer apiType);
+        return CreateRenderAPI_Vulkan(apiType);
+    }
+#endif
+
 #if defined(UNITY_OSX)
     extern RenderAPI* CreateRenderAPI_OpenGLCGL(UnityGfxRenderer apiType);
     if (apiType == kUnityGfxRendererMetal)

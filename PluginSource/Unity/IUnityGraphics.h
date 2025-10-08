@@ -41,6 +41,7 @@ typedef enum UnityGfxRenderer
 	kUnityGfxRendererMetal             = 16, // iOS Metal
 	kUnityGfxRendererOpenGLCore        = 17, // OpenGL core
 	kUnityGfxRendererD3D12             = 18, // Direct3D 12
+	kUnityGfxRendererVulkan            = 21, // Vulkan
 } UnityGfxRenderer;
 
 typedef enum UnityGfxDeviceEventType
