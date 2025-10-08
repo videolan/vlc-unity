@@ -34,12 +34,11 @@ namespace {
 bool staticMakeCurrent(void* data, bool current)
 {
     auto that = static_cast<RenderAPI_Vulkan*>(data);
-    return that->makeCurrent(current);
+    return that->RenderAPI_OpenEGL::makeCurrent(current);
 }
 
 void staticSwap(void *data)
 {
-    auto that = static_cast<RenderAPI_Vulkan*>(data);
     RenderAPI_Vulkan::swap(data);
 }
 
@@ -47,7 +46,7 @@ void staticSwap(void *data)
 
 RenderAPI* CreateRenderAPI_Vulkan(UnityGfxRenderer apiType)
 {
-    return new RenderAPI_Vulkan(apiType);
+    return static_cast<RenderAPI*>(new RenderAPI_Vulkan(apiType));
 }
 
 // RenderAPIHardwareBuffer implementation

@@ -7,6 +7,10 @@
 
 #include UNITY_VULKAN_HEADER
 
+// Forward declarations for Unity types
+typedef struct RenderSurfaceBase* UnityRenderBuffer;
+typedef unsigned long long UnityTextureID;
+
 struct UnityVulkanInstance
 {
     VkPipelineCache pipelineCache; // Unity's pipeline cache is serialized to disk

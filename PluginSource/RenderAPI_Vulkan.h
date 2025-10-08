@@ -9,7 +9,16 @@
 #include <android/hardware_buffer.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+
+// Define platform before including Vulkan headers
+#ifndef VK_USE_PLATFORM_ANDROID_KHR
+#define VK_USE_PLATFORM_ANDROID_KHR 1
+#endif
+
 #include <vulkan/vulkan.h>
+
 #include "Unity/IUnityGraphicsVulkan.h"
 #include <mutex>
 
