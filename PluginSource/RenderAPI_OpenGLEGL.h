@@ -19,13 +19,10 @@ public:
 
     static void* get_proc_address(void* /*data*/, const char* current);
 
-private:
-
+protected:
     EGLDisplay m_display;
     EGLSurface m_surface;
     EGLContext m_context;
-
-protected:
     static EGLContext unity_context;
 };
 
