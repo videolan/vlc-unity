@@ -38,7 +38,7 @@ namespace {
 bool staticMakeCurrent(void* data, bool current)
 {
     auto that = static_cast<RenderAPI_Vulkan*>(data);
-    return that->RenderAPI_OpenEGL::makeCurrent(current);
+    return that->makeCurrent(current);
 }
 
 void staticSwap(void *data)
@@ -50,7 +50,7 @@ void staticSwap(void *data)
 
 RenderAPI* CreateRenderAPI_Vulkan(UnityGfxRenderer apiType)
 {
-    return static_cast<RenderAPI*>(new RenderAPI_Vulkan(apiType));
+    return new RenderAPI_Vulkan(apiType);
 }
 
 // RenderAPIHardwareBuffer implementation
@@ -176,7 +176,7 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
     if (type == kUnityGfxDeviceEventInitialize) {
         DEBUG("[Vulkan] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize");
 
-        // First initialize EGL context (from parent class)
+        // First initialize EGL context (from parent class) - use scope resolution to avoid recursion
         RenderAPI_OpenEGL::ProcessDeviceEvent(type, interfaces);
 
         // Get Vulkan interface from Unity
