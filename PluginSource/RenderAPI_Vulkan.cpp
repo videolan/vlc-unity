@@ -149,11 +149,6 @@ void RenderAPI_Vulkan::destroyWindowSurface(jobject obj)
 
 void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t *mp)
 {
-    if(RenderAPI_OpenEGL::unity_context == EGL_NO_CONTEXT) {
-        DEBUG("[Vulkan] No OpenGL context retrieved");
-        return;
-    }
-
     DEBUG("[Vulkan] setVlcContext %p", this);
 
     // Create AWindow for hardware-accelerated decoding (MediaCodec)
@@ -186,6 +181,64 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
         // Get Vulkan instance from Unity
         m_vk_instance = m_vk_graphics->Instance();
         DEBUG("[Vulkan] Unity Vulkan device: %p", m_vk_instance.device);
+
+        // Create standalone OpenGL ES context for VLC rendering
+        // This context is not shared with Unity since Unity uses Vulkan
+        const EGLint config_attr[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            EGL_RED_SIZE,   8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE,  8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_NONE
+        };
+
+        const EGLint surface_attr[] = {
+            EGL_WIDTH, 2,
+            EGL_HEIGHT, 2,
+            EGL_NONE
+        };
+
+        EGLConfig config;
+        EGLint num_configs;
+
+        m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        if (m_display == EGL_NO_DISPLAY || eglGetError() != EGL_SUCCESS) {
+            DEBUG("[Vulkan] eglGetDisplay() failed: %x", eglGetError());
+            return;
+        }
+
+        if (!eglInitialize(m_display, nullptr, nullptr)) {
+            DEBUG("[Vulkan] eglInitialize() failed: %x", eglGetError());
+            return;
+        }
+
+        if (!eglChooseConfig(m_display, config_attr, &config, 1, &num_configs) || eglGetError() != EGL_SUCCESS) {
+            DEBUG("[Vulkan] eglChooseConfig() failed: %x", eglGetError());
+            return;
+        }
+
+        m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
+        if (m_surface == EGL_NO_SURFACE || eglGetError() != EGL_SUCCESS) {
+            DEBUG("[Vulkan] eglCreatePbufferSurface() failed: %x", eglGetError());
+            return;
+        }
+
+        // Create OpenGL ES 2.0 context (standalone, not shared with Unity)
+        const EGLint ctx_attr[] = {
+            EGL_CONTEXT_CLIENT_VERSION, 2,
+            EGL_NONE
+        };
+
+        m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
+        if (m_context == EGL_NO_CONTEXT || eglGetError() != EGL_SUCCESS) {
+            DEBUG("[Vulkan] eglCreateContext() failed: %x", eglGetError());
+            return;
+        }
+
+        DEBUG("[Vulkan] Created standalone OpenGL ES context: disp=%p surf=%p ctx=%p",
+              m_display, m_surface, m_context);
 
         // Load EGL extensions for AHardwareBuffer
         eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)
@@ -224,6 +277,20 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
     else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[Vulkan] kUnityGfxDeviceEventShutdown");
         releaseHardwareBufferResources();
+
+        // Clean up OpenGL ES context
+        if (m_context != EGL_NO_CONTEXT) {
+            eglDestroyContext(m_display, m_context);
+            m_context = EGL_NO_CONTEXT;
+        }
+        if (m_surface != EGL_NO_SURFACE) {
+            eglDestroySurface(m_display, m_surface);
+            m_surface = EGL_NO_SURFACE;
+        }
+        if (m_display != EGL_NO_DISPLAY) {
+            eglTerminate(m_display);
+            m_display = EGL_NO_DISPLAY;
+        }
     }
 }
 
