@@ -99,7 +99,7 @@ elif host_system == 'android'
     if get_option('static_android')
         vlc_unity_ldflags += [ '-static-libstdc++' ]
     endif
-    vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log'), cc.find_library('android') ]
+    vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log'), cc.find_library('android'), cc.find_library('vulkan') ]
     vlc_unity_cppflags += [ '-DSUPPORT_OPENGL_ES=1', '-DUNITY_ANDROID=1' ]
     plugin_sources += [ opengl_sources_base, android_sources, egl_sources, vulkan_sources ]
 endif
