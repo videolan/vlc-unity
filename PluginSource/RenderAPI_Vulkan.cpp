@@ -176,9 +176,6 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
     if (type == kUnityGfxDeviceEventInitialize) {
         DEBUG("[Vulkan] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize");
 
-        // First initialize EGL context (from parent class) - use scope resolution to avoid recursion
-        RenderAPI_OpenEGL::ProcessDeviceEvent(type, interfaces);
-
         // Get Vulkan interface from Unity
         m_vk_graphics = interfaces->Get<IUnityGraphicsVulkan>();
         if (m_vk_graphics == nullptr) {
@@ -227,7 +224,6 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
     else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[Vulkan] kUnityGfxDeviceEventShutdown");
         releaseHardwareBufferResources();
-        RenderAPI_OpenEGL::ProcessDeviceEvent(type, interfaces);
     }
 }
 
