@@ -56,6 +56,11 @@ public:
     void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
 
+private:
+    jobject createWindowSurface();
+    void destroyWindowSurface(jobject);
+    jobject m_awindow = nullptr;
+
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);
     static bool resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output);

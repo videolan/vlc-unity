@@ -128,12 +128,13 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     }
     
     DEBUG("Calling... CreateRenderAPI \n");
+    DEBUG("s_DeviceType = %d \n", s_DeviceType);
 
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
-    
+
     if(s_CurrentAPI == NULL)
     {
-        DEBUG("s_CurrentAPI is NULL \n");    
+        DEBUG("s_CurrentAPI is NULL \n");
         return NULL;
     }    
     
@@ -246,6 +247,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
         s_DeviceType = s_Graphics->GetRenderer();
 
         DEBUG("CreateRenderAPI(s_DeviceType) \n");
+        DEBUG("s_DeviceType = %d \n", s_DeviceType);
 
         EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
         return;

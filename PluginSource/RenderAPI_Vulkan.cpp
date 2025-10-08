@@ -24,10 +24,14 @@
 #include "Log.h"
 #include <cassert>
 #include <stdexcept>
+#include <jni.h>
 #include <vlc/libvlc_media_player.h>
 
 // AHardwareBuffer requires API level 26+
 #define AHARDWAREBUFFER_MIN_API 26
+
+// External JNI environment from RenderAPI_Android.cpp
+extern JNIEnv* jni_env;
 
 namespace {
 
@@ -102,6 +106,45 @@ RenderAPI_Vulkan::RenderAPI_Vulkan(UnityGfxRenderer apiType)
 RenderAPI_Vulkan::~RenderAPI_Vulkan()
 {
     releaseHardwareBufferResources();
+    if (m_awindow)
+        destroyWindowSurface(m_awindow);
+}
+
+jobject RenderAPI_Vulkan::createWindowSurface()
+{
+    DEBUG("[Vulkan] Entering createWindowSurface");
+
+    jclass activityThread = jni_env->FindClass("android/app/ActivityThread");
+    jmethodID currentApplication = jni_env->GetStaticMethodID(activityThread, "currentApplication", "()Landroid/app/Application;");
+    jobject app = jni_env->CallStaticObjectMethod(activityThread, currentApplication);
+
+    jclass contextClass = jni_env->FindClass("android/content/Context");
+    jmethodID getClassLoader = jni_env->GetMethodID(contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+    jobject classLoader = jni_env->CallObjectMethod(app, getClassLoader);
+
+    jclass classLoaderClass = jni_env->FindClass("java/lang/ClassLoader");
+    jmethodID loadClass = jni_env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+
+    jstring className = jni_env->NewStringUTF("org.videolan.libvlc.AWindow");
+    jclass cls_JavaClass = (jclass)jni_env->CallObjectMethod(classLoader, loadClass, className);
+    jni_env->DeleteLocalRef(className);
+
+    if(cls_JavaClass == nullptr)
+    {
+        DEBUG("[Vulkan] Failed to find class org.videolan.libvlc.AWindow");
+        return nullptr;
+    }
+
+    jmethodID mid_JavaClass = jni_env->GetMethodID(cls_JavaClass, "<init>", "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");
+    jobject obj_JavaClass = jni_env->NewObject(cls_JavaClass, mid_JavaClass, nullptr);
+
+    return jni_env->NewGlobalRef(obj_JavaClass);
+}
+
+void RenderAPI_Vulkan::destroyWindowSurface(jobject obj)
+{
+    if (obj != nullptr)
+        jni_env->DeleteGlobalRef(obj);
 }
 
 void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t *mp)
@@ -110,6 +153,17 @@ void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t *mp)
         DEBUG("[Vulkan] No OpenGL context retrieved");
         return;
     }
+
+    DEBUG("[Vulkan] setVlcContext %p", this);
+
+    // Create AWindow for hardware-accelerated decoding (MediaCodec)
+    if (m_awindow == nullptr)
+        m_awindow = createWindowSurface();
+
+    if (m_awindow != nullptr)
+        libvlc_media_player_set_android_context(mp, m_awindow);
+    else
+        DEBUG("[Vulkan] can't create window surface for media codec");
 
     DEBUG("[Vulkan] subscribing to opengl output callbacks %p", this);
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_gles2,
