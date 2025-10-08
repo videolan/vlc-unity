@@ -203,27 +203,36 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
         EGLConfig config;
         EGLint num_configs;
 
+        DEBUG("[Vulkan] Creating standalone OpenGL ES context...");
+
         m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        if (m_display == EGL_NO_DISPLAY || eglGetError() != EGL_SUCCESS) {
+        DEBUG("[Vulkan] eglGetDisplay returned: %p", m_display);
+        if (m_display == EGL_NO_DISPLAY) {
             DEBUG("[Vulkan] eglGetDisplay() failed: %x", eglGetError());
             return;
         }
 
+        DEBUG("[Vulkan] Calling eglInitialize...");
         if (!eglInitialize(m_display, nullptr, nullptr)) {
             DEBUG("[Vulkan] eglInitialize() failed: %x", eglGetError());
             return;
         }
+        DEBUG("[Vulkan] eglInitialize succeeded");
 
-        if (!eglChooseConfig(m_display, config_attr, &config, 1, &num_configs) || eglGetError() != EGL_SUCCESS) {
+        DEBUG("[Vulkan] Calling eglChooseConfig...");
+        if (!eglChooseConfig(m_display, config_attr, &config, 1, &num_configs)) {
             DEBUG("[Vulkan] eglChooseConfig() failed: %x", eglGetError());
             return;
         }
+        DEBUG("[Vulkan] eglChooseConfig succeeded, num_configs=%d", num_configs);
 
+        DEBUG("[Vulkan] Creating pbuffer surface...");
         m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
-        if (m_surface == EGL_NO_SURFACE || eglGetError() != EGL_SUCCESS) {
+        if (m_surface == EGL_NO_SURFACE) {
             DEBUG("[Vulkan] eglCreatePbufferSurface() failed: %x", eglGetError());
             return;
         }
+        DEBUG("[Vulkan] Pbuffer surface created: %p", m_surface);
 
         // Create OpenGL ES 2.0 context (standalone, not shared with Unity)
         const EGLint ctx_attr[] = {
@@ -231,8 +240,9 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
             EGL_NONE
         };
 
+        DEBUG("[Vulkan] Creating OpenGL ES context...");
         m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
-        if (m_context == EGL_NO_CONTEXT || eglGetError() != EGL_SUCCESS) {
+        if (m_context == EGL_NO_CONTEXT) {
             DEBUG("[Vulkan] eglCreateContext() failed: %x", eglGetError());
             return;
         }
@@ -347,12 +357,14 @@ bool RenderAPI_Vulkan::resize(void* opaque, const libvlc_video_render_cfg_t *cfg
 
 void RenderAPI_Vulkan::swap(void* opaque)
 {
+    DEBUG("[Vulkan] swap callback");
     RenderAPI_Vulkan* that = reinterpret_cast<RenderAPI_Vulkan*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
 
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->buffers[that->idx_render].fbo);
+    DEBUG("[Vulkan] swap callback complete");
 }
 
 RenderAPIHardwareBuffer RenderAPI_Vulkan::createHardwareBuffer(unsigned width, unsigned height)
@@ -559,6 +571,7 @@ bool RenderAPI_Vulkan::createVulkanImage(RenderAPIHardwareBuffer& buffer,
 
 void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
+    DEBUG("[Vulkan] getVideoFrame called: width=%u height=%u", width, height);
     (void)width; (void)height;
     std::lock_guard<std::mutex> lock(text_lock);
 
@@ -566,12 +579,15 @@ void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out
         *out_updated = updated;
 
     if (updated) {
+        DEBUG("[Vulkan] Frame updated, swapping buffers");
         std::swap(idx_swap, idx_display);
         updated = false;
     }
 
     // Return Vulkan image for Unity to display
-    return reinterpret_cast<void*>(buffers[idx_display].vk_image);
+    VkImage img = buffers[idx_display].vk_image;
+    DEBUG("[Vulkan] Returning VkImage: %p (idx=%zu)", img, idx_display);
+    return reinterpret_cast<void*>(img);
 }
 
 void RenderAPI_Vulkan::releaseHardwareBufferResources()
