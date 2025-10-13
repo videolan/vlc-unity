@@ -7,6 +7,7 @@
 
 #if defined(UNITY_ANDROID)
 #include <android/hardware_buffer.h>
+#include <android/native_window_jni.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
@@ -25,20 +26,30 @@
 
 typedef struct libvlc_media_player_t libvlc_media_player_t;
 
-// AHardwareBuffer bridge structure
+// AHardwareBuffer requires API level 26+
+#define AHARDWAREBUFFER_MIN_API 26
+
+// GPU copy approach: GL texture for VLC rendering, VK texture for Unity display
 struct RenderAPIHardwareBuffer
 {
-    AHardwareBuffer* ahb = nullptr;
+    // Shared Android hardware buffer
+    AHardwareBuffer* a_hardware_buffer = nullptr;
+
+    // EGL side (for creating GL texture from AHardwareBuffer)
+    EGLImageKHR egl_image = EGL_NO_IMAGE_KHR;
 
     // OpenGL ES side (for VLC rendering)
-    EGLImageKHR egl_image = EGL_NO_IMAGE_KHR;
     GLuint gl_texture = 0;
     GLuint fbo = 0;
 
-    // Vulkan side (for Unity display)
-    VkImage vk_image = VK_NULL_HANDLE;
-    VkDeviceMemory vk_memory = VK_NULL_HANDLE;
-    VkImageView vk_image_view = VK_NULL_HANDLE;
+    // Vulkan external image (imported from AHardwareBuffer)
+    VkImage vk_image_external = VK_NULL_HANDLE;
+    VkDeviceMemory vk_memory_external = VK_NULL_HANDLE;
+
+    // Vulkan internal image (Unity-compatible, for display)
+    VkImage vk_image_internal = VK_NULL_HANDLE;
+    VkDeviceMemory vk_memory_internal = VK_NULL_HANDLE;
+    VkImageView vk_image_view_internal = VK_NULL_HANDLE;
 
     ~RenderAPIHardwareBuffer();
 
@@ -70,22 +81,16 @@ private:
 private:
     void releaseHardwareBufferResources();
     RenderAPIHardwareBuffer createHardwareBuffer(unsigned width, unsigned height);
-    bool createEGLImage(RenderAPIHardwareBuffer& buffer);
-    bool createVulkanImage(RenderAPIHardwareBuffer& buffer, unsigned width, unsigned height);
+    bool createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsigned width, unsigned height);
+    void copyVulkan(const RenderAPIHardwareBuffer& buffer);
 
     // Vulkan state from Unity
     UnityVulkanInstance m_vk_instance;
     IUnityGraphicsVulkan* m_vk_graphics = nullptr;
 
-    // EGL extensions
-    PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID = nullptr;
-    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
-    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = nullptr;
-    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
-
-    // Vulkan extensions
-    PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID = nullptr;
-    PFN_vkGetMemoryAndroidHardwareBufferANDROID vkGetMemoryAndroidHardwareBufferANDROID = nullptr;
+    // Vulkan objects for GPU copy
+    VkCommandPool m_vk_command_pool = VK_NULL_HANDLE;
+    VkCommandBuffer m_vk_command_buffer = VK_NULL_HANDLE;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];
@@ -97,6 +102,15 @@ private:
     size_t idx_swap = 1;
     size_t idx_display = 2;
     bool updated = false;
+
+    // EGL/GLES extension function pointers
+    PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID = nullptr;
+    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
+    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = nullptr;
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
+
+    // Vulkan extension function pointers for AHardwareBuffer
+    PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID = nullptr;
 };
 
 #endif // UNITY_ANDROID
