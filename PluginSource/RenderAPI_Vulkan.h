@@ -96,6 +96,7 @@ private:
     RenderAPIHardwareBuffer buffers[3];
 
     std::mutex text_lock;
+    std::mutex m_vk_queue_mutex;
     unsigned width = 0;
     unsigned height = 0;
     size_t idx_render = 0;

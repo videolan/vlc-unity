@@ -413,20 +413,39 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
         return false;
     }
 
-    // 2. Allocate memory for external image
+    // 2. Allocate dedicated memory for external image
     VkAndroidHardwareBufferPropertiesANDROID buf_props = {};
     buf_props.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
     vkGetAndroidHardwareBufferPropertiesANDROID(m_vk_instance.device, buffer.a_hardware_buffer, &buf_props);
 
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = buf_props.allocationSize;
-    alloc_info.memoryTypeIndex = buf_props.memoryTypeBits;
+    uint32_t memory_type_index = 0;
+    bool found_mem_type = false;
+    for (uint32_t i = 0; i < 32; i++) {
+        if ((buf_props.memoryTypeBits & (1 << i)) != 0) {
+            memory_type_index = i;
+            found_mem_type = true;
+            break;
+        }
+    }
+    if (!found_mem_type) {
+        DEBUG("[Vulkan] Could not find a compatible memory type for AHardwareBuffer");
+        return false;
+    }
+
+    VkMemoryDedicatedAllocateInfo dedicated_alloc_info = {};
+    dedicated_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+    dedicated_alloc_info.image = buffer.vk_image_external;
 
     VkImportAndroidHardwareBufferInfoANDROID import_info = {};
     import_info.sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
+    import_info.pNext = &dedicated_alloc_info;
     import_info.buffer = buffer.a_hardware_buffer;
+
+    VkMemoryAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.pNext = &import_info;
+    alloc_info.allocationSize = buf_props.allocationSize;
+    alloc_info.memoryTypeIndex = memory_type_index;
 
     if (vkAllocateMemory(m_vk_instance.device, &alloc_info, nullptr, &buffer.vk_memory_external) != VK_SUCCESS) {
         DEBUG("[Vulkan] Failed to allocate memory for external image");
@@ -438,10 +457,12 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
         return false;
     }
 
-    // 3. Create internal, Unity-compatible VkImage
+    // 3. Create a standard, non-exportable, internal VkImage
     image_info.pNext = nullptr;
     image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    image_info.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    image_info.flags = 0;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+
     if (vkCreateImage(m_vk_instance.device, &image_info, nullptr, &buffer.vk_image_internal) != VK_SUCCESS) {
         DEBUG("[Vulkan] Failed to create internal VkImage");
         return false;
@@ -450,11 +471,10 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
     VkMemoryRequirements mem_reqs;
     vkGetImageMemoryRequirements(m_vk_instance.device, buffer.vk_image_internal, &mem_reqs);
 
-    // Find suitable memory type
     VkPhysicalDeviceMemoryProperties mem_props;
     vkGetPhysicalDeviceMemoryProperties(m_vk_instance.physicalDevice, &mem_props);
 
-    uint32_t memory_type_index = UINT32_MAX;
+    memory_type_index = UINT32_MAX;
     for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
         if ((mem_reqs.memoryTypeBits & (1 << i)) &&
             (mem_props.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
@@ -468,12 +488,7 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
         return false;
     }
 
-    // Allocate memory for internal image (with exportable flag)
-    VkExportMemoryAllocateInfo export_alloc_info = {};
-    export_alloc_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
-    export_alloc_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-
-    alloc_info.pNext = &export_alloc_info;
+    alloc_info.pNext = nullptr;
     alloc_info.allocationSize = mem_reqs.size;
     alloc_info.memoryTypeIndex = memory_type_index;
 
@@ -505,40 +520,45 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
     }
 
     // Transition layout to a known state
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(m_vk_command_buffer, &begin_info);
+    {
+        std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(m_vk_command_buffer, &begin_info);
 
-    VkImageMemoryBarrier barrier = {};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = buffer.vk_image_internal;
-    barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        VkImageMemoryBarrier barrier = {};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = buffer.vk_image_internal;
+        barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    vkCmdPipelineBarrier(m_vk_command_buffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        0, 0, nullptr, 0, nullptr, 1, &barrier);
+        vkCmdPipelineBarrier(m_vk_command_buffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-    vkEndCommandBuffer(m_vk_command_buffer);
+        vkEndCommandBuffer(m_vk_command_buffer);
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &m_vk_command_buffer;
-    vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+        VkSubmitInfo submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &m_vk_command_buffer;
+        vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+        vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+    }
 
     return true;
 }
 
 void RenderAPI_Vulkan::copyVulkan(const RenderAPIHardwareBuffer& buffer)
 {
+    std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
+
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -625,7 +645,10 @@ void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out
 
 void RenderAPI_Vulkan::releaseHardwareBufferResources()
 {
-    vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+    {
+        std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
+        vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+    }
 
     for (auto& buffer : buffers) {
         if (buffer.vk_image_view_internal != VK_NULL_HANDLE) {
