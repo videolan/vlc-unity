@@ -73,6 +73,9 @@ public:
     static bool resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output);
     static void swap(void* opaque);
 
+    // Validation layer support
+    static void InitializeValidationLayers(IUnityInterfaces* interfaces);
+
 private:
     jobject createWindowSurface();
     void destroyWindowSurface(jobject);
@@ -112,6 +115,11 @@ private:
 
     // Vulkan extension function pointers for AHardwareBuffer
     PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID = nullptr;
+
+    // Validation layer support
+    static VkDebugUtilsMessengerEXT s_debug_messenger;
+    static PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
+    static PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
 };
 
 #endif // UNITY_ANDROID

@@ -211,6 +211,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginL
     s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
     s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
 
+#if defined(UNITY_ANDROID)
+    // Initialize Vulkan validation layers BEFORE any Vulkan instance creation
+    // This must be called before kUnityGfxDeviceEventInitialize
+    extern void InitializeVulkanValidation(IUnityInterfaces* interfaces);
+    InitializeVulkanValidation(unityInterfaces);
+#endif
+
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
 }

@@ -24,6 +24,7 @@
 #include "Log.h"
 #include <cassert>
 #include <stdexcept>
+#include <vector>
 #include <jni.h>
 #include <vlc/libvlc_media_player.h>
 #include <android/hardware_buffer_jni.h>
@@ -31,7 +32,35 @@
 // External JNI environment from RenderAPI_Android.cpp
 extern JNIEnv* jni_env;
 
+// Static members for validation layers
+VkDebugUtilsMessengerEXT RenderAPI_Vulkan::s_debug_messenger = VK_NULL_HANDLE;
+PFN_vkCreateDebugUtilsMessengerEXT RenderAPI_Vulkan::vkCreateDebugUtilsMessengerEXT = nullptr;
+PFN_vkDestroyDebugUtilsMessengerEXT RenderAPI_Vulkan::vkDestroyDebugUtilsMessengerEXT = nullptr;
+
 namespace {
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData)
+{
+    (void)messageType;  // Unused
+    (void)pUserData;    // Unused
+
+    const char* severity = "UNKNOWN";
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        severity = "ERROR";
+    else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        severity = "WARNING";
+    else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        severity = "INFO";
+    else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        severity = "VERBOSE";
+
+    DEBUG("[VALIDATION][%s] %s", severity, pCallbackData->pMessage);
+    return VK_FALSE;
+}
 
 bool staticMakeCurrent(void* data, bool current)
 {
@@ -110,6 +139,12 @@ RenderAPI_Vulkan::~RenderAPI_Vulkan()
     }
     if (m_awindow)
         destroyWindowSurface(m_awindow);
+
+    // Cleanup validation messenger
+    if (s_debug_messenger != VK_NULL_HANDLE && vkDestroyDebugUtilsMessengerEXT) {
+        vkDestroyDebugUtilsMessengerEXT(m_vk_instance.instance, s_debug_messenger, nullptr);
+        s_debug_messenger = VK_NULL_HANDLE;
+    }
 }
 
 jobject RenderAPI_Vulkan::createWindowSurface()
@@ -166,114 +201,6 @@ void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t *mp)
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_gles2,
         setup, cleanup, nullptr, resize, staticSwap,
         staticMakeCurrent, RenderAPI_OpenEGL::get_proc_address, nullptr, nullptr, this);
-}
-
-void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
-{
-    if (type == kUnityGfxDeviceEventInitialize) {
-        DEBUG("[Vulkan] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize (GPU copy)");
-
-        m_vk_graphics = interfaces->Get<IUnityGraphicsVulkan>();
-        if (m_vk_graphics == nullptr) {
-            DEBUG("[Vulkan] Could not retrieve IUnityGraphicsVulkan");
-            return;
-        }
-
-        m_vk_instance = m_vk_graphics->Instance();
-        DEBUG("[Vulkan] Unity Vulkan device: %p", m_vk_instance.device);
-
-        // Get EGL extension pointers
-        eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
-        eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
-        glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
-        eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress("eglGetNativeClientBufferANDROID");
-
-        if (!eglCreateImageKHR || !eglDestroyImageKHR || !glEGLImageTargetTexture2DOES || !eglGetNativeClientBufferANDROID) {
-            DEBUG("[Vulkan] Failed to get EGL extension pointers");
-            return;
-        }
-
-        // Get Vulkan extension pointers
-        vkGetAndroidHardwareBufferPropertiesANDROID = (PFN_vkGetAndroidHardwareBufferPropertiesANDROID)vkGetInstanceProcAddr(m_vk_instance.instance, "vkGetAndroidHardwareBufferPropertiesANDROID");
-        if (!vkGetAndroidHardwareBufferPropertiesANDROID) {
-            DEBUG("[Vulkan] Could not get vkGetAndroidHardwareBufferPropertiesANDROID proc address");
-            return;
-        }
-
-        const EGLint config_attr[] = {
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-            EGL_RED_SIZE,   8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE,  8,
-            EGL_ALPHA_SIZE, 8,
-            EGL_NONE
-        };
-
-        const EGLint surface_attr[] = { EGL_WIDTH, 2, EGL_HEIGHT, 2, EGL_NONE };
-        EGLConfig config;
-        EGLint num_configs;
-
-        m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        if (m_display == EGL_NO_DISPLAY || !eglInitialize(m_display, nullptr, nullptr) ||
-            !eglChooseConfig(m_display, config_attr, &config, 1, &num_configs)) {
-            DEBUG("[Vulkan] Failed to initialize EGL display: %x", eglGetError());
-            return;
-        }
-
-        m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
-        if (m_surface == EGL_NO_SURFACE) {
-            DEBUG("[Vulkan] eglCreatePbufferSurface() failed: %x", eglGetError());
-            return;
-        }
-
-        const EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-        m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
-        if (m_context == EGL_NO_CONTEXT) {
-            DEBUG("[Vulkan] eglCreateContext() failed: %x", eglGetError());
-            return;
-        }
-
-        DEBUG("[Vulkan] Created standalone OpenGL ES context: disp=%p surf=%p ctx=%p", m_display, m_surface, m_context);
-
-        // Create Vulkan command pool
-        VkCommandPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pool_info.queueFamilyIndex = m_vk_instance.queueFamilyIndex;
-        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-        if (vkCreateCommandPool(m_vk_instance.device, &pool_info, nullptr, &m_vk_command_pool) != VK_SUCCESS) {
-            DEBUG("[Vulkan] Failed to create command pool");
-            return;
-        }
-
-        // Allocate persistent command buffer
-        VkCommandBufferAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool = m_vk_command_pool;
-        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        alloc_info.commandBufferCount = 1;
-
-        if (vkAllocateCommandBuffers(m_vk_instance.device, &alloc_info, &m_vk_command_buffer) != VK_SUCCESS) {
-            DEBUG("[Vulkan] Failed to allocate command buffer");
-            return;
-        }
-
-        DEBUG("[Vulkan] kUnityGfxDeviceEventInitialize success");
-    }
-    else if (type == kUnityGfxDeviceEventShutdown) {
-        DEBUG("[Vulkan] kUnityGfxDeviceEventShutdown");
-        releaseHardwareBufferResources();
-
-        if (m_vk_command_pool != VK_NULL_HANDLE) {
-            vkDestroyCommandPool(m_vk_instance.device, m_vk_command_pool, nullptr);
-            m_vk_command_pool = VK_NULL_HANDLE;
-        }
-
-        if (m_context != EGL_NO_CONTEXT) eglDestroyContext(m_display, m_context);
-        if (m_surface != EGL_NO_SURFACE) eglDestroySurface(m_display, m_surface);
-        if (m_display != EGL_NO_DISPLAY) eglTerminate(m_display);
-    }
 }
 
 bool RenderAPI_Vulkan::setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg,
@@ -688,6 +615,282 @@ void RenderAPI_Vulkan::releaseHardwareBufferResources()
             buffer.a_hardware_buffer = nullptr;
         }
     }
+}
+
+// Static storage for original function pointers
+static PFN_vkGetInstanceProcAddr s_originalGetInstanceProcAddr = nullptr;
+static PFN_vkCreateInstance s_originalCreateInstance = nullptr;
+
+// Wrapped vkCreateInstance that adds validation layers
+static VKAPI_ATTR VkResult VKAPI_CALL Wrapped_vkCreateInstance(
+    const VkInstanceCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkInstance* pInstance)
+{
+    DEBUG("[Vulkan] Intercepted vkCreateInstance");
+
+    // Modify the create info to add validation layer
+    VkInstanceCreateInfo modifiedCreateInfo = *pCreateInfo;
+    std::vector<const char*> enabledLayers;
+
+    // Copy existing layers
+    for (uint32_t i = 0; i < pCreateInfo->enabledLayerCount; i++) {
+        enabledLayers.push_back(pCreateInfo->ppEnabledLayerNames[i]);
+    }
+
+    // Add validation layer if not already present
+    bool hasValidation = false;
+    for (uint32_t i = 0; i < pCreateInfo->enabledLayerCount; i++) {
+        if (strcmp(pCreateInfo->ppEnabledLayerNames[i], "VK_LAYER_KHRONOS_validation") == 0) {
+            hasValidation = true;
+            break;
+        }
+    }
+
+    if (!hasValidation) {
+        DEBUG("[Vulkan] Adding VK_LAYER_KHRONOS_validation to instance layers");
+        enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    // Add debug utils extension if not present
+    std::vector<const char*> enabledExtensions;
+    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+        enabledExtensions.push_back(pCreateInfo->ppEnabledExtensionNames[i]);
+    }
+
+    bool hasDebugUtils = false;
+    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+        if (strcmp(pCreateInfo->ppEnabledExtensionNames[i], VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+            hasDebugUtils = true;
+            break;
+        }
+    }
+
+    if (!hasDebugUtils) {
+        DEBUG("[Vulkan] Adding VK_EXT_debug_utils to instance extensions");
+        enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    modifiedCreateInfo.enabledLayerCount = enabledLayers.size();
+    modifiedCreateInfo.ppEnabledLayerNames = enabledLayers.data();
+    modifiedCreateInfo.enabledExtensionCount = enabledExtensions.size();
+    modifiedCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
+
+    DEBUG("[Vulkan] Creating instance with %u layers and %u extensions",
+          modifiedCreateInfo.enabledLayerCount, modifiedCreateInfo.enabledExtensionCount);
+
+    // Call the original vkCreateInstance
+    VkResult result = s_originalCreateInstance(&modifiedCreateInfo, pAllocator, pInstance);
+
+    if (result == VK_SUCCESS) {
+        DEBUG("[Vulkan] Instance created successfully with validation layers");
+    } else {
+        DEBUG("[Vulkan] Instance creation failed with result: %d", result);
+    }
+
+    return result;
+}
+
+// Wrapped vkGetInstanceProcAddr that intercepts vkCreateInstance
+static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Wrapped_vkGetInstanceProcAddr(
+    VkInstance instance,
+    const char* pName)
+{
+    if (strcmp(pName, "vkCreateInstance") == 0) {
+        return (PFN_vkVoidFunction)Wrapped_vkCreateInstance;
+    }
+    return (PFN_vkVoidFunction)s_originalGetInstanceProcAddr(instance, pName);
+}
+
+// Intercept callback to enable validation layers
+static PFN_vkGetInstanceProcAddr UNITY_INTERFACE_API VulkanInitCallback(
+    PFN_vkGetInstanceProcAddr getInstanceProcAddr, void* userdata)
+{
+    (void)userdata;  // Unused
+    DEBUG("[Vulkan] VulkanInitCallback invoked - intercepting instance creation");
+
+    // Store the original vkGetInstanceProcAddr
+    s_originalGetInstanceProcAddr = getInstanceProcAddr;
+
+    // Get original vkCreateInstance
+    s_originalCreateInstance = (PFN_vkCreateInstance)getInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+    if (!s_originalCreateInstance) {
+        DEBUG("[Vulkan] Failed to get vkCreateInstance");
+        return getInstanceProcAddr;
+    }
+
+    DEBUG("[Vulkan] Successfully intercepted vkGetInstanceProcAddr and vkCreateInstance");
+
+    // Return our wrapped function
+    return Wrapped_vkGetInstanceProcAddr;
+}
+
+void RenderAPI_Vulkan::InitializeValidationLayers(IUnityInterfaces* interfaces)
+{
+    DEBUG("[Vulkan] InitializeValidationLayers called");
+
+    IUnityGraphicsVulkan* vulkan = interfaces->Get<IUnityGraphicsVulkan>();
+    if (!vulkan) {
+        DEBUG("[Vulkan] Could not get IUnityGraphicsVulkan interface");
+        return;
+    }
+
+    // Intercept initialization to add validation layers
+    if (!vulkan->InterceptInitialization(VulkanInitCallback, nullptr)) {
+        DEBUG("[Vulkan] Failed to intercept Vulkan initialization - likely too late");
+        DEBUG("[Vulkan] Make sure this is called from a preload plugin or very early in initialization");
+        return;
+    }
+
+    DEBUG("[Vulkan] Successfully registered validation layer intercept");
+}
+
+void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
+{
+    if (type == kUnityGfxDeviceEventInitialize) {
+        DEBUG("[Vulkan] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize (GPU copy)");
+
+        m_vk_graphics = interfaces->Get<IUnityGraphicsVulkan>();
+        if (m_vk_graphics == nullptr) {
+            DEBUG("[Vulkan] Could not retrieve IUnityGraphicsVulkan");
+            return;
+        }
+
+        m_vk_instance = m_vk_graphics->Instance();
+        DEBUG("[Vulkan] Unity Vulkan device: %p", m_vk_instance.device);
+
+        // Setup debug messenger if validation layers are enabled
+        if (s_debug_messenger == VK_NULL_HANDLE) {
+            vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(m_vk_instance.instance, "vkCreateDebugUtilsMessengerEXT");
+            vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(m_vk_instance.instance, "vkDestroyDebugUtilsMessengerEXT");
+
+            if (vkCreateDebugUtilsMessengerEXT) {
+                VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
+                debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                debugInfo.messageSeverity =
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                debugInfo.messageType =
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                debugInfo.pfnUserCallback = DebugCallback;
+
+                VkResult result = vkCreateDebugUtilsMessengerEXT(
+                    m_vk_instance.instance, &debugInfo, nullptr, &s_debug_messenger);
+
+                if (result == VK_SUCCESS) {
+                    DEBUG("[Vulkan] Debug messenger created successfully");
+                } else {
+                    DEBUG("[Vulkan] Failed to create debug messenger: %d", result);
+                }
+            } else {
+                DEBUG("[Vulkan] Debug utils extension not available");
+            }
+        }
+
+        // Get EGL extension pointers
+        eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
+        eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
+        glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
+        eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress("eglGetNativeClientBufferANDROID");
+
+        if (!eglCreateImageKHR || !eglDestroyImageKHR || !glEGLImageTargetTexture2DOES || !eglGetNativeClientBufferANDROID) {
+            DEBUG("[Vulkan] Failed to get EGL extension pointers");
+            return;
+        }
+
+        // Get Vulkan extension pointers
+        vkGetAndroidHardwareBufferPropertiesANDROID = (PFN_vkGetAndroidHardwareBufferPropertiesANDROID)vkGetInstanceProcAddr(m_vk_instance.instance, "vkGetAndroidHardwareBufferPropertiesANDROID");
+        if (!vkGetAndroidHardwareBufferPropertiesANDROID) {
+            DEBUG("[Vulkan] Could not get vkGetAndroidHardwareBufferPropertiesANDROID proc address");
+            return;
+        }
+
+        const EGLint config_attr[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            EGL_RED_SIZE,   8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE,  8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_NONE
+        };
+
+        const EGLint surface_attr[] = { EGL_WIDTH, 2, EGL_HEIGHT, 2, EGL_NONE };
+        EGLConfig config;
+        EGLint num_configs;
+
+        m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        if (m_display == EGL_NO_DISPLAY || !eglInitialize(m_display, nullptr, nullptr) ||
+            !eglChooseConfig(m_display, config_attr, &config, 1, &num_configs)) {
+            DEBUG("[Vulkan] Failed to initialize EGL display: %x", eglGetError());
+            return;
+        }
+
+        m_surface = eglCreatePbufferSurface(m_display, config, surface_attr);
+        if (m_surface == EGL_NO_SURFACE) {
+            DEBUG("[Vulkan] eglCreatePbufferSurface() failed: %x", eglGetError());
+            return;
+        }
+
+        const EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+        m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
+        if (m_context == EGL_NO_CONTEXT) {
+            DEBUG("[Vulkan] eglCreateContext() failed: %x", eglGetError());
+            return;
+        }
+
+        DEBUG("[Vulkan] Created standalone OpenGL ES context: disp=%p surf=%p ctx=%p", m_display, m_surface, m_context);
+
+        // Create Vulkan command pool
+        VkCommandPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pool_info.queueFamilyIndex = m_vk_instance.queueFamilyIndex;
+        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+        if (vkCreateCommandPool(m_vk_instance.device, &pool_info, nullptr, &m_vk_command_pool) != VK_SUCCESS) {
+            DEBUG("[Vulkan] Failed to create command pool");
+            return;
+        }
+
+        // Allocate persistent command buffer
+        VkCommandBufferAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.commandPool = m_vk_command_pool;
+        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        alloc_info.commandBufferCount = 1;
+
+        if (vkAllocateCommandBuffers(m_vk_instance.device, &alloc_info, &m_vk_command_buffer) != VK_SUCCESS) {
+            DEBUG("[Vulkan] Failed to allocate command buffer");
+            return;
+        }
+
+        DEBUG("[Vulkan] kUnityGfxDeviceEventInitialize success");
+    }
+    else if (type == kUnityGfxDeviceEventShutdown) {
+        DEBUG("[Vulkan] kUnityGfxDeviceEventShutdown");
+        releaseHardwareBufferResources();
+
+        if (m_vk_command_pool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(m_vk_instance.device, m_vk_command_pool, nullptr);
+            m_vk_command_pool = VK_NULL_HANDLE;
+        }
+
+        if (m_context != EGL_NO_CONTEXT) eglDestroyContext(m_display, m_context);
+        if (m_surface != EGL_NO_SURFACE) eglDestroySurface(m_display, m_surface);
+        if (m_display != EGL_NO_DISPLAY) eglTerminate(m_display);
+    }
+}
+
+// External function called from RenderingPlugin.cpp to initialize validation
+extern "C" void InitializeVulkanValidation(IUnityInterfaces* interfaces)
+{
+    RenderAPI_Vulkan::InitializeValidationLayers(interfaces);
 }
 
 #endif // UNITY_ANDROID
