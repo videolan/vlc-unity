@@ -616,6 +616,8 @@ void RenderAPI_Vulkan::copyToUnityTexture(const RenderAPIHardwareBuffer& buffer)
     UnityVulkanImage unityImage;
     UnityVulkanRecordingState recordingState;
 
+    m_vk_graphics->EnsureOutsideRenderPass();
+
     // We need to transition Unity's texture to TRANSFER_DST_OPTIMAL
     if (!m_vk_graphics->AccessTexture(m_unity_texture_ptr,
         UnityVulkanWholeImage,
