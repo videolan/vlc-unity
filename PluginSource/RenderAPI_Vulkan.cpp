@@ -228,12 +228,28 @@ bool RenderAPI_Vulkan::resize(void* opaque, const libvlc_video_render_cfg_t *cfg
     auto *that = static_cast<RenderAPI_Vulkan*>(opaque);
 
     if (cfg->width != that->width || cfg->height != that->height) {
+        DEBUG("[Vulkan] Size changed, recreating buffers");
         that->releaseHardwareBufferResources();
         that->width = cfg->width;
         that->height = cfg->height;
 
-        for (auto& buffer : that->buffers)
-            buffer = that->createHardwareBuffer(cfg->width, cfg->height);
+        // Make GL context current before creating GL resources
+        if (!that->makeCurrent(true)) {
+            DEBUG("[Vulkan] Failed to make GL context current");
+            return false;
+        }
+
+        DEBUG("[Vulkan] Creating 3 hardware buffers...");
+        try {
+            for (size_t i = 0; i < 3; i++) {
+                DEBUG("[Vulkan] Creating buffer %zu/3", i+1);
+                that->buffers[i] = that->createHardwareBuffer(cfg->width, cfg->height);
+            }
+            DEBUG("[Vulkan] All buffers created successfully");
+        } catch (const std::exception& e) {
+            DEBUG("[Vulkan] Exception during buffer creation: %s", e.what());
+            return false;
+        }
     }
 
     output->opengl_format = GL_RGBA;
@@ -571,6 +587,105 @@ void RenderAPI_Vulkan::copyVulkan(const RenderAPIHardwareBuffer& buffer)
     DEBUG("[Vulkan] GPU copy submitted asynchronously");
 }
 
+bool RenderAPI_Vulkan::setUnityTexture(void* unityTexturePtr)
+{
+    if (unityTexturePtr == nullptr) {
+        DEBUG("[Vulkan] setUnityTexture called with nullptr");
+        return false;
+    }
+
+    DEBUG("[Vulkan] Setting Unity texture: %p", unityTexturePtr);
+    m_unity_texture_ptr = unityTexturePtr;
+    return true;
+}
+
+void RenderAPI_Vulkan::copyToUnityTexture(const RenderAPIHardwareBuffer& buffer)
+{
+    if (m_unity_texture_ptr == nullptr || m_vk_graphics == nullptr) {
+        DEBUG("[Vulkan] Cannot copy to Unity texture: ptr=%p, graphics=%p", m_unity_texture_ptr, m_vk_graphics);
+        return;
+    }
+
+    // Wait for previous copy to complete
+    if (m_copy_fence != VK_NULL_HANDLE) {
+        vkWaitForFences(m_vk_instance.device, 1, &m_copy_fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_vk_instance.device, 1, &m_copy_fence);
+    }
+
+    // Access Unity's texture
+    UnityVulkanImage unityImage;
+    UnityVulkanRecordingState recordingState;
+
+    // We need to transition Unity's texture to TRANSFER_DST_OPTIMAL
+    if (!m_vk_graphics->AccessTexture(m_unity_texture_ptr,
+        UnityVulkanWholeImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        kUnityVulkanResourceAccess_PipelineBarrier,
+        &unityImage)) {
+        DEBUG("[Vulkan] Failed to access Unity texture");
+        return;
+    }
+
+    // Start recording on Unity's command buffer
+    if (!m_vk_graphics->CommandRecordingState(&recordingState, kUnityVulkanGraphicsQueueAccess_DontCare)) {
+        DEBUG("[Vulkan] Failed to get command recording state");
+        return;
+    }
+
+    VkCommandBuffer cmdBuffer = recordingState.commandBuffer;
+    if (cmdBuffer == VK_NULL_HANDLE) {
+        DEBUG("[Vulkan] Command buffer is null");
+        return;
+    }
+
+    // Transition our external image to TRANSFER_SRC_OPTIMAL
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.image = buffer.vk_image_external;
+
+    vkCmdPipelineBarrier(cmdBuffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    // Copy from our image to Unity's texture
+    VkImageCopy copyRegion = {};
+    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.srcOffset = { 0, 0, 0 };
+    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copyRegion.dstOffset = { 0, 0, 0 };
+    copyRegion.extent = { width, height, 1 };
+
+    vkCmdCopyImage(cmdBuffer,
+        buffer.vk_image_external, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        unityImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &copyRegion);
+
+    // Transition our image back to GENERAL
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.dstAccessMask = 0;
+    barrier.image = buffer.vk_image_external;
+
+    vkCmdPipelineBarrier(cmdBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    // Unity will handle transitioning its texture to SHADER_READ_ONLY_OPTIMAL
+    DEBUG("[Vulkan] Copied to Unity texture via AccessTexture");
+}
+
 void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
     (void)width; (void)height;
@@ -579,15 +694,45 @@ void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out
     if (out_updated)
         *out_updated = updated;
 
+    // Check if buffers are initialized (resize was called)
+    if (buffers[idx_display].vk_image_internal == VK_NULL_HANDLE) {
+        DEBUG("[Vulkan] Buffers not initialized yet, returning nullptr");
+        return nullptr;
+    }
+
     if (updated) {
-        DEBUG("[Vulkan] Frame updated, performing GPU copy");
+        DEBUG("[Vulkan] Frame updated");
         std::swap(idx_swap, idx_display);
         updated = false;
-        copyVulkan(buffers[idx_display]);
+
+        // If Unity texture is set, copy directly to it using AccessTexture
+        if (m_unity_texture_ptr != nullptr) {
+            DEBUG("[Vulkan] Copying to Unity texture");
+            copyToUnityTexture(buffers[idx_display]);
+            return m_unity_texture_ptr;  // Return Unity's texture pointer
+        } else {
+            // Legacy path: GPU copy to internal image and return VkImage handle
+            DEBUG("[Vulkan] Using legacy path - performing GPU copy");
+            copyVulkan(buffers[idx_display]);
+        }
+    }
+
+    // Legacy path: return internal VkImage handle
+    if (m_unity_texture_ptr != nullptr) {
+        return m_unity_texture_ptr;
     }
 
     VkImage img = buffers[idx_display].vk_image_internal;
+
+    // Validate the image handle
+    if (img == VK_NULL_HANDLE) {
+        DEBUG("[Vulkan] ERROR: Attempting to return null VkImage!");
+        return nullptr;
+    }
+
     DEBUG("[Vulkan] Returning VkImage: %p (idx=%zu)", img, idx_display);
+
+    // Return VkImage handle as void*
     return reinterpret_cast<void*>(img);
 }
 
@@ -891,9 +1036,10 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
             return;
         }
 
-        // Create fence for copy synchronization
+        // Create fence for copy synchronization (initially signaled)
         VkFenceCreateInfo fence_info = {};
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // Start signaled so first wait doesn't block
         if (vkCreateFence(m_vk_instance.device, &fence_info, nullptr, &m_copy_fence) != VK_SUCCESS) {
             DEBUG("[Vulkan] Failed to create copy fence");
             return;

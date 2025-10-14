@@ -13,6 +13,43 @@ namespace LibVLCSharp
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_bit_depth_format")]
         static extern void SetBitDepthFormat(IntPtr mediaplayer, int bitDepth);
 
+        [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_unity_texture_vulkan")]
+        static extern bool SetUnityTextureVulkan(IntPtr mediaplayer, IntPtr texturePtr);
+
+        // Track if we're using the Vulkan approach (Unity-owned texture)
+        private static bool isVulkanMode = false;
+
+        /// <summary>
+        /// Update texture with new frame data
+        /// </summary>
+        /// <param name="texture">The texture to update</param>
+        /// <param name="player">The media player</param>
+        /// <returns>true if frame was updated</returns>
+        public static bool UpdateTexture(Texture2D texture, ref MediaPlayer player)
+        {
+            if (texture == null)
+                return false;
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // Vulkan on Android uses AccessTexture approach - plugin updates the texture directly
+            if (isVulkanMode)
+            {
+                // Just check if there's an update (plugin already updated the texture)
+                var texptr = player.GetTexture((uint)texture.width, (uint)texture.height, out bool updated);
+                return updated;
+            }
+#endif
+
+            // Standard approach for non-Vulkan
+            var ptr = player.GetTexture((uint)texture.width, (uint)texture.height, out bool updatedd);
+            if (updatedd && ptr != System.IntPtr.Zero)
+            {
+                texture.UpdateExternalTexture(ptr);
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Helper for native texture creation
         /// </summary>
@@ -45,6 +82,33 @@ namespace LibVLCSharp
 #endif
             }
 
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // Vulkan on Android requires a different approach
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Vulkan)
+            {
+                if (width == 0 || height == 0)
+                    return default;
+
+                // Create Unity-owned texture
+                var texture = new Texture2D((int)width, (int)height,
+                    bitDepth == BitDepth.Bit16 ? TextureFormat.RGBAHalf : TextureFormat.RGBA32,
+                    mipmap, linear);
+
+                // Pass texture to plugin so it can update it via AccessTexture
+                if (!SetUnityTextureVulkan(player.NativeReference, texture.GetNativeTexturePtr()))
+                {
+                    UnityEngine.Debug.LogError("[VLC-Unity] Failed to set Unity texture for Vulkan");
+                    UnityEngine.Object.Destroy(texture);
+                    return default;
+                }
+
+                isVulkanMode = true;
+                UnityEngine.Debug.Log("[VLC-Unity] Using Vulkan mode with Unity-owned texture");
+                return texture;
+            }
+#endif
+
+            // Standard approach for non-Vulkan or non-Android
             var texptr = player.GetTexture(width, height, out bool updated);
 
             if (width != 0 && height != 0 && updated && texptr != IntPtr.Zero)

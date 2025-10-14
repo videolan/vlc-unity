@@ -8,6 +8,10 @@
 #include <windows.h>
 #endif
 
+#if defined(UNITY_ANDROID)
+#include "RenderAPI_Vulkan.h"
+#endif
+
 extern "C" {
 #include <stdlib.h>
 #include <unistd.h>
@@ -200,6 +204,39 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
     }
 
     return s_CurrentAPI->getVideoFrame(width, height, updated);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityTexturePtr)
+{
+    if(mp == NULL) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: mp is NULL");
+        return false;
+    }
+
+    auto it = contexts.find(mp);
+    if(it == contexts.end()) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: no context found for mp");
+        return false;
+    }
+
+    RenderAPI* s_CurrentAPI = it->second;
+    if (!s_CurrentAPI) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: s_CurrentAPI is NULL");
+        return false;
+    }
+
+#if defined(UNITY_ANDROID)
+    // Check if this is the Vulkan renderer
+    if (s_DeviceType == kUnityGfxRendererVulkan) {
+        // Cast to RenderAPI_Vulkan and call setUnityTexture
+        RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(s_CurrentAPI);
+        return vulkanAPI->setUnityTexture(unityTexturePtr);
+    }
+#endif
+
+    DEBUG("libvlc_unity_set_unity_texture_vulkan: not on Vulkan renderer");
+    return false;
 }
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);

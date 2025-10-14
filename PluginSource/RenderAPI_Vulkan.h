@@ -68,6 +68,9 @@ public:
     void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
 
+    // Vulkan-specific: Set Unity-created texture to update via AccessTexture
+    bool setUnityTexture(void* unityTexturePtr);
+
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);
     static bool resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output);
@@ -86,6 +89,7 @@ private:
     RenderAPIHardwareBuffer createHardwareBuffer(unsigned width, unsigned height);
     bool createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsigned width, unsigned height);
     void copyVulkan(const RenderAPIHardwareBuffer& buffer);
+    void copyToUnityTexture(const RenderAPIHardwareBuffer& buffer);
 
     // Vulkan state from Unity
     UnityVulkanInstance m_vk_instance;
@@ -95,6 +99,9 @@ private:
     VkCommandPool m_vk_command_pool = VK_NULL_HANDLE;
     VkCommandBuffer m_vk_command_buffer = VK_NULL_HANDLE;
     VkFence m_copy_fence = VK_NULL_HANDLE;
+
+    // Unity-created texture pointer (for Vulkan AccessTexture approach)
+    void* m_unity_texture_ptr = nullptr;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];
