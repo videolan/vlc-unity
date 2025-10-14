@@ -94,12 +94,12 @@ private:
     // Vulkan objects for GPU copy
     VkCommandPool m_vk_command_pool = VK_NULL_HANDLE;
     VkCommandBuffer m_vk_command_buffer = VK_NULL_HANDLE;
+    VkFence m_copy_fence = VK_NULL_HANDLE;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];
 
     std::mutex text_lock;
-    std::mutex m_vk_queue_mutex;
     unsigned width = 0;
     unsigned height = 0;
     size_t idx_render = 0;

@@ -447,8 +447,10 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
     }
 
     // Transition layout to a known state
+    // NOTE: This is called during initialization, before any rendering starts,
+    // so it's safe to submit directly. However, we should still use a fence
+    // instead of WaitIdle for better performance.
     {
-        std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -471,12 +473,24 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
 
         vkEndCommandBuffer(m_vk_command_buffer);
 
+        // Create a fence for synchronization instead of WaitIdle
+        VkFenceCreateInfo fence_info = {};
+        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkFence fence;
+        if (vkCreateFence(m_vk_instance.device, &fence_info, nullptr, &fence) != VK_SUCCESS) {
+            DEBUG("[Vulkan] Failed to create fence for layout transition");
+            return false;
+        }
+
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &m_vk_command_buffer;
-        vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-        vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+        vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, fence);
+
+        // Wait for the fence instead of the entire queue
+        vkWaitForFences(m_vk_instance.device, 1, &fence, VK_TRUE, UINT64_MAX);
+        vkDestroyFence(m_vk_instance.device, fence, nullptr);
     }
 
     return true;
@@ -484,7 +498,11 @@ bool RenderAPI_Vulkan::createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsi
 
 void RenderAPI_Vulkan::copyVulkan(const RenderAPIHardwareBuffer& buffer)
 {
-    std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
+    // Wait for previous copy to complete before reusing command buffer
+    if (m_copy_fence != VK_NULL_HANDLE) {
+        vkWaitForFences(m_vk_instance.device, 1, &m_copy_fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_vk_instance.device, 1, &m_copy_fence);
+    }
 
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -542,12 +560,15 @@ void RenderAPI_Vulkan::copyVulkan(const RenderAPIHardwareBuffer& buffer)
 
     vkEndCommandBuffer(m_vk_command_buffer);
 
+    // Submit with fence - don't wait, let it complete asynchronously
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &m_vk_command_buffer;
-    vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+    vkQueueSubmit(m_vk_instance.graphicsQueue, 1, &submit_info, m_copy_fence);
+
+    // DON'T WAIT - let it complete async. Unity will handle synchronization when it uses the texture.
+    DEBUG("[Vulkan] GPU copy submitted asynchronously");
 }
 
 void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
@@ -572,9 +593,9 @@ void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out
 
 void RenderAPI_Vulkan::releaseHardwareBufferResources()
 {
-    {
-        std::lock_guard<std::mutex> lock(m_vk_queue_mutex);
-        vkQueueWaitIdle(m_vk_instance.graphicsQueue);
+    // Wait for pending copy operation to complete before cleanup
+    if (m_copy_fence != VK_NULL_HANDLE) {
+        vkWaitForFences(m_vk_instance.device, 1, &m_copy_fence, VK_TRUE, UINT64_MAX);
     }
 
     for (auto& buffer : buffers) {
@@ -870,11 +891,24 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
             return;
         }
 
+        // Create fence for copy synchronization
+        VkFenceCreateInfo fence_info = {};
+        fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        if (vkCreateFence(m_vk_instance.device, &fence_info, nullptr, &m_copy_fence) != VK_SUCCESS) {
+            DEBUG("[Vulkan] Failed to create copy fence");
+            return;
+        }
+
         DEBUG("[Vulkan] kUnityGfxDeviceEventInitialize success");
     }
     else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[Vulkan] kUnityGfxDeviceEventShutdown");
         releaseHardwareBufferResources();
+
+        if (m_copy_fence != VK_NULL_HANDLE) {
+            vkDestroyFence(m_vk_instance.device, m_copy_fence, nullptr);
+            m_copy_fence = VK_NULL_HANDLE;
+        }
 
         if (m_vk_command_pool != VK_NULL_HANDLE) {
             vkDestroyCommandPool(m_vk_instance.device, m_vk_command_pool, nullptr);
