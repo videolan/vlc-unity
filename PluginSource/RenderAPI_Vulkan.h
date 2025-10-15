@@ -51,6 +51,8 @@ struct RenderAPIHardwareBuffer
     VkDeviceMemory vk_memory_internal = VK_NULL_HANDLE;
     VkImageView vk_image_view_internal = VK_NULL_HANDLE;
 
+    bool layout_initialized = false;
+
     ~RenderAPIHardwareBuffer();
 
     RenderAPIHardwareBuffer& operator=(RenderAPIHardwareBuffer &&other);
@@ -89,7 +91,7 @@ private:
     RenderAPIHardwareBuffer createHardwareBuffer(unsigned width, unsigned height);
     bool createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsigned width, unsigned height);
     void copyVulkan(const RenderAPIHardwareBuffer& buffer);
-    void copyToUnityTexture(const RenderAPIHardwareBuffer& buffer);
+    bool copyToUnityTexture(const RenderAPIHardwareBuffer& buffer);
 
     // Vulkan state from Unity
     UnityVulkanInstance m_vk_instance;
@@ -98,10 +100,12 @@ private:
     // Vulkan objects for GPU copy
     VkCommandPool m_vk_command_pool = VK_NULL_HANDLE;
     VkCommandBuffer m_vk_command_buffer = VK_NULL_HANDLE;
-    VkFence m_copy_fence = VK_NULL_HANDLE;
 
     // Unity-created texture pointer (for Vulkan AccessTexture approach)
     void* m_unity_texture_ptr = nullptr;
+
+    // Track if Vulkan image layout has been initialized
+    bool m_vulkan_image_layout_initialized = false;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];
