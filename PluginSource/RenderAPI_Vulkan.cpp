@@ -780,30 +780,19 @@ void* RenderAPI_Vulkan::getVideoFrame(unsigned width, unsigned height, bool* out
         DEBUG("[Vulkan] After swap: idx_display=%zu, idx_swap=%zu", idx_display, idx_swap);
         updated = false;
 
-        // If Unity texture is set, copy directly to it using AccessTexture
+        // If Unity texture is set, schedule copy for render thread
         if (m_unity_texture_ptr != nullptr) {
-            DEBUG("[Vulkan] Copying to Unity texture");
+            DEBUG("[Vulkan] Scheduling texture copy for render thread");
             DEBUG("[Vulkan]   Using buffer[%zu]", idx_display);
             DEBUG("[Vulkan]   Buffer VK external image: %p", buffers[idx_display].vk_image_external);
             DEBUG("[Vulkan]   Buffer VK internal image: %p", buffers[idx_display].vk_image_internal);
 
-            bool copySuccess = copyToUnityTexture(buffers[idx_display]);
+            // Store which buffer to copy in the render event
+            m_pending_copy_buffer_idx = idx_display;
+            m_has_pending_copy = true;
 
-            if (copySuccess) {
-                DEBUG("[Vulkan] Copy succeeded, returning Unity texture pointer: %p", m_unity_texture_ptr);
-                return m_unity_texture_ptr;  // Return Unity's texture pointer
-            } else {
-                DEBUG("[Vulkan] Copy failed - Unity texture is busy, skipping this frame");
-                // Swap back to undo the index swap - keep displaying the previous frame
-                std::swap(idx_swap, idx_display);
-                // Tell C# that the frame was NOT updated so it doesn't call UpdateExternalTexture
-                if (out_updated)
-                    *out_updated = false;
-                DEBUG("[Vulkan] Restored indices: idx_display=%zu, idx_swap=%zu", idx_display, idx_swap);
-                DEBUG("[Vulkan] Will retry on next frame");
-                // Still return the texture pointer (previous frame), but with updated=false
-                return m_unity_texture_ptr;
-            }
+            DEBUG("[Vulkan] Copy scheduled, will be executed on render thread");
+            return m_unity_texture_ptr;  // Return Unity's texture pointer
         } else {
             // Legacy path: GPU copy to internal image and return VkImage handle
             DEBUG("[Vulkan] Using legacy path - performing GPU copy");
@@ -1143,6 +1132,36 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
         if (m_surface != EGL_NO_SURFACE) eglDestroySurface(m_display, m_surface);
         if (m_display != EGL_NO_DISPLAY) eglTerminate(m_display);
     }
+}
+
+void RenderAPI_Vulkan::onRenderEvent()
+{
+    DEBUG("[Vulkan] === onRenderEvent: Entry ===");
+    DEBUG("[Vulkan]   Current thread ID: %ld", (long)pthread_self());
+    DEBUG("[Vulkan]   m_has_pending_copy: %s", m_has_pending_copy ? "TRUE" : "FALSE");
+
+    std::lock_guard<std::mutex> lock(text_lock);
+
+    if (!m_has_pending_copy) {
+        DEBUG("[Vulkan] === onRenderEvent: No pending copy, returning ===");
+        return; // Nothing to do
+    }
+
+    DEBUG("[Vulkan] === onRenderEvent: Processing pending copy ===");
+    DEBUG("[Vulkan]   Buffer index: %zu", m_pending_copy_buffer_idx);
+    DEBUG("[Vulkan]   Unity texture ptr: %p", m_unity_texture_ptr);
+    DEBUG("[Vulkan]   VK graphics interface: %p", m_vk_graphics);
+
+    bool copySuccess = copyToUnityTexture(buffers[m_pending_copy_buffer_idx]);
+
+    if (copySuccess) {
+        DEBUG("[Vulkan] Render event: Copy succeeded");
+    } else {
+        DEBUG("[Vulkan] Render event: Copy failed, will retry next frame");
+    }
+
+    m_has_pending_copy = false;
+    DEBUG("[Vulkan] === onRenderEvent: Complete ===");
 }
 
 // External function called from RenderingPlugin.cpp to initialize validation

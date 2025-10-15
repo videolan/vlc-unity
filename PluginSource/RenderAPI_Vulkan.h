@@ -73,6 +73,9 @@ public:
     // Vulkan-specific: Set Unity-created texture to update via AccessTexture
     bool setUnityTexture(void* unityTexturePtr);
 
+    // Called from Unity render thread to perform texture copy
+    void onRenderEvent();
+
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);
     static bool resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output);
@@ -106,6 +109,10 @@ private:
 
     // Track if Vulkan image layout has been initialized
     bool m_vulkan_image_layout_initialized = false;
+
+    // Pending copy state (for render thread)
+    size_t m_pending_copy_buffer_idx = 0;
+    bool m_has_pending_copy = false;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];

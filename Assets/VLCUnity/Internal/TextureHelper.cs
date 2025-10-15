@@ -16,6 +16,9 @@ namespace LibVLCSharp
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_unity_texture_vulkan")]
         static extern bool SetUnityTextureVulkan(IntPtr mediaplayer, IntPtr texturePtr);
 
+        [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetRenderEventFunc")]
+        static extern IntPtr GetRenderEventFunc();
+
         // Track if we're using the Vulkan approach (Unity-owned texture)
         private static bool isVulkanMode = false;
 
@@ -31,12 +34,26 @@ namespace LibVLCSharp
                 return false;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-            // Vulkan on Android uses AccessTexture approach - plugin updates the texture directly
+            // Vulkan on Android uses AccessTexture approach - plugin updates the texture directly via render thread
             if (isVulkanMode)
             {
-                // Just check if there's an update (plugin already updated the texture)
+                // Check if there's an update
                 var texptr = player.GetTexture((uint)texture.width, (uint)texture.height, out bool updated);
-                return updated;
+
+                if (updated && texptr != System.IntPtr.Zero)
+                {
+                    UnityEngine.Debug.Log($"[VLC-Unity-C#] Frame updated, issuing plugin event. texptr={texptr:X}");
+
+                    // Issue a plugin event to trigger the texture copy on the render thread
+                    // This ensures AccessTexture is called at the right time
+                    IntPtr renderEventFunc = GetRenderEventFunc();
+                    UnityEngine.Debug.Log($"[VLC-Unity-C#] GetRenderEventFunc returned: {renderEventFunc:X}");
+                    GL.IssuePluginEvent(renderEventFunc, 0);
+                    UnityEngine.Debug.Log("[VLC-Unity-C#] GL.IssuePluginEvent called");
+                    return true;
+                }
+                UnityEngine.Debug.Log($"[VLC-Unity-C#] No update: updated={updated}, texptr={texptr:X}");
+                return false;
             }
 #endif
 
@@ -93,6 +110,10 @@ namespace LibVLCSharp
                 var texture = new Texture2D((int)width, (int)height,
                     bitDepth == BitDepth.Bit16 ? TextureFormat.RGBAHalf : TextureFormat.RGBA32,
                     mipmap, linear);
+
+                // Force Unity to allocate GPU resources for the texture before we pass it to the plugin
+                // This ensures the VkImage is fully created and initialized
+                texture.Apply(false, false);
 
                 // Pass texture to plugin so it can update it via AccessTexture
                 if (!SetUnityTextureVulkan(player.NativeReference, texture.GetNativeTexturePtr()))
