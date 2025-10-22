@@ -20,6 +20,7 @@ variables:
       changes:
         - "PluginSource/**/*"
         - ".gitlab-ci.yml"
+  interruptible: yes
 
 .base-template:
     tags:
