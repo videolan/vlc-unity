@@ -16,7 +16,11 @@ variables:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
       when: always
-    - if: '$CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_PROJECT_PATH == "videolan/vlc-unity"'
+      changes:
+        - "PluginSource/**/*"
+        - ".gitlab-ci.yml"
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - "PluginSource/**/*"
         - ".gitlab-ci.yml"
