@@ -608,8 +608,9 @@ package-unity-plugins-trial:
     extends: .base-template
     stage: build-libvlc
     script:
-        - wget https://download.visualstudio.microsoft.com/download/pr/db901b0a-3144-4d07-b8ab-6e7a43e7a791/4d9d1b39b879ad969c6c0ceb6d052381/dotnet-sdk-8.0.401-linux-x64.tar.gz
-        - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-8.0.401-linux-x64.tar.gz -C $HOME/dotnet
+        - DOTNET_SDK_VERSION=9.0.306
+        - wget https://builds.dotnet.microsoft.com/dotnet/Sdk/${DOTNET_SDK_VERSION}/dotnet-sdk-${DOTNET_SDK_VERSION}-linux-x64.tar.gz
+        - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-${DOTNET_SDK_VERSION}-linux-x64.tar.gz -C $HOME/dotnet
         - export DOTNET_ROOT=$HOME/dotnet
         - export PATH=$PATH:$HOME/dotnet
         - mkdir tmp && cd tmp && git clone https://code.videolan.org/videolan/LibVLCSharp lvs
