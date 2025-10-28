@@ -55,9 +55,10 @@ And more.
   - ABI supported: x64, ARM64.
   - Graphics API: Direct3D 11
 - Android:
-  - Minimum OS version: Android 4.2 (API 17).
-  - ABIs supposed: armeabi-v7a, arm64-v8a, x86, x86_64.
-  - Graphics API: OpenGL ES 2/3
+  - Minimum OS version: Android 5.0 Lollipop (API 21) for OpenGL ES.
+  - For Vulkan support: Android 8.0 Oreo (API 26) or higher, ARM64 only.
+  - ABIs supported: armeabi-v7a, arm64-v8a, x86, x86_64.
+  - Graphics API: OpenGL ES 2/3, Vulkan
 - iOS:
   - Minimum OS version: iOS 9.
   - ABI supported: ARM64. Simulator support will come later.
@@ -131,7 +132,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Future graphics APIs
 
-- Vulkan,
+- Vulkan (on other targets than Android)
 - WebGL
 
 ### Other improvements
