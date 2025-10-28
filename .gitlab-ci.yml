@@ -476,7 +476,7 @@ unity-plugin-macos-aarch64-trial:
     extends: .base-template
     stage: build-libvlc
     tags:
-        - monterey
+        - macos-xcode15
     script:
         - git clone https://code.videolan.org/videolan/vlc && cd vlc
         # get latest live555 patches
@@ -507,7 +507,7 @@ libvlc-ios-arm64:
     extends: .base-template
     stage: build-unity-plugin
     tags:
-        - monterey
+        - macos-xcode15
     script:
         # patch libvlc.pc to build the plugin
         - cd vlc/build/vlc-$SDKNAME-$SHORT_ARCH
