@@ -3,7 +3,8 @@
 #include "Log.h"
 #include "RenderAPI_OpenGLEGL.h"
 
-static JNIEnv* jni_env = 0;
+// JNI environment - accessible from other Android renderers
+JNIEnv* jni_env = 0;
 static void *handle;
 typedef jint (*JNI_OnLoad_pf)(JavaVM *, void*);
 typedef void (*JNI_OnUnload_pf)(JavaVM *, void*);

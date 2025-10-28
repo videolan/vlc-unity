@@ -8,9 +8,16 @@
 #include <windows.h>
 #endif
 
+#if defined(SUPPORT_VULKAN)
+#include "RenderAPI_Vulkan.h"
+#endif
+
 extern "C" {
 #include <stdlib.h>
+#if !defined(_WIN32)
 #include <unistd.h>
+#include <pthread.h>
+#endif
 #include <vlc/vlc.h>
 #include <string.h>
 }
@@ -128,12 +135,13 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     }
     
     DEBUG("Calling... CreateRenderAPI \n");
+    DEBUG("s_DeviceType = %d \n", s_DeviceType);
 
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
-    
+
     if(s_CurrentAPI == NULL)
     {
-        DEBUG("s_CurrentAPI is NULL \n");    
+        DEBUG("s_CurrentAPI is NULL \n");
         return NULL;
     }    
     
@@ -201,6 +209,39 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
     return s_CurrentAPI->getVideoFrame(width, height, updated);
 }
 
+extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityTexturePtr)
+{
+    if(mp == NULL) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: mp is NULL");
+        return false;
+    }
+
+    auto it = contexts.find(mp);
+    if(it == contexts.end()) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: no context found for mp");
+        return false;
+    }
+
+    RenderAPI* s_CurrentAPI = it->second;
+    if (!s_CurrentAPI) {
+        DEBUG("libvlc_unity_set_unity_texture_vulkan: s_CurrentAPI is NULL");
+        return false;
+    }
+
+#if defined(SUPPORT_VULKAN)
+    // Check if this is the Vulkan renderer
+    if (s_DeviceType == kUnityGfxRendererVulkan) {
+        // Cast to RenderAPI_Vulkan and call setUnityTexture
+        RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(s_CurrentAPI);
+        return vulkanAPI->setUnityTexture(unityTexturePtr);
+    }
+#endif
+
+    DEBUG("libvlc_unity_set_unity_texture_vulkan: not on Vulkan renderer");
+    return false;
+}
+
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginLoad(IUnityInterfaces* unityInterfaces)
@@ -209,6 +250,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginL
     s_UnityInterfaces = unityInterfaces;
     s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
     s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
+
+#if defined(SUPPORT_VULKAN)
+    // Initialize Vulkan validation layers BEFORE any Vulkan instance creation
+    // This must be called before kUnityGfxDeviceEventInitialize
+    extern void InitializeVulkanValidation(IUnityInterfaces* interfaces);
+    InitializeVulkanValidation(unityInterfaces);
+#endif
 
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
     OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
@@ -246,6 +294,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
         s_DeviceType = s_Graphics->GetRenderer();
 
         DEBUG("CreateRenderAPI(s_DeviceType) \n");
+        DEBUG("s_DeviceType = %d \n", s_DeviceType);
 
         EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
         return;
@@ -272,16 +321,46 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-    DEBUG("OnRenderEvent called \n");
+#if !defined(_WIN32)
+    DEBUG("[VLC-Unity] OnRenderEvent called with eventID=%d, thread=%ld\n", eventID, (long)pthread_self());
+#else
+    DEBUG("[VLC-Unity] OnRenderEvent called with eventID=%d\n", eventID);
+#endif
+    DEBUG("[VLC-Unity]   s_DeviceType=%d (Vulkan=%d)\n", s_DeviceType, kUnityGfxRendererVulkan);
+    DEBUG("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
+
 #if defined(UNITY_ANDROID)
     if(EarlyRenderAPI)
     {
+        DEBUG("[VLC-Unity]   Calling EarlyRenderAPI->retrieveOpenGLContext()\n");
         EarlyRenderAPI->retrieveOpenGLContext();
     }
+
+    // Call render event for all active contexts
+    std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+    for(it = contexts.begin(); it != contexts.end(); it++)
+    {
+        RenderAPI* currentAPI = it->second;
+        DEBUG("[VLC-Unity]   Processing context: mp=%p, api=%p\n", it->first, currentAPI);
+
+#if defined(SUPPORT_VULKAN)
+        if(currentAPI && s_DeviceType == kUnityGfxRendererVulkan) {
+            DEBUG("[VLC-Unity]   Calling onRenderEvent for Vulkan API\n");
+            // Cast to Vulkan API and call onRenderEvent
+            RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(currentAPI);
+            vulkanAPI->onRenderEvent();
+        } else
+#endif
+        {
+            DEBUG("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%d\n", currentAPI, s_DeviceType);
+        }
+    }
+    DEBUG("[VLC-Unity] OnRenderEvent complete\n");
 #endif
 }
 
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
+    DEBUG("[VLC-Unity] GetRenderEventFunc called, returning %p\n", (void*)OnRenderEvent);
     return OnRenderEvent;
 }

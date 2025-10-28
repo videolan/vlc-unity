@@ -30,6 +30,11 @@ egl_sources = files(
     'RenderAPI_OpenGLEGL.h',
 )
 
+vulkan_sources = files(
+    'RenderAPI_Vulkan.cpp',
+    'RenderAPI_Vulkan.h',
+)
+
 cgl_sources = files(
     'RenderAPI_OpenGLCGL.mm',
     'RenderAPI_OpenGLCGL.h',
@@ -94,9 +99,16 @@ elif host_system == 'android'
     if get_option('static_android')
         vlc_unity_ldflags += [ '-static-libstdc++' ]
     endif
-    vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log') ]
+    vlc_unity_deps += [ cc.find_library('GLESv2'), cc.find_library('EGL'), cc.find_library('log'), cc.find_library('android') ]
     vlc_unity_cppflags += [ '-DSUPPORT_OPENGL_ES=1', '-DUNITY_ANDROID=1' ]
     plugin_sources += [ opengl_sources_base, android_sources, egl_sources ]
+
+    # Only enable Vulkan support for arm64-v8a
+    if host_machine.cpu_family() == 'aarch64'
+        vlc_unity_deps += [ cc.find_library('vulkan') ]
+        vlc_unity_cppflags += [ '-DSUPPORT_VULKAN=1' ]
+        plugin_sources += [ vulkan_sources ]
+    endif
 endif
 
 if have_ios or have_tvos

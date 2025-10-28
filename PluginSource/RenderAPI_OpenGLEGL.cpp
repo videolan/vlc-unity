@@ -36,13 +36,21 @@ bool RenderAPI_OpenEGL::makeCurrent(bool current)
     EGLBoolean ret;
     if (current)
     {
-        assert(eglGetCurrentContext() == EGL_NO_CONTEXT);
+        EGLContext currentCtx = eglGetCurrentContext();
+        // If our context is already current, we're good
+        if (currentCtx == m_context) {
+            return true;
+        }
+        // If another context is current, we need to handle it
+        // (VLC may have its own context current on this thread)
         ret = eglMakeCurrent(m_display, m_surface, m_surface, m_context);
     }
     else
     {
-        assert(eglGetCurrentContext() == m_context);
-        // glClearColor(1, 0, 0, 1);
+        // Only release if our context is current
+        if (eglGetCurrentContext() != m_context) {
+            return true;  // Nothing to release
+        }
         ret = eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
     if (ret ==  EGL_TRUE)
