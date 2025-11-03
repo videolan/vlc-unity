@@ -506,27 +506,24 @@ bool RenderAPI_Vulkan::copyToUnityTexture(const RenderAPIHardwareBuffer& buffer)
 
     DEBUG_VERBOSE("[Vulkan] Using Unity command buffer: %p", cmdBuffer);
 
-    // Transition our source texture for the copy
-    DEBUG_VERBOSE("[Vulkan] Transitioning source texture layout");
-    DEBUG_VERBOSE("[Vulkan]   VLC external image: %p", buffer.vk_image_external);
-    DEBUG_VERBOSE("[Vulkan]   Old layout: %s", m_vulkan_image_layout_initialized ? "GENERAL" : "UNDEFINED");
-    DEBUG_VERBOSE("[Vulkan]   New layout: TRANSFER_SRC_OPTIMAL");
 
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    barrier.oldLayout = m_vulkan_image_layout_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     barrier.image = buffer.vk_image_external;
 
-    DEBUG_VERBOSE("[Vulkan] Recording pipeline barrier command");
-    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-    DEBUG_VERBOSE("[Vulkan] Pipeline barrier recorded");
-    m_vulkan_image_layout_initialized = true;
+    // Only transition on first frame (UNDEFINED -> TRANSFER_SRC_OPTIMAL)
+    if (!m_vulkan_image_layout_initialized) {
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+        m_vulkan_image_layout_initialized = true;
+    }
 
     // Record the copy command
     DEBUG_VERBOSE("[Vulkan] Recording image copy command");
@@ -547,15 +544,6 @@ bool RenderAPI_Vulkan::copyToUnityTexture(const RenderAPIHardwareBuffer& buffer)
         1, &copyRegion);
     DEBUG_VERBOSE("[Vulkan] Image copy command recorded");
 
-    // Transition our source texture back to a general layout
-    DEBUG_VERBOSE("[Vulkan] Transitioning source texture back to GENERAL layout");
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    barrier.dstAccessMask = 0;
-    barrier.image = buffer.vk_image_external;
-    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-    DEBUG_VERBOSE("[Vulkan] Source texture transitioned back to GENERAL");
 
     // We do NOT submit the command buffer. Unity will do it.
     DEBUG_VERBOSE("[Vulkan] Copied to Unity texture by recording into Unity's command buffer");
