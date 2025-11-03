@@ -915,7 +915,6 @@ extern "C" void InitializeVulkanValidation(IUnityInterfaces* interfaces)
 extern "C" void InitializeVulkanValidation(IUnityInterfaces* interfaces)
 {
     (void)interfaces; // Suppress unused parameter warning
-    DEBUG("[Vulkan] Validation layers disabled at compile time");
 }
 #endif
 
