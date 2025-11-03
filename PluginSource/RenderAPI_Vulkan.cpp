@@ -763,6 +763,15 @@ void RenderAPI_Vulkan::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityIn
         m_vk_instance = m_vk_graphics->Instance();
         DEBUG("[Vulkan] Unity Vulkan device: %p", m_vk_instance.device);
 
+        // Log Vulkan API version and device info
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(m_vk_instance.physicalDevice, &deviceProperties);
+        DEBUG("[Vulkan] API %d.%d.%d - %s (Vendor 0x%X)",
+            VK_VERSION_MAJOR(deviceProperties.apiVersion),
+            VK_VERSION_MINOR(deviceProperties.apiVersion),
+            VK_VERSION_PATCH(deviceProperties.apiVersion),
+            deviceProperties.deviceName,
+            deviceProperties.vendorID);
 #if VULKAN_ENABLE_VALIDATION
         // Setup debug messenger if validation layers are enabled
         if (s_debug_messenger == VK_NULL_HANDLE) {
