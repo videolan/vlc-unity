@@ -32,6 +32,28 @@ static IUnityInterfaces* s_UnityInterfaces = NULL;
 
 static int s_color_space;
 
+// Helper function to convert UnityGfxRenderer enum to string
+static const char* GetRendererName(UnityGfxRenderer renderer) {
+    switch (renderer) {
+        case kUnityGfxRendererOpenGL: return "OpenGL";
+        case kUnityGfxRendererD3D9: return "D3D9";
+        case kUnityGfxRendererD3D11: return "D3D11";
+        case kUnityGfxRendererGCM: return "GCM";
+        case kUnityGfxRendererNull: return "Null";
+        case kUnityGfxRendererXenon: return "Xenon";
+        case kUnityGfxRendererOpenGLES20: return "OpenGLES20";
+        case kUnityGfxRendererOpenGLES30: return "OpenGLES30";
+        case kUnityGfxRendererGXM: return "GXM";
+        case kUnityGfxRendererPS4: return "PS4";
+        case kUnityGfxRendererXboxOne: return "XboxOne";
+        case kUnityGfxRendererMetal: return "Metal";
+        case kUnityGfxRendererOpenGLCore: return "OpenGLCore";
+        case kUnityGfxRendererD3D12: return "D3D12";
+        case kUnityGfxRendererVulkan: return "Vulkan";
+        default: return "Unknown";
+    }
+}
+
 /** LibVLC's API function exported to Unity
  *
  * Every following functions will be exported to. Unity We have to
@@ -135,7 +157,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
     }
     
     DEBUG("Calling... CreateRenderAPI \n");
-    DEBUG("s_DeviceType = %d \n", s_DeviceType);
+    DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
 
     s_CurrentAPI = CreateRenderAPI(s_DeviceType);
 
@@ -294,7 +316,7 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
         s_DeviceType = s_Graphics->GetRenderer();
 
         DEBUG("CreateRenderAPI(s_DeviceType) \n");
-        DEBUG("s_DeviceType = %d \n", s_DeviceType);
+        DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
 
         EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
         return;
@@ -326,7 +348,7 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 #else
     DEBUG("[VLC-Unity] OnRenderEvent called with eventID=%d\n", eventID);
 #endif
-    DEBUG("[VLC-Unity]   s_DeviceType=%d (Vulkan=%d)\n", s_DeviceType, kUnityGfxRendererVulkan);
+    DEBUG("[VLC-Unity]   s_DeviceType=%s\n", GetRendererName(s_DeviceType));
     DEBUG("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
 
 #if defined(UNITY_ANDROID)
@@ -352,7 +374,7 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         } else
 #endif
         {
-            DEBUG("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%d\n", currentAPI, s_DeviceType);
+            DEBUG("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%s\n", currentAPI, GetRendererName(s_DeviceType));
         }
     }
     DEBUG("[VLC-Unity] OnRenderEvent complete\n");
