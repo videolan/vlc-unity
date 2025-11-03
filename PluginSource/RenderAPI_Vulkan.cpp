@@ -272,7 +272,6 @@ void RenderAPI_Vulkan::swap(void* opaque)
     DEBUG_VERBOSE("[Vulkan] swap callback");
     RenderAPI_Vulkan* that = reinterpret_cast<RenderAPI_Vulkan*>(opaque);
     glFlush();
-    glFinish();
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
     std::swap(that->idx_swap, that->idx_render);
