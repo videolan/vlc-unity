@@ -19,9 +19,10 @@ namespace LibVLCSharp
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetRenderEventFunc")]
         static extern IntPtr GetRenderEventFunc();
 
+#if UNITY_ANDROID && !UNITY_EDITOR
         // Track if we're using the Vulkan approach (Unity-owned texture)
         private static bool isVulkanMode = false;
-
+#endif
         /// <summary>
         /// Update texture with new frame data
         /// </summary>
