@@ -207,7 +207,6 @@ unity-android-armv8-trial-static:
     stage: build-libvlc
     script: |
         git clone https://code.videolan.org/videolan/vlc/ && cd vlc
-        git apply ../patches/disable-activex.patch
         if [[ $ARGS == *"-w"* ]]; then
             echo "Applying the UWP specific patch"
             git apply ../patches/uwp-plugins-path.patch
