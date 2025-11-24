@@ -183,7 +183,7 @@ unity-android-armv7-trial-static:
       <<: [*variables-android-armv7, *variables-trial]
       STATIC_BUILD: "-Dstatic_android=true"
     dependencies:
-      - libvlc-android-armv7
+      - libvlc-android-armv7-static
 
 unity-android-armv8-trial-static:
     extends: .unity-android-common
@@ -596,8 +596,8 @@ package-unity-plugins-trial:
         - libvlc-macos-aarch64
         - libvlcsharp-all
         - libvlcsharp-ios
-        - unity-android-armv7-static
-        - unity-android-armv8-static
+        - unity-android-armv7-trial-static
+        - unity-android-armv8-trial-static
         - unity-plugin-ios-aarch64-trial
         - unity-plugin-macos-x86_64-trial
         - unity-plugin-macos-aarch64-trial
