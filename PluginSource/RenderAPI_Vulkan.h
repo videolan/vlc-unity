@@ -5,6 +5,10 @@
 #include "RenderAPI_OpenGLEGL.h"
 #include "PlatformBase.h"
 
+#if defined(SHOW_WATERMARK)
+#  include "RenderAPI_OpenGLWatermark.h"
+#endif
+
 #if defined(UNITY_ANDROID)
 #include <android/hardware_buffer.h>
 #include <android/native_window_jni.h>
@@ -143,6 +147,10 @@ private:
     static VkDebugUtilsMessengerEXT s_debug_messenger;
     static PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
     static PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+#endif
+
+#if defined(SHOW_WATERMARK)
+    OpenGLWatermark watermark;
 #endif
 };
 

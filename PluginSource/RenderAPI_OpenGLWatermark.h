@@ -1,4 +1,5 @@
-
+#ifndef RENDERAPI_OPENGLWATERMARK_H
+#define RENDERAPI_OPENGLWATERMARK_H
 
 #if defined(UNITY_IPHONE)
 #	include <OpenGLES/ES2/gl.h>
@@ -22,18 +23,20 @@ public:
     void cleanup();
 
     void draw(GLuint framebuffer, unsigned width, unsigned height);
-    
+
     void randomizePosition();
 
 private:
     void updateVertexBuffer();
-    
+
     GLuint program = 0;
     GLuint vbo = 0;
     GLuint tex = 0;
     GLuint posAttrib = 0;
     GLuint uvAttrib = 0;
-    
+
     float xOffset = -1.f;
     float yOffset = 1.f;
 };
+
+#endif /* RENDERAPI_OPENGLWATERMARK_H */

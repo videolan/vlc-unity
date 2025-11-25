@@ -215,14 +215,32 @@ bool RenderAPI_Vulkan::setup(void **opaque, const libvlc_video_setup_device_cfg_
     auto *that = static_cast<RenderAPI_Vulkan*>(*opaque);
     that->width = 0;
     that->height = 0;
-    return true;
+
+    bool ret = true;
+
+#if defined(SHOW_WATERMARK)
+    that->makeCurrent(true);
+
+    ret &= that->watermark.setup();
+
+    that->makeCurrent(false);
+#endif
+
+    return ret;
 }
 
 void RenderAPI_Vulkan::cleanup(void* opaque)
 {
     DEBUG("[Vulkan] output callback cleanup");
     auto *that = static_cast<RenderAPI_Vulkan*>(opaque);
+
+    that->ensureCurrentContext();
     that->releaseHardwareBufferResources();
+
+#if defined(SHOW_WATERMARK)
+    that->watermark.cleanup();
+#endif
+    that->makeCurrent(false);
 }
 
 bool RenderAPI_Vulkan::resize(void* opaque, const libvlc_video_render_cfg_t *cfg,
@@ -271,9 +289,14 @@ void RenderAPI_Vulkan::swap(void* opaque)
 {
     DEBUG_VERBOSE("[Vulkan] swap callback");
     RenderAPI_Vulkan* that = reinterpret_cast<RenderAPI_Vulkan*>(opaque);
-    glFlush();
     std::lock_guard<std::mutex> lock(that->text_lock);
     that->updated = true;
+
+#if defined(SHOW_WATERMARK)
+    that->watermark.draw(that->buffers[that->idx_render].fbo, that->width, that->height);
+#endif
+
+    glFlush();
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->buffers[that->idx_render].fbo);
     DEBUG_VERBOSE("[Vulkan] swap callback complete");
