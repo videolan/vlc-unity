@@ -9,12 +9,18 @@
 #include <tchar.h>
 #include <windows.h>
 #include <d3d11_1.h>
+#if SUPPORT_D3D12
+#include <d3d12.h>
+#endif
 #include <d3dcompiler.h>
 #if defined(SHOW_WATERMARK)
 #include <d2d1.h>
 #include <dwrite.h>
 #endif // SHOW_WATERMARK
 #include "Unity/IUnityGraphicsD3D11.h"
+#if SUPPORT_D3D12
+#include "Unity/IUnityGraphicsD3D12.h"
+#endif
 #include "Log.h"
 
 #include <algorithm>
@@ -41,8 +47,6 @@ enum class WatermarkPosition
 class ReadWriteTexture
 {
 public:
-    ID3D11Texture2D          *m_textureUnity        = nullptr;
-    ID3D11ShaderResourceView *m_textureShaderInput  = nullptr;
     HANDLE                   m_sharedHandle         = nullptr; // handle of the texture used by VLC and the app
     ID3D11RenderTargetView   *m_textureRenderTarget = nullptr;
     unsigned                 width                  = 0;       // Texture width
@@ -54,11 +58,25 @@ public:
     int                      rwt_bit_depth          = false;
 
     void Cleanup();
-    void Update(unsigned width, unsigned height, ID3D11Device *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
+    void Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
 #if defined(SHOW_WATERMARK)
                 , ID2D1Factory *d2dFactory, IDWriteFactory *dwriteFactory, IDWriteTextFormat *textFormat
 #endif // SHOW_WATERMARK
                 );
+    void *GetUnityTexture();
+
+private:
+    bool Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity);
+#if SUPPORT_D3D12
+    bool Update12(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D12Device *m_d3deviceUnity);
+#endif
+
+    ID3D11Texture2D          *m_textureUnity11       = nullptr;
+    ID3D11ShaderResourceView *m_textureShaderInput11 = nullptr;
+#if SUPPORT_D3D12
+    bool                      is_d3d12               = false;
+    ID3D12Resource           *m_textureUnity12       = nullptr;
+#endif
 };
 
 class RenderAPI_D3D11 : public RenderAPI
@@ -97,7 +115,7 @@ private:
     void Update(UINT width, UINT height);
 
     /* Unity side resources */
-    ID3D11Device             *m_d3deviceUnity       = nullptr;
+    IUnknown                *m_d3deviceUnity        = nullptr;
 
     /* VLC side resources */
     ID3D11Device            *m_d3deviceVLC          = nullptr;
@@ -227,13 +245,27 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
     {
         case kUnityGfxDeviceEventInitialize:
         {
-            IUnityGraphicsD3D11* d3d = interfaces->Get<IUnityGraphicsD3D11>();
-            if (d3d == NULL)
+            m_d3deviceUnity = NULL;
+            IUnityGraphicsD3D12v2* d3d12v2 = interfaces->Get<IUnityGraphicsD3D12v2>();
+            if (d3d12v2 != NULL)
+                m_d3deviceUnity = (IUnknown*)d3d12v2->GetDevice();
+            if (m_d3deviceUnity == NULL)
             {
-                DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
-                return;
+                IUnityGraphicsD3D12* d3d12 = interfaces->Get<IUnityGraphicsD3D12>();
+                if (d3d12 != NULL)
+                    m_d3deviceUnity = (IUnknown*)d3d12->GetDevice();
+                if (m_d3deviceUnity == NULL)
+                {
+                    IUnityGraphicsD3D11* d3d11 = interfaces->Get<IUnityGraphicsD3D11>();
+                    if (d3d11 != NULL)
+                        m_d3deviceUnity = (IUnknown*)d3d11->GetDevice();
+                    else
+                    {
+                        DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
+                        return;
+                    }
+                }
             }
-            m_d3deviceUnity = d3d->GetDevice();
             if (m_d3deviceUnity == NULL)
             {
                 DEBUG("Could not retrieve d3device \n");
@@ -275,32 +307,8 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     LeaveCriticalSection(&m_outputLock);
 }
 
-void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
-#if defined(SHOW_WATERMARK)
-                              , ID2D1Factory *d2dFactory, IDWriteFactory *dwriteFactory, IDWriteTextFormat *textFormat
-#endif // SHOW_WATERMARK
-                             )
+bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity)
 {
-#if defined(SHOW_WATERMARK)
-    (void)dwriteFactory;
-#endif
-    Cleanup();
-
-    DEBUG("Done releasing d3d objects.\n");
-
-    this->width = width;
-    this->height = height;
-
-    DXGI_FORMAT renderFormat;
-    if(rwt_bit_depth == 16)
-    {
-        renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
-    }
-    else
-    {
-        renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-    }
-
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
@@ -314,22 +322,22 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
     texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
 
     HRESULT hr;
-    hr = m_d3deviceUnity->CreateTexture2D(&texDesc, NULL, &m_textureUnity);
+    hr = m_d3deviceUnity->CreateTexture2D(&texDesc, NULL, &m_textureUnity11);
     if (FAILED(hr))
     {
         DEBUG("CreateTexture2D FAILED \n");
-        return;
+        return false;
     }
     DEBUG("CreateTexture2D SUCCEEDED.\n");
 
     IDXGIResource1* sharedResource = NULL;
-    hr = m_textureUnity->QueryInterface(&sharedResource);
+    hr = m_textureUnity11->QueryInterface(&sharedResource);
     if (FAILED(hr))
     {
         DEBUG("get IDXGIResource1 FAILED \n");
-        m_textureUnity->Release();
-        m_textureUnity = nullptr;
-        return;
+        m_textureUnity11->Release();
+        m_textureUnity11 = nullptr;
+        return false;
     }
 
     hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
@@ -337,14 +345,132 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
     {
         DEBUG("sharedResource->CreateSharedHandle FAILED \n");
         sharedResource->Release();
-        m_textureUnity->Release();
-        m_textureUnity = nullptr;
-        return;
+        m_textureUnity11->Release();
+        m_textureUnity11 = nullptr;
+        return false;
     }
     sharedResource->Release();
     sharedResource = NULL;
 
-    ID3D11Texture2D* textureVLC = nullptr; 
+    D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
+    ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+    resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    resviewDesc.Texture2D.MipLevels = 1;
+    resviewDesc.Format = texDesc.Format;
+    hr = m_d3deviceUnity->CreateShaderResourceView(m_textureUnity11, &resviewDesc, &m_textureShaderInput11);
+    if (FAILED(hr))
+    {
+        DEBUG("CreateShaderResourceView FAILED \n");
+        m_textureUnity11->Release();
+        m_textureUnity11 = nullptr;
+        return false;
+    }
+    DEBUG("CreateShaderResourceView SUCCEEDED.\n");
+
+    return true;
+}
+
+#if SUPPORT_D3D12
+bool ReadWriteTexture::Update12(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D12Device *m_d3deviceUnity)
+{
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    heapProps.CreationNodeMask = 1;
+    heapProps.VisibleNodeMask = 1;
+
+    D3D12_RESOURCE_DESC texDesc = {};
+    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    texDesc.Alignment = 0;
+    texDesc.Width = width;
+    texDesc.Height = height;
+    texDesc.DepthOrArraySize = 1;
+    texDesc.MipLevels = 1;
+    texDesc.Format = renderFormat;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.SampleDesc.Quality = 0;
+    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = renderFormat;
+    clearValue.Color[0] = 0.0f;
+    clearValue.Color[1] = 0.0f;
+    clearValue.Color[2] = 0.0f;
+    clearValue.Color[3] = 1.0f;
+
+    HRESULT hr;
+    hr = m_d3deviceUnity->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_SHARED, &texDesc, D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, IID_PPV_ARGS(&m_textureUnity12));
+    if (FAILED(hr)) {
+        DEBUG("CreateCommittedResource FAILED \n");
+        return false;
+    }
+    DEBUG("CreateCommittedResource SUCCEEDED.\n");
+
+    hr = m_d3deviceUnity->CreateSharedHandle(m_textureUnity12, NULL, GENERIC_ALL, NULL, &m_sharedHandle);
+    if (FAILED(hr))
+    {
+        DEBUG("CreateSharedHandle FAILED \n");
+        m_textureUnity12->Release();
+        m_textureUnity12 = nullptr;
+        return false;
+    }
+
+    return true;
+}
+#endif
+
+void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
+#if defined(SHOW_WATERMARK)
+                              , ID2D1Factory *d2dFactory, IDWriteFactory *dwriteFactory, IDWriteTextFormat *textFormat
+#endif // SHOW_WATERMARK
+                             )
+{
+#if defined(SHOW_WATERMARK)
+    (void)dwriteFactory;
+#endif
+    Cleanup();
+
+    DXGI_FORMAT renderFormat;
+    if (rwt_bit_depth == 16) {
+        renderFormat = DXGI_FORMAT_R16G16B16A16_UNORM;
+    } else {
+        renderFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    }
+
+    DEBUG("Done releasing d3d objects.\n");
+
+    this->width = width;
+    this->height = height;
+
+    HRESULT hr;
+    bool succeeded = false;
+#if SUPPORT_D3D12
+    is_d3d12 = false;
+    ID3D12Device *m_d3deviceUnity12 = nullptr;
+    hr = m_d3deviceUnity->QueryInterface(&m_d3deviceUnity12);
+    if (SUCCEEDED(hr))
+    {
+        is_d3d12 = true;
+        succeeded = Update12(width, height, renderFormat, m_d3deviceUnity12);
+        m_d3deviceUnity12->Release();
+    }
+    else
+#endif
+    {
+        ID3D11Device *m_d3deviceUnity11 = nullptr;
+        hr = m_d3deviceUnity->QueryInterface(&m_d3deviceUnity11);
+        if (SUCCEEDED(hr))
+        {
+            succeeded = Update11(width, height, renderFormat, m_d3deviceUnity11);
+            m_d3deviceUnity11->Release();
+        }
+    }
+    if (!succeeded)
+        return;
+
+    ID3D11Texture2D* textureVLC = nullptr;
     if (m_d3deviceVLC)
     {
         ID3D11Device1* d3d11VLC1;
@@ -365,38 +491,18 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
         }
     }
 
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
-    ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-    resviewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    resviewDesc.Texture2D.MipLevels = 1;
-    resviewDesc.Format = texDesc.Format;
-    hr = m_d3deviceUnity->CreateShaderResourceView(m_textureUnity, &resviewDesc, &m_textureShaderInput);
-    if (FAILED(hr))
-    {
-        DEBUG("CreateShaderResourceView FAILED \n");
-        if(textureVLC) textureVLC->Release();
-        m_textureUnity->Release();
-        m_textureUnity = nullptr;
-        return;
-    }
-    DEBUG("CreateShaderResourceView SUCCEEDED.\n");
-
     if (textureVLC && m_d3deviceVLC)
     {
         D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
         ZeroMemory(&renderTargetViewDesc, sizeof(D3D11_RENDER_TARGET_VIEW_DESC));
-        renderTargetViewDesc.Format = texDesc.Format;
+        renderTargetViewDesc.Format = renderFormat;
         renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 
         hr = m_d3deviceVLC->CreateRenderTargetView(textureVLC, &renderTargetViewDesc, &m_textureRenderTarget);
         if (FAILED(hr))
         {
             DEBUG("CreateRenderTargetView FAILED \n");
-            m_textureShaderInput->Release();
-            m_textureShaderInput = nullptr;
-            m_textureUnity->Release();
-            m_textureUnity = nullptr;
+            Cleanup();
         }
     } else {
          DEBUG("Skipping RTV creation as textureVLC or m_d3deviceVLC is invalid.\n");
@@ -447,6 +553,15 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
         textureVLC->Release();
         textureVLC = NULL;
     }
+}
+
+void *ReadWriteTexture::GetUnityTexture()
+{
+#if SUPPORT_D3D12
+    return is_d3d12 ? (void*)m_textureUnity12 : (void*)m_textureShaderInput11;
+#else
+    return (void*)m_textureShaderInput11;
+#endif
 }
 
 
@@ -563,13 +678,19 @@ void ReadWriteTexture::Cleanup()
         m_textureRenderTarget->Release();
         m_textureRenderTarget = nullptr;
     }
-    if (m_textureShaderInput) {
-        m_textureShaderInput->Release();
-        m_textureShaderInput = nullptr;
+#if SUPPORT_D3D12
+    if (m_textureUnity12) {
+        m_textureUnity12->Release();
+        m_textureUnity12 = nullptr;
     }
-    if (m_textureUnity) {
-        m_textureUnity->Release();
-        m_textureUnity = nullptr;
+#endif
+    if (m_textureShaderInput11) {
+        m_textureShaderInput11->Release();
+        m_textureShaderInput11 = nullptr;
+    }
+    if (m_textureUnity11) {
+        m_textureUnity11->Release();
+        m_textureUnity11 = nullptr;
     }
     if (m_sharedHandle) {
         CloseHandle(m_sharedHandle);
@@ -652,9 +773,9 @@ void RenderAPI_D3D11::Swap()
 
         float padding = 10.0f;
         float approxTextWidth = textLength * (fontSize * 0.5f);
-        
+
         D2D1_RECT_F textRect;
-        
+
         switch (m_watermarkPosition) {
             case WatermarkPosition::BOTTOM_CENTER:
             {
@@ -766,17 +887,17 @@ bool RenderAPI_D3D11::Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_v
 {
     (void)cfg;
     DEBUG("Setup m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
-    
+
 #if defined(SHOW_WATERMARK)
     // Randomly select watermark position
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 2);
-    
+
     int randomPosition = dis(gen);
     m_watermarkPosition = static_cast<WatermarkPosition>(randomPosition);
 #endif // SHOW_WATERMARK
-    
+
     if (out && m_d3dctxVLC)
     {
         out->d3d11.device_context = m_d3dctxVLC;
@@ -817,7 +938,7 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
     EnterCriticalSection(&m_outputLock);
 
     if (m_textureForUnity) {
-        result = m_textureForUnity->m_textureShaderInput;
+        result = m_textureForUnity->GetUnityTexture();
     }
     local_updated_status = m_updated;
     m_updated = false;

@@ -5,6 +5,14 @@
 
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 {
+#if defined(SUPPORT_D3D12)
+    if (apiType == kUnityGfxRendererD3D12)
+    {
+        extern RenderAPI* CreateRenderAPI_D3D11();
+        return CreateRenderAPI_D3D11();
+    }
+#endif // if SUPPORT_D3D12
+
 #if defined(SUPPORT_D3D11)
     if (apiType == kUnityGfxRendererD3D11)
     {
