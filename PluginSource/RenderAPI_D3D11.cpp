@@ -788,6 +788,9 @@ void RenderAPI_D3D11::Report(libvlc_video_output_resize_cb report_size_change,
                              libvlc_video_output_mouse_release_cb report_mouse_release,
                              void *report_opaque)
 {
+    (void)report_mouse_move;
+    (void)report_mouse_press;
+    (void)report_mouse_release;
     DEBUG("Resize_cb called \n");
     EnterCriticalSection(&m_sizeLock);
     m_ReportSize = report_size_change;

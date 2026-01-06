@@ -68,6 +68,7 @@ static const char* GetRendererName(UnityGfxRenderer renderer) {
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
 {
+    (void)path;
 #if defined(SUPPORT_D3D11) && !defined(UWP)
     DEBUG("SetPluginPath \n");
     DEBUG("_putenv_s with VLC_PLUGIN_PATH -> %s \n", path);
@@ -234,6 +235,7 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
 extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityTexturePtr)
 {
+    (void)unityTexturePtr;
     if(mp == NULL) {
         DEBUG("libvlc_unity_set_unity_texture_vulkan: mp is NULL");
         return false;
