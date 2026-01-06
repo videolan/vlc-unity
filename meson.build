@@ -141,6 +141,14 @@ add_project_arguments(cc.get_supported_arguments([
     '-Wduplicated-cond',
 ]), language: ['c', 'cpp'])
 
+# Treat warnings as errors if enabled
+if get_option('fatal_warnings')
+    add_project_arguments(cc.get_supported_arguments(['-Werror']), language: ['c', 'cpp'])
+    if host_system == 'darwin'
+        add_project_arguments(['-Werror'], language: ['objcpp'])
+    endif
+endif
+
 if cc.get_id() not in ['clang-cl']
     add_project_arguments(cc.get_supported_arguments([
         '-Wall', # too verbose with clang-cl

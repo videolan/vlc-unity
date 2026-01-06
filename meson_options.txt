@@ -7,3 +7,8 @@ option('static_android',
     type: 'boolean',
     value: false,
     description: 'Enable or disable static Android build')
+
+option('fatal_warnings',
+    type: 'boolean',
+    value: true,
+    description: 'Treat compiler warnings as errors')
