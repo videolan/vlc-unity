@@ -82,12 +82,13 @@ elif host_system == 'windows'
       vlc_unity_deps += [
         cc.find_library('windowsapp'),
         cc.find_library('ucrt'),
+        cc.find_library('windowsappcompat'),
       ]
       vlc_unity_cxxflags += [ '-O3', '-g', '-gcodeview',
         '-fdebug-prefix-map=\'/mnt/s/\'=\'s:/\'',
-        '-Wall', '-I./sdk/include/', '-DNDEBUG', '-DUWP', '-Wl,-lwindowsapp', '-lwindowsappcompat', '-lucrt' ]
+        '-Wall', '-I./sdk/include/', '-DNDEBUG', '-DUWP' ]
       # UWP support
-      vlc_unity_ldflags += [ '-Wl,--nxcompat', '-Wl,--no-seh', '-Wl,--dynamicbase', '-lwindowsapp' ]
+      vlc_unity_ldflags += [ '-Wl,--nxcompat', '-Wl,--no-seh', '-Wl,--dynamicbase' ]
       vlc_unity_cppflags += [
         '-DUWP', '-DWINAPI_FAMILY=WINAPI_FAMILY_APP', '-D_UNICODE',
         '-DUNICODE', '-D__MSVCRT_VERSION__=0xE00',
