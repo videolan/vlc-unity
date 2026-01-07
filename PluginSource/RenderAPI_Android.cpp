@@ -14,6 +14,7 @@ typedef void (*JNI_OnUnload_pf)(JavaVM *, void*);
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
+    (void)reserved;
     DEBUG("ENTERED RENDERAPI_ANDROID.CPP -> JNI_ONLOAD");
 
     //if (vm->GetEnv(reinterpret_cast<void**>(&jni_env), JNI_VERSION_1_6) != JNI_OK) {
@@ -57,6 +58,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 
 void JNI_OnUnload(JavaVM *vm, void *reserved)
 {
+    (void)reserved;
     DEBUG("[Android] unload jni env %p", jni_env);
 
     JNI_OnLoad_pf unload;

@@ -100,6 +100,7 @@ void RenderAPI_OpenEGL::ensureCurrentContext()
 
 void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
+	(void)interfaces;
 	if (type == kUnityGfxDeviceEventInitialize) {
         DEBUG("[EGL] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize");
 
