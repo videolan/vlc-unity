@@ -281,6 +281,9 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, ID3D11Device *m_d
 #endif // SHOW_WATERMARK
                              )
 {
+#if defined(SHOW_WATERMARK)
+    (void)dwriteFactory;
+#endif
     Cleanup();
 
     DEBUG("Done releasing d3d objects.\n");
