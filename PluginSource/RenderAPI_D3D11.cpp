@@ -365,6 +365,8 @@ bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT ren
     if (FAILED(hr))
     {
         DEBUG("CreateShaderResourceView FAILED \n");
+        CloseHandle(m_sharedHandle);
+        m_sharedHandle = nullptr;
         m_textureUnity11->Release();
         m_textureUnity11 = nullptr;
         return false;
