@@ -82,7 +82,7 @@ private:
 class RenderAPI_D3D11 : public RenderAPI
 {
 public:
-    RenderAPI_D3D11();
+    RenderAPI_D3D11(UnityGfxRenderer apiType);
     ~RenderAPI_D3D11();
 
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
@@ -113,6 +113,8 @@ private:
     void CreateResources();
     void ReleaseResources();
     void Update(UINT width, UINT height);
+
+    UnityGfxRenderer         m_unityRendererType    = kUnityGfxRendererNull;
 
     /* Unity side resources */
     IUnknown                *m_d3deviceUnity        = nullptr;
@@ -192,12 +194,13 @@ void Report_cb(void *opaque,
     me->Report(report_size_change, report_mouse_move, report_mouse_press, report_mouse_release, report_opaque);
 }
 
-RenderAPI* CreateRenderAPI_D3D11()
+RenderAPI* CreateRenderAPI_D3D11(UnityGfxRenderer apiType)
 {
-    return new RenderAPI_D3D11();
+    return new RenderAPI_D3D11(apiType);
 }
 
-RenderAPI_D3D11::RenderAPI_D3D11()
+RenderAPI_D3D11::RenderAPI_D3D11(UnityGfxRenderer apiType)
+    : m_unityRendererType(apiType)
 {
     ZeroMemory(&m_sizeLock, sizeof(CRITICAL_SECTION));
     InitializeCriticalSection(&m_sizeLock);
@@ -252,14 +255,25 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
         {
             m_d3deviceUnity = NULL;
 #if SUPPORT_D3D12
-            IUnityGraphicsD3D12v2* d3d12v2 = interfaces->Get<IUnityGraphicsD3D12v2>();
-            if (d3d12v2 != NULL)
-                m_d3deviceUnity = (IUnknown*)d3d12v2->GetDevice();
-            if (m_d3deviceUnity == NULL)
+            if (m_unityRendererType == kUnityGfxRendererD3D12)
             {
-                IUnityGraphicsD3D12* d3d12 = interfaces->Get<IUnityGraphicsD3D12>();
-                if (d3d12 != NULL)
-                    m_d3deviceUnity = (IUnknown*)d3d12->GetDevice();
+                IUnityGraphicsD3D12v2* d3d12v2 = interfaces->Get<IUnityGraphicsD3D12v2>();
+                if (d3d12v2 != NULL)
+                {
+                    m_d3deviceUnity = (IUnknown*)d3d12v2->GetDevice();
+                }
+                if (m_d3deviceUnity == NULL)
+                {
+                    IUnityGraphicsD3D12* d3d12 = interfaces->Get<IUnityGraphicsD3D12>();
+                    if (d3d12 != NULL)
+                    {
+                        m_d3deviceUnity = (IUnknown*)d3d12->GetDevice();
+                    }
+                }
+                if (m_d3deviceUnity != NULL)
+                {
+                    DEBUG("Using Direct3D 12\n");
+                }
             }
 #endif
             if (m_d3deviceUnity == NULL)
@@ -267,10 +281,19 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
                 IUnityGraphicsD3D11* d3d11 = interfaces->Get<IUnityGraphicsD3D11>();
                 if (d3d11 != NULL)
                     m_d3deviceUnity = (IUnknown*)d3d11->GetDevice();
+                if (m_d3deviceUnity != NULL)
+                {
+#if SUPPORT_D3D12
+                    if (m_unityRendererType == kUnityGfxRendererD3D12)
+                        DEBUG("Using Direct3D 11 (fallback)\n");
+                    else
+#endif
+                        DEBUG("Using Direct3D 11\n");
+                }
             }
             if (m_d3deviceUnity == NULL)
             {
-                DEBUG("Could not retrieve d3device \n");
+                DEBUG("Could not retrieve d3device\n");
                 return;
             }
             break;
