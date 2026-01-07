@@ -217,12 +217,12 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[D3D11] Subscribing output callbacks %p \n", this);
 
+    CreateResources();
+
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_d3d11,
                                       Setup_cb, Cleanup_cb, Report_cb, UpdateOutput_cb,
                                       Swap_cb, MakeCurrent_cb, nullptr, nullptr, SelectPlane_cb,
                                       this);
-
-    CreateResources();
 }
 
 void RenderAPI_D3D11::unsetVlcContext(libvlc_media_player_t *mp)
