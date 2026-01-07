@@ -246,6 +246,7 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
         case kUnityGfxDeviceEventInitialize:
         {
             m_d3deviceUnity = NULL;
+#if SUPPORT_D3D12
             IUnityGraphicsD3D12v2* d3d12v2 = interfaces->Get<IUnityGraphicsD3D12v2>();
             if (d3d12v2 != NULL)
                 m_d3deviceUnity = (IUnknown*)d3d12v2->GetDevice();
@@ -255,6 +256,7 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
                 if (d3d12 != NULL)
                     m_d3deviceUnity = (IUnknown*)d3d12->GetDevice();
                 if (m_d3deviceUnity == NULL)
+#endif
                 {
                     IUnityGraphicsD3D11* d3d11 = interfaces->Get<IUnityGraphicsD3D11>();
                     if (d3d11 != NULL)
@@ -265,7 +267,9 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
                         return;
                     }
                 }
+#if SUPPORT_D3D12
             }
+#endif
             if (m_d3deviceUnity == NULL)
             {
                 DEBUG("Could not retrieve d3device \n");
