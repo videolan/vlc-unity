@@ -199,6 +199,11 @@ RenderAPI* CreateRenderAPI_D3D11()
 
 RenderAPI_D3D11::RenderAPI_D3D11()
 {
+    ZeroMemory(&m_sizeLock, sizeof(CRITICAL_SECTION));
+    InitializeCriticalSection(&m_sizeLock);
+    ZeroMemory(&m_outputLock, sizeof(CRITICAL_SECTION));
+    InitializeCriticalSection(&m_outputLock);
+
     read_write[0].reset(new ReadWriteTexture());
     read_write[1].reset(new ReadWriteTexture());
     current_texture = read_write[0].get();
@@ -255,21 +260,14 @@ void RenderAPI_D3D11::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInt
                 IUnityGraphicsD3D12* d3d12 = interfaces->Get<IUnityGraphicsD3D12>();
                 if (d3d12 != NULL)
                     m_d3deviceUnity = (IUnknown*)d3d12->GetDevice();
-                if (m_d3deviceUnity == NULL)
-#endif
-                {
-                    IUnityGraphicsD3D11* d3d11 = interfaces->Get<IUnityGraphicsD3D11>();
-                    if (d3d11 != NULL)
-                        m_d3deviceUnity = (IUnknown*)d3d11->GetDevice();
-                    else
-                    {
-                        DEBUG("Could not retrieve IUnityGraphicsD3D11 \n");
-                        return;
-                    }
-                }
-#if SUPPORT_D3D12
             }
 #endif
+            if (m_d3deviceUnity == NULL)
+            {
+                IUnityGraphicsD3D11* d3d11 = interfaces->Get<IUnityGraphicsD3D11>();
+                if (d3d11 != NULL)
+                    m_d3deviceUnity = (IUnknown*)d3d11->GetDevice();
+            }
             if (m_d3deviceUnity == NULL)
             {
                 DEBUG("Could not retrieve d3device \n");
@@ -582,11 +580,6 @@ void RenderAPI_D3D11::CreateResources()
     }
 
     HRESULT hr;
-
-    ZeroMemory(&m_sizeLock, sizeof(CRITICAL_SECTION));
-    InitializeCriticalSection(&m_sizeLock);
-    ZeroMemory(&m_outputLock, sizeof(CRITICAL_SECTION));
-    InitializeCriticalSection(&m_outputLock);
 
     UINT creationFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
 #ifndef NDEBUG
