@@ -37,6 +37,9 @@ private:
 
     float xOffset = -1.f;
     float yOffset = 1.f;
+
+    uint32_t frameCounter = 0;
+    static const uint32_t REPOSITION_INTERVAL = 150; // Move watermark every ~2.5 seconds at 60fps
 };
 
 #endif /* RENDERAPI_OPENGLWATERMARK_H */

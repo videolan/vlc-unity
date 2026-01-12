@@ -10,7 +10,7 @@ namespace {
 
 static const int imageWidth = 600;
 static const int imageHeight = 180;
-static const float scale = 2.0f;
+static const float scale = 3.0f;
 
 void checkCompileErrors(GLuint shader, std::string type)
 {
@@ -156,7 +156,15 @@ void OpenGLWatermark::cleanup()
 
 void OpenGLWatermark::draw(GLuint framebuffer, unsigned width, unsigned height)
 {
-        //save current OpenGL state, we need to restore this after drawing
+    // Move watermark periodically
+    frameCounter++;
+    if (frameCounter >= REPOSITION_INTERVAL)
+    {
+        frameCounter = 0;
+        randomizePosition();
+    }
+
+    //save current OpenGL state, we need to restore this after drawing
     GLint oldProgram, oldVbo, oldTexture;
     GLboolean oldBlend;
     glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgram);

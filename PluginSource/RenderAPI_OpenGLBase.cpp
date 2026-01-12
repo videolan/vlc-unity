@@ -1,5 +1,12 @@
 #include "RenderAPI_OpenGLBase.h"
 #include "Log.h"
+#include <vlc/vlc.h>
+
+#if defined(SHOW_WATERMARK)
+extern "C" bool libvlc_unity_trial_tick();
+extern "C" bool libvlc_unity_trial_is_paused();
+extern "C" bool libvlc_unity_trial_is_stopped();
+#endif
 
 RenderAPI_OpenGLBase::RenderAPI_OpenGLBase(UnityGfxRenderer apiType)
 {
@@ -116,15 +123,24 @@ bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t 
 
 void RenderAPI_OpenGLBase::swap(void* opaque)
 {
-    //DEBUG("output callback SWAP");
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
-    that->updated = true;
 
 #if defined(SHOW_WATERMARK)
+    bool isPaused = libvlc_unity_trial_is_paused();
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    bool isPlaying = !isPaused && !isStopped;
+    if (isPaused && that->width > 0)
+        return;
+    if (isPlaying && !libvlc_unity_trial_tick())
+    {
+        libvlc_media_player_stop_async(that->m_mp);
+        return;
+    }
     that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
 #endif
 
+    that->updated = true;
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }

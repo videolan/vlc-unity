@@ -3,6 +3,16 @@
 #include "Log.h"
 
 #include <map>
+#include <atomic>
+#include <chrono>
+
+#if defined(SHOW_WATERMARK)
+static std::atomic<int64_t> g_trialAccumulatedMs{0};
+static std::atomic<int64_t> g_trialLastTickMs{-1};
+static std::atomic<bool> g_trialIsPaused{false};
+static std::atomic<bool> g_trialIsStopped{true};
+static const int64_t TRIAL_TIME_LIMIT_MS = 20 * 1000;
+#endif
 
 #if defined(SUPPORT_D3D11)
 #include <windows.h>
@@ -25,6 +35,40 @@ extern "C" {
 static UnityGfxRenderer s_DeviceType = kUnityGfxRendererNull;
 
 libvlc_instance_t * inst;
+
+#if defined(SHOW_WATERMARK)
+static void trial_reset();
+static void trial_pause();
+extern "C" bool libvlc_unity_trial_is_stopped();
+
+static void on_media_player_stopped(const libvlc_event_t* event, void* data)
+{
+    (void)event;
+    (void)data;
+    DEBUG("[Trial] Event: MediaPlayerStopped");
+    g_trialIsStopped.store(true);
+    g_trialIsPaused.store(false);
+    trial_reset();
+}
+
+static void on_media_player_paused(const libvlc_event_t* event, void* data)
+{
+    (void)event;
+    (void)data;
+    DEBUG("[Trial] Event: MediaPlayerPaused");
+    g_trialIsPaused.store(true);
+    trial_pause();
+}
+
+static void on_media_player_playing(const libvlc_event_t* event, void* data)
+{
+    (void)event;
+    (void)data;
+    DEBUG("[Trial] Event: MediaPlayerPlaying");
+    g_trialIsStopped.store(false);
+    g_trialIsPaused.store(false);
+}
+#endif
 
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
@@ -178,6 +222,18 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     contexts[mp] = s_CurrentAPI;
 
+#if defined(SHOW_WATERMARK)
+    {
+        libvlc_event_manager_t* em = libvlc_media_player_event_manager(mp);
+        if (em)
+        {
+            libvlc_event_attach(em, libvlc_MediaPlayerStopped, on_media_player_stopped, mp);
+            libvlc_event_attach(em, libvlc_MediaPlayerPaused, on_media_player_paused, mp);
+            libvlc_event_attach(em, libvlc_MediaPlayerPlaying, on_media_player_playing, mp);
+        }
+    }
+#endif
+
     return mp;
 err:
     if ( mp ) {
@@ -197,15 +253,27 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
     if(mp == NULL)
         return;
 
+#if defined(SHOW_WATERMARK)
+    {
+        libvlc_event_manager_t* em = libvlc_media_player_event_manager(mp);
+        if (em)
+        {
+            libvlc_event_detach(em, libvlc_MediaPlayerStopped, on_media_player_stopped, mp);
+            libvlc_event_detach(em, libvlc_MediaPlayerPaused, on_media_player_paused, mp);
+            libvlc_event_detach(em, libvlc_MediaPlayerPlaying, on_media_player_playing, mp);
+        }
+    }
+#endif
+
     RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
-    
+
     if(s_CurrentAPI == NULL)
         return;
 
     s_CurrentAPI->unsetVlcContext(mp);
 
     contexts.erase(mp);
-    
+
     libvlc_media_player_release(mp);
 }
 
@@ -214,8 +282,17 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
 {
     *updated = false;
 
-    if(mp == NULL || !libvlc_media_player_is_playing(mp))
+    if(mp == NULL)
         return NULL;
+
+#if defined(SHOW_WATERMARK)
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    if (!libvlc_media_player_is_playing(mp) && !isStopped)
+        return NULL;
+#else
+    if (!libvlc_media_player_is_playing(mp))
+        return NULL;
+#endif
 
     if(width == 0 && height == 0)
         return NULL;
@@ -380,6 +457,77 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         }
     }
     DEBUG("[VLC-Unity] OnRenderEvent complete\n");
+#endif
+}
+
+#if defined(SHOW_WATERMARK)
+static int64_t getCurrentTimeMs()
+{
+    auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+}
+
+static void trial_reset()
+{
+    g_trialAccumulatedMs.store(0);
+    g_trialLastTickMs.store(-1);
+}
+
+static void trial_pause()
+{
+    g_trialLastTickMs.store(-1);
+}
+
+extern "C" bool libvlc_unity_trial_tick()
+{
+    int64_t nowMs = getCurrentTimeMs();
+    int64_t lastTick = g_trialLastTickMs.load();
+
+    if (lastTick >= 0)
+    {
+        int64_t delta = nowMs - lastTick;
+        g_trialAccumulatedMs.fetch_add(delta);
+    }
+    g_trialLastTickMs.store(nowMs);
+
+    int64_t accumulated = g_trialAccumulatedMs.load();
+    bool stillValid = accumulated < TRIAL_TIME_LIMIT_MS;
+    if (!stillValid)
+    {
+        DEBUG("[Trial] trial_tick: EXPIRED (accumulated=%lldms, limit=%lldms)", (long long)accumulated, (long long)TRIAL_TIME_LIMIT_MS);
+    }
+    return stillValid;
+}
+
+extern "C" uint32_t libvlc_unity_trial_seconds_remaining()
+{
+    int64_t accumulated = g_trialAccumulatedMs.load();
+    if (accumulated >= TRIAL_TIME_LIMIT_MS)
+        return 0;
+
+    return (uint32_t)((TRIAL_TIME_LIMIT_MS - accumulated) / 1000);
+}
+
+extern "C" bool libvlc_unity_trial_is_paused()
+{
+    bool val = g_trialIsPaused.load();
+    return val;
+}
+
+extern "C" bool libvlc_unity_trial_is_stopped()
+{
+    bool val = g_trialIsStopped.load();
+    return val;
+}
+#endif // SHOW_WATERMARK
+
+extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_is_trial()
+{
+#if defined(SHOW_WATERMARK)
+    return true;
+#else
+    return false;
 #endif
 }
 

@@ -62,6 +62,9 @@ private:
 #if defined(SHOW_WATERMARK)
     OpenGLWatermark watermark;
 #endif
+
+protected:
+    libvlc_media_player_t *m_mp = nullptr;
 };
 
 

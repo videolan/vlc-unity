@@ -16,6 +16,7 @@
 #if defined(SHOW_WATERMARK)
 #include <d2d1.h>
 #include <dwrite.h>
+#include <chrono>
 #endif // SHOW_WATERMARK
 #include "Unity/IUnityGraphicsD3D11.h"
 #if SUPPORT_D3D12
@@ -28,6 +29,19 @@
 
 #include <memory>
 #include <random>
+
+#if defined(SHOW_WATERMARK)
+extern "C" bool libvlc_unity_trial_tick();
+extern "C" uint32_t libvlc_unity_trial_seconds_remaining();
+extern "C" bool libvlc_unity_trial_is_paused();
+extern "C" bool libvlc_unity_trial_is_stopped();
+
+static int64_t getCurrentTimeMs()
+{
+    auto now = std::chrono::steady_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+}
+#endif
 
 #if !defined(UWP)
 // #include <comdef.h> // enable for debugging
@@ -128,8 +142,12 @@ private:
     ID2D1Factory            *d2dFactory             = nullptr;
     IDWriteFactory          *dwriteFactory          = nullptr;
     IDWriteTextFormat       *textFormat             = nullptr;
-    float fontSize = 124.0f;
+    IDWriteTextFormat       *countdownTextFormat    = nullptr; // Smaller font for countdown
+    float fontSize = 180.0f;
+    float countdownFontSize = 48.0f;
     WatermarkPosition       m_watermarkPosition     = WatermarkPosition::BOTTOM_CENTER;
+    int64_t                 m_lastWatermarkMoveMs   = 0;
+    static const int64_t    WATERMARK_REPOSITION_INTERVAL_MS = 2500;
 #endif // SHOW_WATERMARK
 
     CRITICAL_SECTION m_sizeLock; // the ReportSize callback cannot be called during/after the Cleanup_cb is called
@@ -144,6 +162,21 @@ private:
 
     bool m_linear = false;
     int m_bit_depth = 8;
+
+    libvlc_media_player_t *m_mp = nullptr;
+
+#if defined(SHOW_WATERMARK)
+    bool m_trialMessageDrawn = false;
+    ID3D11Texture2D* m_trialTexture = nullptr;
+    ID3D11ShaderResourceView* m_trialTextureView = nullptr;
+    ID2D1RenderTarget* m_trialD2DTarget = nullptr;
+    ID2D1SolidColorBrush* m_trialBrush = nullptr;
+    unsigned m_trialTextureWidth = 0;
+    unsigned m_trialTextureHeight = 0;
+
+    bool ensureTrialTexture(unsigned width, unsigned height);
+    void releaseTrialTexture();
+#endif
 };
 
 // VLC C-style callbacks
@@ -224,6 +257,8 @@ RenderAPI_D3D11::~RenderAPI_D3D11()
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[D3D11] Subscribing output callbacks %p \n", this);
+
+    m_mp = mp;
 
     CreateResources();
 
@@ -676,6 +711,25 @@ void RenderAPI_D3D11::CreateResources()
             DEBUG("FAILED to create text format \n");
         }
     }
+
+    // Create countdown text format (smaller font)
+    if (SUCCEEDED(hr) && dwriteFactory)
+    {
+        hr = dwriteFactory->CreateTextFormat(
+            L"Arial",
+            nullptr,
+            DWRITE_FONT_WEIGHT_BOLD,
+            DWRITE_FONT_STYLE_NORMAL,
+            DWRITE_FONT_STRETCH_NORMAL,
+            countdownFontSize,
+            L"en-us",
+            &countdownTextFormat
+        );
+        if (FAILED(hr)) {
+            DEBUG("FAILED to create countdown text format \n");
+            // Non-fatal - countdown just won't show
+        }
+    }
 #endif // SHOW_WATERMARK
 
     DEBUG("Exiting CreateResources.\n");
@@ -725,6 +779,12 @@ void RenderAPI_D3D11::ReleaseResources()
     DEBUG("ReleaseResources called \n");
 
 #if defined(SHOW_WATERMARK)
+    releaseTrialTexture();
+
+    if (countdownTextFormat) {
+        countdownTextFormat->Release();
+        countdownTextFormat = nullptr;
+    }
     if (textFormat) {
         textFormat->Release();
         textFormat = nullptr;
@@ -784,86 +844,247 @@ void RenderAPI_D3D11::Swap()
     ReadWriteTexture* textureJustWrittenByVLC = current_texture;
 
 #if defined(SHOW_WATERMARK)
+    bool isPaused = libvlc_unity_trial_is_paused();
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    bool isPlaying = !isPaused && !isStopped;
+    bool trialExpired = false;
+
+    DEBUG("[D3D11] Swap: isPaused=%d, isStopped=%d, isPlaying=%d", isPaused, isStopped, isPlaying);
+
+    if (isPaused && m_textureForUnity != nullptr)
+    {
+        DEBUG("[D3D11] Swap: early return (paused)");
+        LeaveCriticalSection(&m_outputLock);
+        return;
+    }
+
+    if (isPlaying)
+    {
+        trialExpired = !libvlc_unity_trial_tick();
+        DEBUG("[D3D11] Swap: isPlaying=true, trialExpired=%d", trialExpired);
+        if (trialExpired && m_mp)
+        {
+            DEBUG("[D3D11] Swap: calling stop_async due to trial expiry");
+            libvlc_media_player_stop_async(m_mp);
+        }
+
+        if (!trialExpired)
+        {
+            int64_t nowMs = getCurrentTimeMs();
+            if (nowMs - m_lastWatermarkMoveMs >= WATERMARK_REPOSITION_INTERVAL_MS)
+            {
+                m_lastWatermarkMoveMs = nowMs;
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> dis(0, 2);
+                m_watermarkPosition = static_cast<WatermarkPosition>(dis(gen));
+            }
+        }
+    }
+
+    bool showTrialMessage = isStopped || trialExpired;
+    DEBUG("[D3D11] Swap: showTrialMessage=%d (isStopped=%d, trialExpired=%d)", showTrialMessage, isStopped, trialExpired);
+
+    DEBUG("[D3D11] Swap: texture=%p, d2dRT=%p, textFormat=%p, textBrush=%p",
+        textureJustWrittenByVLC,
+        textureJustWrittenByVLC ? textureJustWrittenByVLC->d2dRenderTarget : nullptr,
+        textFormat,
+        textureJustWrittenByVLC ? textureJustWrittenByVLC->textBrush : nullptr);
+
     if (textureJustWrittenByVLC && textureJustWrittenByVLC->d2dRenderTarget && textFormat && textureJustWrittenByVLC->textBrush) {
-        textureJustWrittenByVLC->d2dRenderTarget->BeginDraw();
+        if (showTrialMessage)
+        {
+            DEBUG("[D3D11] Swap: drawing trial message (black screen)");
+            textureJustWrittenByVLC->d2dRenderTarget->BeginDraw();
 
-        D2D1_MATRIX_3X2_F originalTransform;
-        textureJustWrittenByVLC->d2dRenderTarget->GetTransform(&originalTransform);
+            D2D1_MATRIX_3X2_F originalTransform;
+            textureJustWrittenByVLC->d2dRenderTarget->GetTransform(&originalTransform);
 
-        const WCHAR watermarkText[] = L"Videolabs.io";
-        UINT32 textLength = ARRAYSIZE(watermarkText) - 1;
+            textureJustWrittenByVLC->d2dRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
-        float padding = 10.0f;
-        float approxTextWidth = textLength * (fontSize * 0.5f);
+            const WCHAR line1[] = L"Trial session expired";
+            const WCHAR line2[] = L"Purchase the pro version at https://videolabs.io/store/unity";
+            UINT32 line1Length = ARRAYSIZE(line1) - 1;
+            UINT32 line2Length = ARRAYSIZE(line2) - 1;
 
-        D2D1_RECT_F textRect;
+            float maxWidth = textureJustWrittenByVLC->width * 0.9f;
+            float line1FontSize = maxWidth / (line1Length * 0.55f);
+            float line2FontSize = maxWidth / (line2Length * 0.55f);
+            if (line1FontSize > 72.0f) line1FontSize = 72.0f;
+            if (line2FontSize > 36.0f) line2FontSize = 36.0f;
+            float lineSpacing = line1FontSize * 0.5f;
 
-        switch (m_watermarkPosition) {
-            case WatermarkPosition::BOTTOM_CENTER:
+            float totalHeight = line1FontSize + lineSpacing + line2FontSize;
+            float startY = (textureJustWrittenByVLC->height - totalHeight) / 2.0f;
+
+            D2D1_RECT_F line1Rect = D2D1::RectF(
+                0,
+                startY,
+                (float)textureJustWrittenByVLC->width,
+                startY + line1FontSize * 1.2f
+            );
+
+            D2D1_RECT_F line2Rect = D2D1::RectF(
+                0,
+                startY + line1FontSize + lineSpacing,
+                (float)textureJustWrittenByVLC->width,
+                startY + line1FontSize + lineSpacing + line2FontSize * 1.2f
+            );
+
+            float centerX = textureJustWrittenByVLC->width / 2.0f;
+            D2D1_MATRIX_3X2_F mirror =
+                D2D1::Matrix3x2F::Translation(-centerX, 0.0f) *
+                D2D1::Matrix3x2F::Scale(-1.0f, 1.0f, D2D1::Point2F(0.0f, 0.0f)) *
+                D2D1::Matrix3x2F::Translation(centerX, 0.0f);
+            textureJustWrittenByVLC->d2dRenderTarget->SetTransform(mirror * originalTransform);
+
+            IDWriteTextFormat* line1Format = nullptr;
+            IDWriteTextFormat* line2Format = nullptr;
+            if (dwriteFactory)
             {
-                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
-                float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
-                float textRectRight = textRectLeft + approxTextWidth;
-                float textRectBottom = textureJustWrittenByVLC->height - padding;
-                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
-                break;
+                dwriteFactory->CreateTextFormat(L"Arial", nullptr, DWRITE_FONT_WEIGHT_BOLD,
+                    DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, line1FontSize, L"en-us", &line1Format);
+                dwriteFactory->CreateTextFormat(L"Arial", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+                    DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, line2FontSize, L"en-us", &line2Format);
+                if (line1Format) line1Format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+                if (line2Format) line2Format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
             }
-            case WatermarkPosition::CENTER:
-            {
-                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
-                float textRectTop = (textureJustWrittenByVLC->height - fontSize) / 2.0f;
-                float textRectRight = textRectLeft + approxTextWidth;
-                float textRectBottom = textRectTop + fontSize;
-                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
-                break;
-            }
-            case WatermarkPosition::TOP_CENTER:
-            {
-                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
-                float textRectTop = padding;
-                float textRectRight = textRectLeft + approxTextWidth;
-                float textRectBottom = padding + fontSize;
-                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
-                break;
-            }
-            default:
-                // Fallback to bottom center
-                float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
-                float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
-                float textRectRight = textRectLeft + approxTextWidth;
-                float textRectBottom = textureJustWrittenByVLC->height - padding;
-                textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
-                break;
+
+            textureJustWrittenByVLC->d2dRenderTarget->DrawText(
+                line1, line1Length,
+                line1Format ? line1Format : textFormat,
+                line1Rect,
+                textureJustWrittenByVLC->textBrush
+            );
+
+            textureJustWrittenByVLC->d2dRenderTarget->DrawText(
+                line2, line2Length,
+                line2Format ? line2Format : countdownTextFormat,
+                line2Rect,
+                textureJustWrittenByVLC->textBrush
+            );
+
+            if (line1Format) line1Format->Release();
+            if (line2Format) line2Format->Release();
+
+            textureJustWrittenByVLC->d2dRenderTarget->SetTransform(originalTransform);
+            textureJustWrittenByVLC->d2dRenderTarget->EndDraw();
         }
+        else if (isPlaying)
+        {
+            DEBUG("[D3D11] Swap: drawing watermark (playing)");
+            textureJustWrittenByVLC->d2dRenderTarget->BeginDraw();
 
-        float centerX = textRect.left + (textRect.right - textRect.left) / 2.0f;
-        D2D1_MATRIX_3X2_F mirrorTransform =
-            D2D1::Matrix3x2F::Translation(-centerX, 0.0f) *
-            D2D1::Matrix3x2F::Scale(-1.0f, 1.0f, D2D1::Point2F(0.0f, 0.0f)) *
-            D2D1::Matrix3x2F::Translation(centerX, 0.0f);
-        textureJustWrittenByVLC->d2dRenderTarget->SetTransform(mirrorTransform * originalTransform);
+            D2D1_MATRIX_3X2_F originalTransform;
+            textureJustWrittenByVLC->d2dRenderTarget->GetTransform(&originalTransform);
 
-        textureJustWrittenByVLC->d2dRenderTarget->DrawText(
-            watermarkText,
-            textLength,
-            textFormat,
-            textRect,
-            textureJustWrittenByVLC->textBrush
-        );
+            float padding = 10.0f;
+            const WCHAR watermarkText[] = L"Videolabs.io";
+            UINT32 textLength = ARRAYSIZE(watermarkText) - 1;
+            float approxTextWidth = textLength * (fontSize * 0.5f);
 
-        textureJustWrittenByVLC->d2dRenderTarget->SetTransform(originalTransform);
+            D2D1_RECT_F textRect;
 
-        HRESULT hr = textureJustWrittenByVLC->d2dRenderTarget->EndDraw();
-        if (FAILED(hr)) {
-            DEBUG("Direct2D EndDraw FAILED: 0x%lx\n", hr);
+            switch (m_watermarkPosition) {
+                case WatermarkPosition::BOTTOM_CENTER:
+                {
+                    float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                    float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
+                    float textRectRight = textRectLeft + approxTextWidth;
+                    float textRectBottom = textureJustWrittenByVLC->height - padding;
+                    textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                    break;
+                }
+                case WatermarkPosition::CENTER:
+                {
+                    float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                    float textRectTop = (textureJustWrittenByVLC->height - fontSize) / 2.0f;
+                    float textRectRight = textRectLeft + approxTextWidth;
+                    float textRectBottom = textRectTop + fontSize;
+                    textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                    break;
+                }
+                case WatermarkPosition::TOP_CENTER:
+                {
+                    float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                    float textRectTop = padding;
+                    float textRectRight = textRectLeft + approxTextWidth;
+                    float textRectBottom = padding + fontSize;
+                    textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                    break;
+                }
+                default:
+                {
+                    float textRectLeft = (textureJustWrittenByVLC->width - approxTextWidth) / 2.0f;
+                    float textRectTop = textureJustWrittenByVLC->height - fontSize - padding;
+                    float textRectRight = textRectLeft + approxTextWidth;
+                    float textRectBottom = textureJustWrittenByVLC->height - padding;
+                    textRect = D2D1::RectF(textRectLeft, textRectTop, textRectRight, textRectBottom);
+                    break;
+                }
+            }
+
+            float centerX = textRect.left + (textRect.right - textRect.left) / 2.0f;
+            D2D1_MATRIX_3X2_F mirrorTransform =
+                D2D1::Matrix3x2F::Translation(-centerX, 0.0f) *
+                D2D1::Matrix3x2F::Scale(-1.0f, 1.0f, D2D1::Point2F(0.0f, 0.0f)) *
+                D2D1::Matrix3x2F::Translation(centerX, 0.0f);
+            textureJustWrittenByVLC->d2dRenderTarget->SetTransform(mirrorTransform * originalTransform);
+
+            textureJustWrittenByVLC->d2dRenderTarget->DrawText(
+                watermarkText,
+                textLength,
+                textFormat,
+                textRect,
+                textureJustWrittenByVLC->textBrush
+            );
+
+            textureJustWrittenByVLC->d2dRenderTarget->SetTransform(originalTransform);
+
+            if (countdownTextFormat)
+            {
+                uint32_t secondsRemaining = libvlc_unity_trial_seconds_remaining();
+                WCHAR countdownText[32];
+                swprintf_s(countdownText, L"Trial: %us", secondsRemaining);
+                UINT32 countdownLength = (UINT32)wcslen(countdownText);
+
+                float countdownWidth = countdownLength * (countdownFontSize * 0.5f);
+                float countdownRectLeft = textureJustWrittenByVLC->width - countdownWidth - padding;
+                float countdownRectTop = padding;
+                float countdownRectRight = textureJustWrittenByVLC->width - padding;
+                float countdownRectBottom = padding + countdownFontSize;
+                D2D1_RECT_F countdownRect = D2D1::RectF(countdownRectLeft, countdownRectTop, countdownRectRight, countdownRectBottom);
+
+                float countdownCenterX = countdownRect.left + (countdownRect.right - countdownRect.left) / 2.0f;
+                D2D1_MATRIX_3X2_F countdownMirrorTransform =
+                    D2D1::Matrix3x2F::Translation(-countdownCenterX, 0.0f) *
+                    D2D1::Matrix3x2F::Scale(-1.0f, 1.0f, D2D1::Point2F(0.0f, 0.0f)) *
+                    D2D1::Matrix3x2F::Translation(countdownCenterX, 0.0f);
+                textureJustWrittenByVLC->d2dRenderTarget->SetTransform(countdownMirrorTransform * originalTransform);
+
+                textureJustWrittenByVLC->d2dRenderTarget->DrawText(
+                    countdownText,
+                    countdownLength,
+                    countdownTextFormat,
+                    countdownRect,
+                    textureJustWrittenByVLC->textBrush
+                );
+
+                textureJustWrittenByVLC->d2dRenderTarget->SetTransform(originalTransform);
+            }
+
+            textureJustWrittenByVLC->d2dRenderTarget->EndDraw();
         }
-    } else {
-         DEBUG("Watermark rendering skipped (either disabled or D2D resources missing)\n");
+    }
+    else
+    {
+        DEBUG("[D3D11] Swap: skipped drawing (missing resources)");
     }
 #endif // SHOW_WATERMARK
 
     m_textureForUnity = textureJustWrittenByVLC;
     m_updated = true;
+    DEBUG("[D3D11] Swap: m_textureForUnity set, m_updated=true");
 
     if (current_texture == read_write[0].get()) {
         current_texture = read_write[1].get();
@@ -965,6 +1186,83 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
     local_updated_status = m_updated;
     m_updated = false;
 
+#if defined(SHOW_WATERMARK)
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    DEBUG("[D3D11] getVideoFrame: isStopped=%d, m_trialMessageDrawn=%d, width=%u, height=%u", isStopped, m_trialMessageDrawn, width, height);
+
+    if (isStopped && width > 0 && height > 0)
+    {
+        if (ensureTrialTexture(width, height) && m_trialD2DTarget && m_trialBrush && dwriteFactory)
+        {
+            if (!m_trialMessageDrawn)
+            {
+                DEBUG("[D3D11] getVideoFrame: drawing trial message to independent texture");
+
+                m_trialD2DTarget->BeginDraw();
+
+                D2D1_MATRIX_3X2_F originalTransform;
+                m_trialD2DTarget->GetTransform(&originalTransform);
+
+                m_trialD2DTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+
+                const WCHAR line1[] = L"Trial session expired";
+                const WCHAR line2[] = L"Purchase the pro version at https://videolabs.io/store/unity";
+                UINT32 line1Length = ARRAYSIZE(line1) - 1;
+                UINT32 line2Length = ARRAYSIZE(line2) - 1;
+
+                float maxWidth = width * 0.9f;
+                float line1FontSize = maxWidth / (line1Length * 0.55f);
+                float line2FontSize = maxWidth / (line2Length * 0.55f);
+                if (line1FontSize > 72.0f) line1FontSize = 72.0f;
+                if (line2FontSize > 36.0f) line2FontSize = 36.0f;
+                float lineSpacing = line1FontSize * 0.5f;
+
+                float totalHeight = line1FontSize + lineSpacing + line2FontSize;
+                float startY = (height - totalHeight) / 2.0f;
+
+                D2D1_RECT_F line1Rect = D2D1::RectF(0, startY, (float)width, startY + line1FontSize * 1.2f);
+                D2D1_RECT_F line2Rect = D2D1::RectF(0, startY + line1FontSize + lineSpacing,
+                    (float)width, startY + line1FontSize + lineSpacing + line2FontSize * 1.2f);
+
+                float centerX = width / 2.0f;
+                D2D1_MATRIX_3X2_F mirror =
+                    D2D1::Matrix3x2F::Translation(-centerX, 0.0f) *
+                    D2D1::Matrix3x2F::Scale(-1.0f, 1.0f, D2D1::Point2F(0.0f, 0.0f)) *
+                    D2D1::Matrix3x2F::Translation(centerX, 0.0f);
+                m_trialD2DTarget->SetTransform(mirror * originalTransform);
+
+                IDWriteTextFormat* line1Format = nullptr;
+                IDWriteTextFormat* line2Format = nullptr;
+                dwriteFactory->CreateTextFormat(L"Arial", nullptr, DWRITE_FONT_WEIGHT_BOLD,
+                    DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, line1FontSize, L"en-us", &line1Format);
+                dwriteFactory->CreateTextFormat(L"Arial", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+                    DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, line2FontSize, L"en-us", &line2Format);
+                if (line1Format) line1Format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+                if (line2Format) line2Format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+                m_trialD2DTarget->DrawText(line1, line1Length, line1Format, line1Rect, m_trialBrush);
+                m_trialD2DTarget->DrawText(line2, line2Length, line2Format, line2Rect, m_trialBrush);
+
+                if (line1Format) line1Format->Release();
+                if (line2Format) line2Format->Release();
+
+                m_trialD2DTarget->SetTransform(originalTransform);
+                m_trialD2DTarget->EndDraw();
+                m_trialMessageDrawn = true;
+                DEBUG("[D3D11] getVideoFrame: trial message drawn successfully");
+            }
+
+            result = (void*)m_trialTextureView;
+            local_updated_status = true;
+        }
+    }
+    else if (!isStopped && m_trialMessageDrawn)
+    {
+        m_trialMessageDrawn = false;
+        DEBUG("[D3D11] getVideoFrame: reset m_trialMessageDrawn");
+    }
+#endif // SHOW_WATERMARK
+
     LeaveCriticalSection(&m_outputLock);
 
     *out_updated = local_updated_status;
@@ -981,6 +1279,85 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
 
     return result;
 }
+
+#if defined(SHOW_WATERMARK)
+bool RenderAPI_D3D11::ensureTrialTexture(unsigned width, unsigned height)
+{
+    if (m_trialTexture && m_trialTextureWidth == width && m_trialTextureHeight == height)
+        return true;
+
+    releaseTrialTexture();
+
+    if (width == 0 || height == 0)
+        return false;
+
+    ID3D11Device* d3dDevice = nullptr;
+    HRESULT hr = m_d3deviceUnity->QueryInterface(&d3dDevice);
+    if (FAILED(hr) || !d3dDevice)
+        return false;
+
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    texDesc.Width = width;
+    texDesc.Height = height;
+    texDesc.MipLevels = 1;
+    texDesc.ArraySize = 1;
+    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.Usage = D3D11_USAGE_DEFAULT;
+    texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    hr = d3dDevice->CreateTexture2D(&texDesc, nullptr, &m_trialTexture);
+    if (FAILED(hr)) {
+        d3dDevice->Release();
+        return false;
+    }
+
+    hr = d3dDevice->CreateShaderResourceView(m_trialTexture, nullptr, &m_trialTextureView);
+    if (FAILED(hr)) {
+        m_trialTexture->Release();
+        m_trialTexture = nullptr;
+        d3dDevice->Release();
+        return false;
+    }
+
+    d3dDevice->Release();
+
+    if (d2dFactory) {
+        IDXGISurface* dxgiSurface = nullptr;
+        hr = m_trialTexture->QueryInterface(&dxgiSurface);
+        if (SUCCEEDED(hr) && dxgiSurface) {
+            D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
+                D2D1_RENDER_TARGET_TYPE_DEFAULT,
+                D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)
+            );
+            hr = d2dFactory->CreateDxgiSurfaceRenderTarget(dxgiSurface, props, &m_trialD2DTarget);
+            dxgiSurface->Release();
+
+            if (SUCCEEDED(hr) && m_trialD2DTarget) {
+                m_trialD2DTarget->CreateSolidColorBrush(
+                    D2D1::ColorF(255.0f/255.0f, 102.0f/255.0f, 0.0f/255.0f, 1.0f),
+                    &m_trialBrush
+                );
+            }
+        }
+    }
+
+    m_trialTextureWidth = width;
+    m_trialTextureHeight = height;
+    DEBUG("[D3D11] Trial texture created: %ux%u", width, height);
+    return true;
+}
+
+void RenderAPI_D3D11::releaseTrialTexture()
+{
+    if (m_trialBrush) { m_trialBrush->Release(); m_trialBrush = nullptr; }
+    if (m_trialD2DTarget) { m_trialD2DTarget->Release(); m_trialD2DTarget = nullptr; }
+    if (m_trialTextureView) { m_trialTextureView->Release(); m_trialTextureView = nullptr; }
+    if (m_trialTexture) { m_trialTexture->Release(); m_trialTexture = nullptr; }
+    m_trialTextureWidth = 0;
+    m_trialTextureHeight = 0;
+}
+#endif
 
 void RenderAPI_D3D11::setColorSpace(int color_space)
 {

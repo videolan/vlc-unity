@@ -43,6 +43,12 @@
 /* Libvlc includes */
 #import <vlc/libvlc_media_player.h>
 
+#if defined(SHOW_WATERMARK)
+extern "C" bool libvlc_unity_trial_tick();
+extern "C" bool libvlc_unity_trial_is_paused();
+extern "C" bool libvlc_unity_trial_is_stopped();
+#endif
+
 namespace {
 
 bool makeCurrent(void* data, bool current)
@@ -93,15 +99,24 @@ RenderAPI_OpenGLCGL::RenderAPI_OpenGLCGL(UnityGfxRenderer apiType)
 
 void RenderAPI_OpenGLCGL::swap(void* opaque)
 {
-    //DEBUG("[GLCGL] swapping");
     RenderAPI_OpenGLCGL* that = reinterpret_cast<RenderAPI_OpenGLCGL*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
-    that->updated = true;
 
 #if defined(SHOW_WATERMARK)
+    bool isPaused = libvlc_unity_trial_is_paused();
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    bool isPlaying = !isPaused && !isStopped;
+    if (isPaused && that->width > 0)
+        return;
+    if (isPlaying && !libvlc_unity_trial_tick())
+    {
+        libvlc_media_player_stop_async(that->m_mp);
+        return;
+    }
     that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
 #endif
 
+    that->updated = true;
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 }
@@ -138,6 +153,8 @@ void* RenderAPI_OpenGLCGL::get_proc_address(void* /*data*/, const char* procname
 
 void RenderAPI_OpenGLCGL::setVlcContext(libvlc_media_player_t *mp)
 {
+    m_mp = mp;
+
     DEBUG("[GLCGL] subscribing to opengl output callbacks %p", this);
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_opengl,
         setup, cleanup, nullptr, resize, ::swap,

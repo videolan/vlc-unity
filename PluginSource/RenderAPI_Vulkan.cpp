@@ -23,6 +23,12 @@
 #include "RenderAPI_Vulkan.h"
 #include "Log.h"
 #include <cassert>
+
+#if defined(SHOW_WATERMARK)
+extern "C" bool libvlc_unity_trial_tick();
+extern "C" bool libvlc_unity_trial_is_paused();
+extern "C" bool libvlc_unity_trial_is_stopped();
+#endif
 #include <stdexcept>
 #include <vector>
 #include <jni.h>
@@ -192,6 +198,8 @@ void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t *mp)
 {
     DEBUG("[Vulkan] setVlcContext %p", this);
 
+    m_mp = mp;
+
     // Create AWindow for hardware-accelerated decoding (MediaCodec)
     if (m_awindow == nullptr)
         m_awindow = createWindowSurface();
@@ -290,12 +298,22 @@ void RenderAPI_Vulkan::swap(void* opaque)
     DEBUG_VERBOSE("[Vulkan] swap callback");
     RenderAPI_Vulkan* that = reinterpret_cast<RenderAPI_Vulkan*>(opaque);
     std::lock_guard<std::mutex> lock(that->text_lock);
-    that->updated = true;
 
 #if defined(SHOW_WATERMARK)
+    bool isPaused = libvlc_unity_trial_is_paused();
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    bool isPlaying = !isPaused && !isStopped;
+    if (isPaused && that->width > 0)
+        return;
+    if (isPlaying && !libvlc_unity_trial_tick())
+    {
+        libvlc_media_player_stop_async(that->m_mp);
+        return;
+    }
     that->watermark.draw(that->buffers[that->idx_render].fbo, that->width, that->height);
 #endif
 
+    that->updated = true;
     glFlush();
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->buffers[that->idx_render].fbo);
