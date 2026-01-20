@@ -11,7 +11,7 @@ static std::atomic<int64_t> g_trialAccumulatedMs{0};
 static std::atomic<int64_t> g_trialLastTickMs{-1};
 static std::atomic<bool> g_trialIsPaused{false};
 static std::atomic<bool> g_trialIsStopped{true};
-static const int64_t TRIAL_TIME_LIMIT_MS = 20 * 1000;
+static const int64_t TRIAL_TIME_LIMIT_MS = 60 * 1000;
 #endif
 
 #if defined(SUPPORT_D3D11)
