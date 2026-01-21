@@ -383,7 +383,7 @@ unity-plugin-uwp-arm64-trial:
             - macos-${ARCH}/macos-install/lib/libvlccore.dylib
         expire_in: 2 weeks
     variables:
-        ARGS: -i z -c -g l
+        ARGS: -d -i z -c -g l
 
 libvlc-macos-x86_64:
     extends: .libvlc-macos-common
