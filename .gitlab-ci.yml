@@ -613,7 +613,7 @@ package-unity-plugins-trial:
     extends: .base-template
     stage: build-libvlc
     script:
-        - DOTNET_SDK_VERSION=9.0.306
+        - DOTNET_SDK_VERSION=10.0.102
         - wget https://builds.dotnet.microsoft.com/dotnet/Sdk/${DOTNET_SDK_VERSION}/dotnet-sdk-${DOTNET_SDK_VERSION}-linux-x64.tar.gz
         - mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-${DOTNET_SDK_VERSION}-linux-x64.tar.gz -C $HOME/dotnet
         - export DOTNET_ROOT=$HOME/dotnet
