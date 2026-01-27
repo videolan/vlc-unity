@@ -849,11 +849,11 @@ void RenderAPI_D3D11::Swap()
     bool isPlaying = !isPaused && !isStopped;
     bool trialExpired = false;
 
-    DEBUG("[D3D11] Swap: isPaused=%d, isStopped=%d, isPlaying=%d", isPaused, isStopped, isPlaying);
+    DEBUG_VERBOSE("[D3D11] Swap: isPaused=%d, isStopped=%d, isPlaying=%d", isPaused, isStopped, isPlaying);
 
     if (isPaused && m_textureForUnity != nullptr)
     {
-        DEBUG("[D3D11] Swap: early return (paused)");
+        DEBUG_VERBOSE("[D3D11] Swap: early return (paused)");
         LeaveCriticalSection(&m_outputLock);
         return;
     }
@@ -861,7 +861,7 @@ void RenderAPI_D3D11::Swap()
     if (isPlaying)
     {
         trialExpired = !libvlc_unity_trial_tick();
-        DEBUG("[D3D11] Swap: isPlaying=true, trialExpired=%d", trialExpired);
+        DEBUG_VERBOSE("[D3D11] Swap: isPlaying=true, trialExpired=%d", trialExpired);
         if (trialExpired && m_mp)
         {
             DEBUG("[D3D11] Swap: calling stop_async due to trial expiry");
@@ -883,9 +883,9 @@ void RenderAPI_D3D11::Swap()
     }
 
     bool showTrialMessage = isStopped || trialExpired;
-    DEBUG("[D3D11] Swap: showTrialMessage=%d (isStopped=%d, trialExpired=%d)", showTrialMessage, isStopped, trialExpired);
+    DEBUG_VERBOSE("[D3D11] Swap: showTrialMessage=%d (isStopped=%d, trialExpired=%d)", showTrialMessage, isStopped, trialExpired);
 
-    DEBUG("[D3D11] Swap: texture=%p, d2dRT=%p, textFormat=%p, textBrush=%p",
+    DEBUG_VERBOSE("[D3D11] Swap: texture=%p, d2dRT=%p, textFormat=%p, textBrush=%p",
         textureJustWrittenByVLC,
         textureJustWrittenByVLC ? textureJustWrittenByVLC->d2dRenderTarget : nullptr,
         textFormat,
@@ -894,7 +894,7 @@ void RenderAPI_D3D11::Swap()
     if (textureJustWrittenByVLC && textureJustWrittenByVLC->d2dRenderTarget && textFormat && textureJustWrittenByVLC->textBrush) {
         if (showTrialMessage)
         {
-            DEBUG("[D3D11] Swap: drawing trial message (black screen)");
+            DEBUG_VERBOSE("[D3D11] Swap: drawing trial message (black screen)");
             textureJustWrittenByVLC->d2dRenderTarget->BeginDraw();
 
             D2D1_MATRIX_3X2_F originalTransform;
@@ -972,7 +972,7 @@ void RenderAPI_D3D11::Swap()
         }
         else if (isPlaying)
         {
-            DEBUG("[D3D11] Swap: drawing watermark (playing)");
+            DEBUG_VERBOSE("[D3D11] Swap: drawing watermark (playing)");
             textureJustWrittenByVLC->d2dRenderTarget->BeginDraw();
 
             D2D1_MATRIX_3X2_F originalTransform;
@@ -1078,13 +1078,13 @@ void RenderAPI_D3D11::Swap()
     }
     else
     {
-        DEBUG("[D3D11] Swap: skipped drawing (missing resources)");
+        DEBUG_VERBOSE("[D3D11] Swap: skipped drawing (missing resources)");
     }
 #endif // SHOW_WATERMARK
 
     m_textureForUnity = textureJustWrittenByVLC;
     m_updated = true;
-    DEBUG("[D3D11] Swap: m_textureForUnity set, m_updated=true");
+    DEBUG_VERBOSE("[D3D11] Swap: m_textureForUnity set, m_updated=true");
 
     if (current_texture == read_write[0].get()) {
         current_texture = read_write[1].get();
@@ -1188,7 +1188,7 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
 
 #if defined(SHOW_WATERMARK)
     bool isStopped = libvlc_unity_trial_is_stopped();
-    DEBUG("[D3D11] getVideoFrame: isStopped=%d, m_trialMessageDrawn=%d, width=%u, height=%u", isStopped, m_trialMessageDrawn, width, height);
+    DEBUG_VERBOSE("[D3D11] getVideoFrame: isStopped=%d, m_trialMessageDrawn=%d, width=%u, height=%u", isStopped, m_trialMessageDrawn, width, height);
 
     if (isStopped && width > 0 && height > 0)
     {
@@ -1196,7 +1196,7 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
         {
             if (!m_trialMessageDrawn)
             {
-                DEBUG("[D3D11] getVideoFrame: drawing trial message to independent texture");
+                DEBUG_VERBOSE("[D3D11] getVideoFrame: drawing trial message to independent texture");
 
                 m_trialD2DTarget->BeginDraw();
 
@@ -1249,7 +1249,7 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
                 m_trialD2DTarget->SetTransform(originalTransform);
                 m_trialD2DTarget->EndDraw();
                 m_trialMessageDrawn = true;
-                DEBUG("[D3D11] getVideoFrame: trial message drawn successfully");
+                DEBUG_VERBOSE("[D3D11] getVideoFrame: trial message drawn successfully");
             }
 
             result = (void*)m_trialTextureView;
@@ -1259,7 +1259,7 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
     else if (!isStopped && m_trialMessageDrawn)
     {
         m_trialMessageDrawn = false;
-        DEBUG("[D3D11] getVideoFrame: reset m_trialMessageDrawn");
+        DEBUG_VERBOSE("[D3D11] getVideoFrame: reset m_trialMessageDrawn");
     }
 #endif // SHOW_WATERMARK
 

@@ -39,11 +39,11 @@ extern "C" bool libvlc_unity_trial_is_stopped();
 #include <pthread.h>
 
 // Debug/validation configuration is in RenderAPI_Vulkan.h
-
-#if VULKAN_VERBOSE_SUCCESS_LOGS
+// Note: DEBUG_VERBOSE is defined in Log.h and disabled in release builds (NDEBUG)
+// For extra verbose Vulkan logs during development, enable VULKAN_VERBOSE_SUCCESS_LOGS
+#if VULKAN_VERBOSE_SUCCESS_LOGS && !defined(NDEBUG)
+#undef DEBUG_VERBOSE
 #define DEBUG_VERBOSE(...) DEBUG(__VA_ARGS__)
-#else
-#define DEBUG_VERBOSE(...) ((void)0)
 #endif
 
 // External JNI environment from RenderAPI_Android.cpp
