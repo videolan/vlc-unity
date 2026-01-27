@@ -8,7 +8,10 @@ using UnityEditor.Build.Reporting;
 #if UNITY_EDITOR_OSX
 [InitializeOnLoad]
 #endif
-public class MacOSQuarantineRemover : EditorWindow, IPreprocessBuildWithReport
+public class MacOSQuarantineRemover : EditorWindow
+#if UNITY_EDITOR_OSX
+    , IPreprocessBuildWithReport
+#endif
 {
     private const string PLUGINS_PATH = "Assets/VLCUnity/Plugins/MacOS/ARM64";
 
@@ -17,7 +20,9 @@ public class MacOSQuarantineRemover : EditorWindow, IPreprocessBuildWithReport
     private string command = "";
     private bool showCopyCommand = false;
 
+#if UNITY_EDITOR_OSX
     public int callbackOrder => 0;
+#endif
 
     #if UNITY_EDITOR_OSX
     static MacOSQuarantineRemover()
@@ -47,9 +52,9 @@ public class MacOSQuarantineRemover : EditorWindow, IPreprocessBuildWithReport
         #endif
     }
 
+#if UNITY_EDITOR_OSX
     public void OnPreprocessBuild(BuildReport report)
     {
-        #if UNITY_EDITOR_OSX
         if (CheckQuarantineStatusSilent())
         {
             UnityEngine.Debug.LogWarning(
@@ -58,8 +63,8 @@ public class MacOSQuarantineRemover : EditorWindow, IPreprocessBuildWithReport
                 "Go to Tools > VLC Unity > macOS Plugin Setup to fix this before building."
             );
         }
-        #endif
     }
+#endif
 
     private void OnGUI()
     {
