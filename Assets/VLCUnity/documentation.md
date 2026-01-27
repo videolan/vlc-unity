@@ -77,6 +77,22 @@ Both Apple Silicon (ARM64) and Intel Macs builds are supported, in Editor and th
 The following build scenario is currently unsupported for the beta release:
 - Universal builds (binaries with both Intel64 and Apple Silicon binaries) currently are not supported nor tested.
 
+### macOS Plugin Authorization (Editor only)
+
+VLC Unity plugins are currently unsigned. macOS Gatekeeper blocks unsigned code from running in the Unity Editor, which may prevent the plugins from loading during development.
+
+To fix this, use the built-in authorization tool:
+
+1. Go to **Tools > VLC Unity > macOS Plugin Setup**
+2. If plugins are blocked, click **Authorize Plugins**
+3. Enter your macOS password when prompted
+
+The tool removes the `com.apple.quarantine` extended attribute that macOS applies to downloaded files. A warning will appear in the Console if plugins are blocked, and also before building.
+
+**Note:** Standalone builds are not affected by this and work normally. This authorization is only needed for Editor testing.
+
+**Alternative:** If you have an Apple Developer certificate, you can sign the binaries yourself to permanently resolve this.
+
 ## General
 
 The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to get started quickly. 
