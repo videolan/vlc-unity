@@ -4,6 +4,15 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+2026-1 (All platforms)
+- Windows: Direct3D 12 rendering support
+- D3D11: Fix initialization crash, memory leak, and improve logging
+- Editor: Add macOS plugin authorization tool
+- Scene: Fix 360 scale/rotation, update textures on pause, improve mobile view
+- Build: Migrate to .NET 10 SDK, treat warnings as errors, reduce release logs
+- Various build fixes for Android, macOS, and meson
+- libvlc engine update (27/01/2026) with several regressions fixed
+
 2025-5 (All platforms)
 - Android: Initial Vulkan rendering support for ARM64
 - Android: Static build support
