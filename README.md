@@ -49,11 +49,11 @@ And more.
 - Windows Classic
   - Minimum OS version: Windows 7.
   - ABI supported: x64.
-  - Graphics API: Direct3D 11
+  - Graphics API: Direct3D 11, Direct3D 12
 - Windows Modern (UWP)
   - Minimum OS version: Windows 10.
   - ABI supported: x64, ARM64.
-  - Graphics API: Direct3D 11
+  - Graphics API: Direct3D 11, Direct3D 12
 - Android:
   - Minimum OS version: Android 5.0 Lollipop (API 21) for OpenGL ES.
   - For Vulkan support: Android 8.0 Oreo (API 26) or higher, ARM64 only.

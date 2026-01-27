@@ -21,6 +21,8 @@ LibVLCSharp docs (not Unity specific) https://code.videolan.org/videolan/LibVLCS
 
 !! You need to set your Unity target platform to "PC, Mac & Linux Standalone" to target Windows classic. Go for the x86_64 architecture.
 
+Both Direct3D 11 and Direct3D 12 graphics APIs are supported.
+
 ## Android
 
 For the Unity Android target, we support:
@@ -47,6 +49,8 @@ For Vulkan support, Android 26 (Android 8.0 Oreo) or higher is required with ARM
 For the Unity UWP target, we support:
 - x86_64,
 - ARM64.
+
+Both Direct3D 11 and Direct3D 12 graphics APIs are supported.
 
 If you need 32 bit versions, feel free to email us with information regarding your use case at unity@videolabs.io
 
