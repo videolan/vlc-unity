@@ -29,10 +29,7 @@ public static class TrialNotice
     private const string STORE_URL = "https://videolabs.io/store/unity/";
 
     private const string TRIAL_MESSAGE =
-        "[VLC for Unity] TRIAL VERSION\n" +
-        "  - Watermarked video output\n" +
-        "  - 60 second playback limit per session\n" +
-        "  Purchase full version: " + STORE_URL;
+        "[VLC for Unity] TRIAL VERSION - 60 second playback limit per session, watermarked video output. Purchase full version: " + STORE_URL;
 
 #if UNITY_EDITOR
     static TrialNotice()
