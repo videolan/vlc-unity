@@ -62,6 +62,7 @@ class ReadWriteTexture
 {
 public:
     HANDLE                   m_sharedHandle         = nullptr; // handle of the texture used by VLC and the app
+    bool                     m_isNTHandle           = false;   // Track which type of handle we have
     ID3D11RenderTargetView   *m_textureRenderTarget = nullptr;
     unsigned                 width                  = 0;       // Texture width
     unsigned                 height                 = 0;       // Texture height
@@ -72,7 +73,8 @@ public:
     int                      rwt_bit_depth          = false;
 
     void Cleanup();
-    void Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
+    void Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC,
+                bool& useNTHandle
 #if defined(SHOW_WATERMARK)
                 , ID2D1Factory *d2dFactory, IDWriteFactory *dwriteFactory, IDWriteTextFormat *textFormat
 #endif // SHOW_WATERMARK
@@ -80,7 +82,7 @@ public:
     void *GetUnityTexture();
 
 private:
-    bool Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity);
+    bool Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity, bool& useNTHandle);
 #if SUPPORT_D3D12
     bool Update12(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D12Device *m_d3deviceUnity);
 #endif
@@ -123,6 +125,7 @@ public:
     bool                    write_on_first = false;
     ReadWriteTexture        *current_texture = nullptr;
     ReadWriteTexture* m_textureForUnity = nullptr;
+    bool                    m_useNTHandle = true;  // Try modern path first, set false if unavailable
 private:
     void CreateResources();
     void ReleaseResources();
@@ -357,18 +360,20 @@ void RenderAPI_D3D11::Update(UINT width, UINT height)
     m_height = height;
 
 #if defined(SHOW_WATERMARK)
-    read_write[0]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, d2dFactory, dwriteFactory, textFormat);
-    read_write[1]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, d2dFactory, dwriteFactory, textFormat);
+    read_write[0]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, m_useNTHandle, d2dFactory, dwriteFactory, textFormat);
+    read_write[1]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, m_useNTHandle, d2dFactory, dwriteFactory, textFormat);
 #else
-    read_write[0]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC);
-    read_write[1]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC);
+    read_write[0]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, m_useNTHandle);
+    read_write[1]->Update(m_width, m_height, m_d3deviceUnity, m_d3deviceVLC, m_useNTHandle);
 #endif // SHOW_WATERMARK
+    DEBUG("Shared resource mode: %s\n", m_useNTHandle ? "modern (NTHANDLE)" : "legacy (GetSharedHandle)");
 
     LeaveCriticalSection(&m_outputLock);
 }
 
-bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity)
+bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT renderFormat, ID3D11Device *m_d3deviceUnity, bool& useNTHandle)
 {
+    DEBUG("Update11 called: width=%u, height=%u, format=%d, useNTHandle=%d\n", width, height, renderFormat, useNTHandle ? 1 : 0);
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.MipLevels = 1;
     texDesc.SampleDesc.Count = 1;
@@ -379,38 +384,72 @@ bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT ren
     texDesc.Format = renderFormat;
     texDesc.Height = height;
     texDesc.Width = width;
-    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+    if (useNTHandle) {
+        texDesc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+    }
 
     HRESULT hr;
     hr = m_d3deviceUnity->CreateTexture2D(&texDesc, NULL, &m_textureUnity11);
+    if (FAILED(hr) && useNTHandle)
+    {
+        // NTHANDLE not supported, retry with legacy shared resource mode
+        texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+        hr = m_d3deviceUnity->CreateTexture2D(&texDesc, NULL, &m_textureUnity11);
+        if (SUCCEEDED(hr))
+        {
+            useNTHandle = false;  // Disable NTHANDLE for future textures
+        }
+    }
     if (FAILED(hr))
     {
-        DEBUG("CreateTexture2D FAILED \n");
+        DEBUG("CreateTexture2D FAILED: 0x%lx (width=%u, height=%u, format=%d, miscFlags=0x%x)\n", hr, width, height, renderFormat, texDesc.MiscFlags);
         return false;
     }
     DEBUG("CreateTexture2D SUCCEEDED.\n");
 
-    IDXGIResource1* sharedResource = NULL;
-    hr = m_textureUnity11->QueryInterface(&sharedResource);
-    if (FAILED(hr))
-    {
-        DEBUG("get IDXGIResource1 FAILED \n");
-        m_textureUnity11->Release();
-        m_textureUnity11 = nullptr;
-        return false;
+    bool sharedHandleAcquired = false;
+    m_isNTHandle = false;
+
+    if (useNTHandle) {
+        // Modern path: DXGI 1.2 - IDXGIResource1::CreateSharedHandle
+        IDXGIResource1* sharedResource = NULL;
+        hr = m_textureUnity11->QueryInterface(__uuidof(IDXGIResource1), (void**)&sharedResource);
+        if (SUCCEEDED(hr) && sharedResource) {
+            hr = sharedResource->CreateSharedHandle(NULL,
+                DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE,
+                NULL, &m_sharedHandle);
+            if (SUCCEEDED(hr)) {
+                m_isNTHandle = true;
+                sharedHandleAcquired = true;
+            }
+            sharedResource->Release();
+        }
     }
 
-    hr = sharedResource->CreateSharedHandle(NULL, DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE, NULL, &m_sharedHandle);
-    if (FAILED(hr))
-    {
-        DEBUG("sharedResource->CreateSharedHandle FAILED \n");
-        sharedResource->Release();
+    if (!sharedHandleAcquired) {
+        // Legacy path: DXGI 1.0 - IDXGIResource::GetSharedHandle
+        IDXGIResource* sharedResource = NULL;
+        hr = m_textureUnity11->QueryInterface(__uuidof(IDXGIResource), (void**)&sharedResource);
+        if (SUCCEEDED(hr) && sharedResource) {
+            hr = sharedResource->GetSharedHandle(&m_sharedHandle);
+            if (SUCCEEDED(hr)) {
+                m_isNTHandle = false;
+                sharedHandleAcquired = true;
+                useNTHandle = false;  // Update caller's flag for future textures
+            } else {
+                DEBUG("GetSharedHandle FAILED: 0x%lx\n", hr);
+            }
+            sharedResource->Release();
+        }
+    }
+
+    if (!sharedHandleAcquired) {
+        DEBUG("Failed to acquire shared handle via any method\n");
         m_textureUnity11->Release();
         m_textureUnity11 = nullptr;
         return false;
     }
-    sharedResource->Release();
-    sharedResource = NULL;
 
     D3D11_SHADER_RESOURCE_VIEW_DESC resviewDesc;
     ZeroMemory(&resviewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
@@ -420,8 +459,10 @@ bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT ren
     hr = m_d3deviceUnity->CreateShaderResourceView(m_textureUnity11, &resviewDesc, &m_textureShaderInput11);
     if (FAILED(hr))
     {
-        DEBUG("CreateShaderResourceView FAILED \n");
-        CloseHandle(m_sharedHandle);
+        DEBUG("CreateShaderResourceView FAILED: 0x%lx (format=%d)\n", hr, resviewDesc.Format);
+        if (m_isNTHandle) {
+            CloseHandle(m_sharedHandle);
+        }
         m_sharedHandle = nullptr;
         m_textureUnity11->Release();
         m_textureUnity11 = nullptr;
@@ -479,11 +520,13 @@ bool ReadWriteTexture::Update12(unsigned width, unsigned height, DXGI_FORMAT ren
         return false;
     }
 
+    m_isNTHandle = true;  // D3D12 always uses NT handles
     return true;
 }
 #endif
 
-void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC
+void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3deviceUnity, ID3D11Device *m_d3deviceVLC,
+                              bool& useNTHandle
 #if defined(SHOW_WATERMARK)
                               , ID2D1Factory *d2dFactory, IDWriteFactory *dwriteFactory, IDWriteTextFormat *textFormat
 #endif // SHOW_WATERMARK
@@ -525,7 +568,7 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3dev
         hr = m_d3deviceUnity->QueryInterface(&m_d3deviceUnity11);
         if (SUCCEEDED(hr))
         {
-            succeeded = Update11(width, height, renderFormat, m_d3deviceUnity11);
+            succeeded = Update11(width, height, renderFormat, m_d3deviceUnity11, useNTHandle);
             m_d3deviceUnity11->Release();
         }
     }
@@ -535,21 +578,27 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3dev
     ID3D11Texture2D* textureVLC = nullptr;
     if (m_d3deviceVLC)
     {
-        ID3D11Device1* d3d11VLC1;
-        hr = m_d3deviceVLC->QueryInterface(&d3d11VLC1);
-        if (SUCCEEDED(hr))
-        {
-            hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle, __uuidof(ID3D11Texture2D), (void**)&textureVLC);
-            if (FAILED(hr))
-            {
-                DEBUG("ctx->d3device->OpenSharedResource FAILED \n");
+        if (m_isNTHandle) {
+            // Modern path: D3D11.1 - ID3D11Device1::OpenSharedResource1
+            ID3D11Device1* d3d11VLC1 = nullptr;
+            hr = m_d3deviceVLC->QueryInterface(__uuidof(ID3D11Device1), (void**)&d3d11VLC1);
+            if (SUCCEEDED(hr) && d3d11VLC1) {
+                hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle,
+                    __uuidof(ID3D11Texture2D), (void**)&textureVLC);
+                if (FAILED(hr)) {
+                    DEBUG("OpenSharedResource1 FAILED: 0x%lx\n", hr);
+                    textureVLC = nullptr;
+                }
+                d3d11VLC1->Release();
+            }
+        } else {
+            // Legacy path: D3D11.0 - ID3D11Device::OpenSharedResource
+            hr = m_d3deviceVLC->OpenSharedResource(m_sharedHandle,
+                __uuidof(ID3D11Texture2D), (void**)&textureVLC);
+            if (FAILED(hr)) {
+                DEBUG("OpenSharedResource FAILED: 0x%lx\n", hr);
                 textureVLC = nullptr;
             }
-            d3d11VLC1->Release();
-        }
-        else
-        {
-            DEBUG("QueryInterface ID3D11Device1 FAILED \n");
         }
     }
 
@@ -563,13 +612,12 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3dev
         hr = m_d3deviceVLC->CreateRenderTargetView(textureVLC, &renderTargetViewDesc, &m_textureRenderTarget);
         if (FAILED(hr))
         {
-            DEBUG("CreateRenderTargetView FAILED \n");
+            DEBUG("CreateRenderTargetView FAILED: 0x%lx (format=%d, textureVLC=%p)\n", hr, renderTargetViewDesc.Format, textureVLC);
             Cleanup();
         }
     } else {
-         DEBUG("Skipping RTV creation as textureVLC or m_d3deviceVLC is invalid.\n");
+         DEBUG("Skipping RTV creation as textureVLC or m_d3deviceVLC is invalid. textureVLC=%p m_d3deviceVLC=%p\n", textureVLC, m_d3deviceVLC);
     }
-
 
 #if defined(SHOW_WATERMARK)
     if (d2dFactory && textFormat && textureVLC && m_textureRenderTarget)
@@ -645,33 +693,146 @@ void RenderAPI_D3D11::CreateResources()
 #endif
     creationFlags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 
-    hr = D3D11CreateDevice(NULL,
-                           D3D_DRIVER_TYPE_HARDWARE,
-                           NULL,
-                           creationFlags,
-                           NULL,
-                           0,
-                           D3D11_SDK_VERSION,
-                           &m_d3deviceVLC,
-                           NULL,
-                           &m_d3dctxVLC);
-    DEBUG("CreateResources m_d3dctxVLC = %p this = %p \n", m_d3dctxVLC, this);
+    // Feature levels supported, ordered from highest to lowest
+    static D3D_FEATURE_LEVEL D3D11_features[] = {
+        D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
+        D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_9_2, D3D_FEATURE_LEVEL_9_1
+    };
 
-    if (FAILED(hr))
-    {
-        DEBUG("FAILED to create d3d11 device and context \n");
-        return;
+    D3D_FEATURE_LEVEL featureLevel;
+
+    // Get Unity's adapter so we can create VLC device on the same adapter
+    IDXGIDevice* dxgiDevice = nullptr;
+    IDXGIAdapter* adapter = nullptr;
+    hr = m_d3deviceUnity->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
+    if (SUCCEEDED(hr) && dxgiDevice) {
+        hr = dxgiDevice->GetAdapter(&adapter);
+        if (FAILED(hr)) {
+            DEBUG("Failed to get Unity's adapter: 0x%lx\n", hr);
+            adapter = nullptr;
+        }
+        dxgiDevice->Release();
     }
 
-    DEBUG("Configuring multithread \n");
+    // Create VLC device on Unity's adapter (required for legacy shared resources)
+    if (adapter) {
+        DXGI_ADAPTER_DESC adapterDesc;
+        if (SUCCEEDED(adapter->GetDesc(&adapterDesc))) {
+            DEBUG("Creating VLC device on Unity's adapter: VendorId=0x%x, DeviceId=0x%x\n",
+                  adapterDesc.VendorId, adapterDesc.DeviceId);
+        }
+
+        // Try with VIDEO_SUPPORT first (needed for hardware decoding)
+        hr = D3D11CreateDevice(adapter,
+                               D3D_DRIVER_TYPE_UNKNOWN,  // Must use UNKNOWN when passing an adapter
+                               NULL,
+                               creationFlags,
+                               NULL, 0,
+                               D3D11_SDK_VERSION,
+                               &m_d3deviceVLC,
+                               &featureLevel,
+                               &m_d3dctxVLC);
+
+        if (SUCCEEDED(hr) && featureLevel < D3D_FEATURE_LEVEL_10_0) {
+            // VIDEO_SUPPORT on Windows 7 can silently create a degraded device (e.g. WARP at 9.3).
+            // Discard it and retry without VIDEO_SUPPORT.
+            DEBUG("VIDEO_SUPPORT gave feature level 0x%x (too low), discarding\n", featureLevel);
+            m_d3dctxVLC->Release(); m_d3dctxVLC = NULL;
+            m_d3deviceVLC->Release(); m_d3deviceVLC = NULL;
+            hr = E_FAIL;
+        }
+
+        if (FAILED(hr)) {
+            DEBUG("D3D11CreateDevice with VIDEO_SUPPORT failed: 0x%lx, retrying without\n", hr);
+            UINT fallbackFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#ifndef NDEBUG
+            fallbackFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+            hr = D3D11CreateDevice(adapter,
+                                   D3D_DRIVER_TYPE_UNKNOWN,
+                                   NULL,
+                                   fallbackFlags,
+                                   NULL, 0,
+                                   D3D11_SDK_VERSION,
+                                   &m_d3deviceVLC,
+                                   &featureLevel,
+                                   &m_d3dctxVLC);
+        }
+
+        if (FAILED(hr)) {
+            DEBUG("Failed to create device on Unity's adapter: 0x%lx, trying default adapter\n", hr);
+            m_d3deviceVLC = NULL;
+            m_d3dctxVLC = NULL;
+        } else {
+            DEBUG("VLC device created with feature level 0x%x\n", featureLevel);
+        }
+        adapter->Release();
+    }
+
+    // Fallback: try default adapter with hardware only (no WARP software fallback)
+    if (!m_d3deviceVLC) {
+        DEBUG("Trying hardware device on default adapter as fallback\n");
+        hr = D3D11CreateDevice(NULL,
+                               D3D_DRIVER_TYPE_HARDWARE,
+                               NULL,
+                               creationFlags,
+                               D3D11_features, ARRAYSIZE(D3D11_features),
+                               D3D11_SDK_VERSION,
+                               &m_d3deviceVLC,
+                               &featureLevel,
+                               &m_d3dctxVLC);
+
+        if (FAILED(hr)) {
+            DEBUG("Failed to create D3D11 hardware device: 0x%lx\n", hr);
+            m_d3deviceVLC = NULL;
+            m_d3dctxVLC = NULL;
+            return;
+        }
+        DEBUG("Successfully created hardware device on default adapter with feature level 0x%x\n", featureLevel);
+    }
+
+    // Check if feature level is compatible (at least D3D_FEATURE_LEVEL_10_0 for shared resource support)
+    if (featureLevel < D3D_FEATURE_LEVEL_10_0) {
+        DEBUG("WARNING: Feature level below 10_0 - shared resources may not work properly\n");
+    }
+
+    // Verify both devices are on the same adapter (required for legacy shared resources)
+    IDXGIDevice* unityDxgiDevice = nullptr;
+    IDXGIDevice* vlcDxgiDevice = nullptr;
+    IDXGIAdapter* unityAdapter = nullptr;
+    IDXGIAdapter* vlcAdapter = nullptr;
+
+    if (SUCCEEDED(m_d3deviceUnity->QueryInterface(__uuidof(IDXGIDevice), (void**)&unityDxgiDevice)) &&
+        SUCCEEDED(m_d3deviceVLC->QueryInterface(__uuidof(IDXGIDevice), (void**)&vlcDxgiDevice))) {
+
+        if (SUCCEEDED(unityDxgiDevice->GetAdapter(&unityAdapter)) &&
+            SUCCEEDED(vlcDxgiDevice->GetAdapter(&vlcAdapter))) {
+
+            DXGI_ADAPTER_DESC unityDesc, vlcDesc;
+            if (SUCCEEDED(unityAdapter->GetDesc(&unityDesc)) &&
+                SUCCEEDED(vlcAdapter->GetDesc(&vlcDesc))) {
+
+                if (unityDesc.VendorId == vlcDesc.VendorId && unityDesc.DeviceId == vlcDesc.DeviceId) {
+                    DEBUG("Both devices on same adapter: VendorId=0x%x, DeviceId=0x%x\n",
+                          unityDesc.VendorId, unityDesc.DeviceId);
+                } else {
+                    DEBUG("WARNING: Devices on DIFFERENT adapters! Unity=0x%x:0x%x VLC=0x%x:0x%x\n",
+                          unityDesc.VendorId, unityDesc.DeviceId, vlcDesc.VendorId, vlcDesc.DeviceId);
+                }
+            }
+            vlcAdapter->Release();
+            unityAdapter->Release();
+        }
+        vlcDxgiDevice->Release();
+        unityDxgiDevice->Release();
+    }
 
     ID3D10Multithread *pMultithread;
     hr = m_d3dctxVLC->QueryInterface(&pMultithread);
     if (SUCCEEDED(hr)) {
         pMultithread->SetMultithreadProtected(TRUE);
         pMultithread->Release();
-    } else {
-        DEBUG("FAILED to SetMultithreadProtected \n");
     }
 
 #if defined(SHOW_WATERMARK)
@@ -769,9 +930,13 @@ void ReadWriteTexture::Cleanup()
         m_textureUnity11 = nullptr;
     }
     if (m_sharedHandle) {
-        CloseHandle(m_sharedHandle);
+        if (m_isNTHandle) {
+            CloseHandle(m_sharedHandle);
+        }
+        // Legacy handles from GetSharedHandle() must NOT be closed
         m_sharedHandle = nullptr;
     }
+    m_isNTHandle = false;
 }
 
 void RenderAPI_D3D11::ReleaseResources()
@@ -1081,6 +1246,12 @@ void RenderAPI_D3D11::Swap()
         DEBUG_VERBOSE("[D3D11] Swap: skipped drawing (missing resources)");
     }
 #endif // SHOW_WATERMARK
+
+    // Flush VLC device context to ensure all GPU commands (VLC rendering + any D2D
+    // watermark drawing) are submitted before Unity reads the shared texture.
+    // Required for legacy shared resources (Windows 7) which lack implicit cross-device sync.
+    if (m_d3dctxVLC)
+        m_d3dctxVLC->Flush();
 
     m_textureForUnity = textureJustWrittenByVLC;
     m_updated = true;
