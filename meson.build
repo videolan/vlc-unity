@@ -98,6 +98,10 @@ endif
 
 if have_ios
     add_project_arguments('-DUNITY_IPHONE=1', language: ['c', 'cpp', 'objc'])
+    add_project_arguments('-miphoneos-version-min=9.0',
+        language: ['c', 'cpp', 'objc', 'objcpp'])
+    add_project_link_arguments('-miphoneos-version-min=9.0',
+        language: ['c', 'cpp', 'objc', 'objcpp'])
 endif
 
 if host_system == 'android' 
