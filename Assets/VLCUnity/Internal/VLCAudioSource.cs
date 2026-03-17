@@ -39,6 +39,10 @@ public class VLCAudioSource : MonoBehaviour
 
     public void Attach(MediaPlayer mediaPlayer)
     {
+        // Free existing pinned buffer if re-attaching
+        if (bufferHandle.IsAllocated)
+            bufferHandle.Free();
+
         // Get the attached AudioSource (MUST be on this GameObject)
         audioSource = GetComponent<AudioSource>();
         // Loop the audio source
