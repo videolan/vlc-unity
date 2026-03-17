@@ -56,7 +56,16 @@ class RenderAPI_OpenGLEAGL : public RenderAPI
 {
 public:
     RenderAPI_OpenGLEAGL(UnityGfxRenderer apiType);
-    ~RenderAPI_OpenGLEAGL() override { }
+    ~RenderAPI_OpenGLEAGL() override {
+        if (_textureCache) {
+            CFRelease(_textureCache);
+            _textureCache = nil;
+        }
+        if (_textureCacheMetal) {
+            CFRelease(_textureCacheMetal);
+            _textureCacheMetal = nil;
+        }
+    }
 
     void setVlcContext(libvlc_media_player_t *mp) override;
     void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;

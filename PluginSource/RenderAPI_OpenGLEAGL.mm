@@ -301,6 +301,15 @@ void RenderAPI_OpenGLEAGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUni
 
 	} else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[GLEAGL] kUnityGfxDeviceEventShutdown");
+
+        if (_textureCache) {
+            CFRelease(_textureCache);
+            _textureCache = nil;
+        }
+        if (_textureCacheMetal) {
+            CFRelease(_textureCacheMetal);
+            _textureCacheMetal = nil;
+        }
 	}
 }
 
