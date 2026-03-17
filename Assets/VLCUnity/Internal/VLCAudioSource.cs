@@ -86,6 +86,8 @@ public class VLCAudioSource : MonoBehaviour
 
         int wp = Volatile.Read(ref writePosition);
         int rp = Volatile.Read(ref readPosition);
+        int availableSpace = (rp - wp - 1) & bufferMask;
+        bool willOverflow = floatCount > availableSpace;
         int spaceToEnd = buffer.Length - wp;
 
         float* src = (float*)samplesPtr;
@@ -108,13 +110,10 @@ public class VLCAudioSource : MonoBehaviour
             Volatile.Write(ref writePosition, newWp);
         }
 
-        // Handle buffer overflow - if we overwrote unread data, advance read position
-        // This is safe because we're the only writer
-        int newWp2 = Volatile.Read(ref writePosition);
-        int availableSpace = (rp - newWp2 - 1) & bufferMask;
-        if (floatCount > availableSpace)
+        // If we overwrote unread data, advance read position past the new write position
+        if (willOverflow)
         {
-            Volatile.Write(ref readPosition, (newWp2 + 1) & bufferMask);
+            Volatile.Write(ref readPosition, (Volatile.Read(ref writePosition) + 1) & bufferMask);
         }
     }
 
