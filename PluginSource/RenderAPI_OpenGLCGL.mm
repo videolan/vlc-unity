@@ -319,6 +319,19 @@ void RenderAPI_OpenGLCGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 
 	} else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[GLCGL] kUnityGfxDeviceEventShutdown");
+
+        if (_textureCache) {
+            CFRelease(_textureCache);
+            _textureCache = nil;
+        }
+        if (_textureCacheMetal) {
+            CFRelease(_textureCacheMetal);
+            _textureCacheMetal = nil;
+        }
+        if (m_context) {
+            CGLDestroyContext(m_context);
+            m_context = nil;
+        }
 	}
 }
 
@@ -339,4 +352,9 @@ void* RenderAPI_OpenGLCGL::getVideoFrame(unsigned width, unsigned height, bool* 
 void RenderAPI_OpenGLCGL::releaseFrameBufferResources()
 {
     glDeleteFramebuffers(3, fbo);
+
+    if (_textureCache)
+        CVOpenGLTextureCacheFlush(_textureCache, 0);
+    if (_textureCacheMetal)
+        CVMetalTextureCacheFlush(_textureCacheMetal, 0);
 }
