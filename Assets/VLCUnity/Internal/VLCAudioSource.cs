@@ -1,5 +1,4 @@
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -157,27 +156,9 @@ public class VLCAudioSource : MonoBehaviour
                 }
             }
 
-            // Fill remaining with silence if underrun using SIMD
-            if (toRead < data.Length)
-            {
-                int silenceCount = data.Length - toRead;
-                float* silencePtr = dst + toRead;
-
-                int simdLength = Vector<float>.Count;
-                int vectorCount = silenceCount / simdLength;
-
-                for (int i = 0; i < vectorCount; i++)
-                {
-                    *(Vector<float>*)(silencePtr + i * simdLength) = Vector<float>.Zero;
-                }
-
-                // Handle remaining elements
-                int remaining = silenceCount - (vectorCount * simdLength);
-                for (int i = 0; i < remaining; i++)
-                {
-                    silencePtr[vectorCount * simdLength + i] = 0f;
-                }
-            }
+            // Fill remaining with silence
+            for (int i = toRead; i < data.Length; i++)
+                dst[i] = 0f;
         }
     }
     
