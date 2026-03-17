@@ -36,6 +36,8 @@ public class VLCAudioSource : MonoBehaviour
     private int writePosition;
     // The reading position for the buffer (atomic access)
     private int readPosition;
+    // Flag to signal a pending flush from VLC thread
+    private int flushFlag;
 
     public void Attach(MediaPlayer mediaPlayer)
     {
@@ -71,6 +73,15 @@ public class VLCAudioSource : MonoBehaviour
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe void OnAudioCallback(IntPtr data, IntPtr samplesPtr, uint count, long pts)
     {
+        // Handle pending flush (VLC serializes flush and play callbacks,
+        // so resetting both positions here is safe before any new write)
+        if (Volatile.Read(ref flushFlag) == 1)
+        {
+            writePosition = 0;
+            readPosition = 0;
+            Volatile.Write(ref flushFlag, 0);
+        }
+
         int floatCount = (int) count * Channels;
 
         int wp = Volatile.Read(ref writePosition);
@@ -110,6 +121,14 @@ public class VLCAudioSource : MonoBehaviour
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe void OnAudioRead(float[] data)
     {
+        // If a flush is pending, output silence until the writer resets positions
+        if (Volatile.Read(ref flushFlag) == 1)
+        {
+            for (int i = 0; i < data.Length; i++)
+                data[i] = 0f;
+            return;
+        }
+
         int rp = Volatile.Read(ref readPosition);
         int wp = Volatile.Read(ref writePosition);
         int available = (wp - rp) & bufferMask;
@@ -166,7 +185,6 @@ public class VLCAudioSource : MonoBehaviour
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void OnFlush(IntPtr data, long l)
     {
-        Volatile.Write(ref writePosition, 0);
-        Volatile.Write(ref readPosition, 0);
+        Volatile.Write(ref flushFlag, 1);
     }
 }
