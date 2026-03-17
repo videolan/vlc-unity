@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using LibVLCSharp;
@@ -69,7 +68,6 @@ public class VLCAudioSource : MonoBehaviour
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe void OnAudioCallback(IntPtr data, IntPtr samplesPtr, uint count, long pts)
     {
         // Handle pending flush (VLC serializes flush and play callbacks,
@@ -116,7 +114,6 @@ public class VLCAudioSource : MonoBehaviour
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe void OnAudioRead(float[] data)
     {
         // If a flush is pending, output silence until the writer resets positions
@@ -162,7 +159,6 @@ public class VLCAudioSource : MonoBehaviour
         }
     }
     
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void OnFlush(IntPtr data, long l)
     {
         Volatile.Write(ref flushFlag, 1);
