@@ -321,4 +321,10 @@ void* RenderAPI_OpenGLEAGL::getVideoFrame(unsigned width, unsigned height, bool*
 void RenderAPI_OpenGLEAGL::releaseFrameBufferResources()
 {
     glDeleteFramebuffers(3, fbo);
+
+    // Flush texture caches to release cached textures
+    if (_textureCache)
+        CVOpenGLESTextureCacheFlush(_textureCache, 0);
+    if (_textureCacheMetal)
+        CVMetalTextureCacheFlush(_textureCacheMetal, 0);
 }
