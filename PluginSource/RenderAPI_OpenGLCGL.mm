@@ -353,6 +353,22 @@ void RenderAPI_OpenGLCGL::releaseFrameBufferResources()
 {
     glDeleteFramebuffers(3, fbo);
 
+    // Release buffer resources
+    for (auto& buffer : buffers) {
+        if (buffer.texture) {
+            CFRelease(buffer.texture);
+            buffer.texture = nil;
+        }
+        if (buffer.cvpx) {
+            CFRelease(buffer.cvpx);
+            buffer.cvpx = nil;
+        }
+        if (buffer.texture_metal) {
+            CFRelease(buffer.texture_metal);
+            buffer.texture_metal = nil;
+        }
+    }
+
     if (_textureCache)
         CVOpenGLTextureCacheFlush(_textureCache, 0);
     if (_textureCacheMetal)
