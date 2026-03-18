@@ -34,6 +34,14 @@ struct RenderAPICoreVideoBuffer
 
     RenderAPICoreVideoBuffer& operator=(RenderAPICoreVideoBuffer &&other)
     {
+        // Release old resources before taking new ones
+        if (texture)
+            CFRelease(texture);
+        if (cvpx)
+            CFRelease(cvpx);
+        if (texture_metal)
+            CFRelease(texture_metal);
+
         cvpx = other.cvpx;
         other.cvpx = nil;
         texture = other.texture;
