@@ -4,8 +4,8 @@ stages:
     - package
 
 variables:
-    VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-ucrt:20240617101054
-    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-msvcrt:20240617101054
+    VLC_UWP_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-ucrt:20260331112916
+    VLC_WIN_LLVM_IMAGE: registry.videolan.org/vlc-debian-llvm-msvcrt:20260331112916
     VLC_DEBIAN_IMAGE: registry.videolan.org/vlc-debian-unstable:20240402131352
     VLC_ANDROID_IMAGE: registry.videolan.org/vlc-debian-android:20250626142950
 
