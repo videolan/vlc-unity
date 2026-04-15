@@ -114,10 +114,10 @@ public class VLCThreeSixty : MonoBehaviour
         Pitch = _mediaPlayerScreen.Viewpoint.Pitch;
         Roll = _mediaPlayerScreen.Viewpoint.Roll;
 
-        if (Input.GetKey(KeyCode.RightArrow)) RotateView(20f, 80 * 40 / range, 0);
-        else if (Input.GetKey(KeyCode.LeftArrow)) RotateView(-20f, -80 * 40 / range, 0);
-        else if (Input.GetKey(KeyCode.DownArrow)) RotateView(0, 0, 1);
-        else if (Input.GetKey(KeyCode.UpArrow)) RotateView(0, 0, -1);
+        if (VLCInput.MoveRight()) RotateView(20f, 80 * 40 / range, 0);
+        else if (VLCInput.MoveLeft()) RotateView(-20f, -80 * 40 / range, 0);
+        else if (VLCInput.MoveBack()) RotateView(0, 0, 1);
+        else if (VLCInput.MoveForward()) RotateView(0, 0, -1);
     }
 
     void RotateView(float sphereRotation, float yawDelta, float pitchDelta)

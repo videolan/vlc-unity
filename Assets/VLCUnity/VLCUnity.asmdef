@@ -1,7 +1,9 @@
 {
     "name": "VLCUnity",
     "rootNamespace": "Videolabs.VLCUnity",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,
