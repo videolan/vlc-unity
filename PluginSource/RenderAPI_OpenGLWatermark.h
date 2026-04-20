@@ -7,6 +7,10 @@
 #  include <OpenGL/GL.h>
 #elif defined(UNITY_ANDROID) || defined(UNITY_WEBGL)
 #	include <GLES2/gl2.h>
+#elif defined(UNITY_LINUX)
+#   define GL_GLEXT_PROTOTYPES
+#   include <GL/gl.h>
+#   include <GL/glext.h>
 #elif defined(UNITY_WIN)
 #   define GL_GLEXT_PROTOTYPES
 #	include "GLEW/glew.h"
