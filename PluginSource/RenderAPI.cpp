@@ -2,6 +2,11 @@
 #include "PlatformBase.h"
 #include "Unity/IUnityGraphics.h"
 
+#if defined(UNITY_LINUX)
+#include <cstdlib>
+#include <cstring>
+#endif
+
 
 RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 {
@@ -19,6 +24,19 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 #if defined(UNITY_ANDROID)
         extern RenderAPI* CreateRenderAPI_Android(UnityGfxRenderer apiType);
 		return CreateRenderAPI_Android(apiType);
+#elif defined(UNITY_LINUX)
+#if defined(SUPPORT_EGL)
+        {
+            const char* session_type = getenv("XDG_SESSION_TYPE");
+            const char* wayland_display = getenv("WAYLAND_DISPLAY");
+            if ((session_type && strcmp(session_type, "wayland") == 0) || wayland_display) {
+                extern RenderAPI* CreateRenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType);
+                return CreateRenderAPI_OpenGLLinuxEGL(apiType);
+            }
+        }
+#endif
+        extern RenderAPI* CreateRenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
+        return CreateRenderAPI_OpenGLGLX(apiType);
 #endif
 	}
 #endif // if SUPPORT_OPENGL_UNIFIED

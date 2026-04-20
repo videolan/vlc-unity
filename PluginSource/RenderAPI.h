@@ -33,6 +33,7 @@ public:
     }
 
     virtual void retrieveOpenGLContext() {}
+    virtual void performRenderThreadWork() {}
     virtual void setColorSpace(int color_space) {
         (void)color_space;
     }

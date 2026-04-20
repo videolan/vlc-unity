@@ -108,6 +108,8 @@ static const char* GetRendererName(UnityGfxRenderer renderer) {
 #if defined(__APPLE__)
 # import <TargetConditionals.h>
 # include <cstdlib>
+#elif defined(UNITY_LINUX)
+# include <cstdlib>
 #endif
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* path)
@@ -127,7 +129,13 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetPluginPath(char* p
     if(e != 0)
         DEBUG("setenv failed \n");
     else DEBUG("setenv succeeded \n");
-
+#elif defined(UNITY_LINUX)
+    DEBUG("SetPluginPath \n");
+    DEBUG("setenv with VLC_PLUGIN_PATH -> %s \n", path);
+    auto e = setenv("VLC_PLUGIN_PATH", path, 1);
+    if(e != 0)
+        DEBUG("setenv failed \n");
+    else DEBUG("setenv succeeded \n");
 #endif
 }
 
@@ -430,13 +438,39 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
     DEBUG("[VLC-Unity]   s_DeviceType=%s\n", GetRendererName(s_DeviceType));
     DEBUG("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
 
-#if defined(UNITY_ANDROID)
+#if defined(UNITY_ANDROID) || defined(UNITY_LINUX)
     if(EarlyRenderAPI)
     {
         DEBUG("[VLC-Unity]   Calling EarlyRenderAPI->retrieveOpenGLContext()\n");
         EarlyRenderAPI->retrieveOpenGLContext();
     }
+#endif
 
+#if defined(UNITY_LINUX)
+    // Ensure per-player RenderAPI instances are initialized once Unity's GL context is available.
+    {
+        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+        for(it = contexts.begin(); it != contexts.end(); it++)
+        {
+            RenderAPI* currentAPI = it->second;
+            if(currentAPI)
+                currentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
+        }
+    }
+
+    // Perform render-thread work (e.g. DMA-BUF texture import) for all active contexts
+    {
+        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+        for(it = contexts.begin(); it != contexts.end(); it++)
+        {
+            RenderAPI* currentAPI = it->second;
+            if(currentAPI)
+                currentAPI->performRenderThreadWork();
+        }
+    }
+#endif
+
+#if defined(UNITY_ANDROID)
     // Call render event for all active contexts
     std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
     for(it = contexts.begin(); it != contexts.end(); it++)

@@ -30,6 +30,16 @@ egl_sources = files(
     'RenderAPI_OpenGLEGL.h',
 )
 
+glx_sources = files(
+    'RenderAPI_OpenGLGLX.cpp',
+    'RenderAPI_OpenGLGLX.h',
+)
+
+linux_egl_sources = files(
+    'RenderAPI_OpenGLLinuxEGL.cpp',
+    'RenderAPI_OpenGLLinuxEGL.h',
+)
+
 vulkan_sources = files(
     'RenderAPI_Vulkan.cpp',
     'RenderAPI_Vulkan.h',
@@ -54,6 +64,7 @@ libvlccore_link_args = []
 vlc_unity_cppflags = []
 vlc_unity_cxxflags = []
 vlc_unity_ldflags = []
+vlc_unity_install_rpath = ''
 
 vlc_unity_deps = [ libvlc_dep ]
 
@@ -95,7 +106,24 @@ elif host_system == 'windows'
         '-D_WIN32_WINNT=0x0A00' ]
     endif
 elif host_system == 'linux'
-    plugin_sources += [ opengl_sources_base, egl_sources ]
+    gl_dep = dependency('gl', required: true)
+    x11_dep = dependency('x11', required: true)
+    vlc_unity_deps += [ gl_dep, x11_dep ]
+    vlc_unity_cppflags += [ '-DUNITY_LINUX=1' ]
+    vlc_unity_install_rpath = '$ORIGIN'
+    plugin_sources += [ opengl_sources_base, glx_sources ]
+    gbm_dep = dependency('gbm', required: false)
+    libdrm_dep = dependency('libdrm', required: false)
+    egl_dep = dependency('egl', required: false)
+    if gbm_dep.found() and libdrm_dep.found()
+        vlc_unity_deps += [ gbm_dep, libdrm_dep ]
+        vlc_unity_cppflags += [ '-DSUPPORT_DMABUF=1' ]
+    endif
+    if egl_dep.found() and gbm_dep.found() and libdrm_dep.found()
+        vlc_unity_deps += [ egl_dep ]
+        vlc_unity_cppflags += [ '-DSUPPORT_EGL=1' ]
+        plugin_sources += [ egl_sources, linux_egl_sources ]
+    endif
 elif host_system == 'android'
     if get_option('static_android')
         vlc_unity_ldflags += [ '-static-libstdc++' ]
@@ -151,6 +179,8 @@ vlc_unity_plugin = library(
     version: '1.0.0', # TODO,
     dependencies: vlc_unity_deps,
     install: true,
+    build_rpath: vlc_unity_install_rpath,
+    install_rpath: vlc_unity_install_rpath,
     link_args: vlc_unity_ldflags,
     cpp_args: vlc_unity_cppflags + vlc_unity_cxxflags,
     objcpp_args: vlc_unity_cppflags + vlc_unity_cxxflags
