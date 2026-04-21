@@ -67,6 +67,11 @@ And more.
   - Minimum OS version: macOS 10.11.
   - ABI supported: Intel x64, Apple Silicon ARM64.
   - Graphics API: Metal
+- Linux:
+  - Minimum OS version: Ubuntu 22.04 LTS (or equivalent).
+  - ABI supported: x86_64.
+  - Graphics API: OpenGL (GLX on X11, EGL on XWayland)
+  - Note: Requires LibVLC 4 libraries bundled with the plugin (distro packages typically have VLC 3).
 
 ## Installation
 
@@ -79,6 +84,7 @@ The recommended way to install the VLC for Unity plugin is through the [Videolab
 | Android           | [![VLCUnityBadge]][VideolabsUnityStore]         |
 | iOS               | [![VLCUnityBadge]][VideolabsUnityStore]         |
 | macOS             | [![VLCUnityBadge]][VideolabsUnityStore]         |
+| Linux             | [![VLCUnityBadge]][VideolabsUnityStore]         |
 
 [VideolabsUnityStore]: https://videolabs.io/store/unity
 
@@ -97,6 +103,15 @@ Since this Unity plugin largely shares the same API than LibVLCSharp, most LibVL
 See the [LibVLCSharp documentation](https://code.videolan.org/videolan/LibVLCSharp/tree/master/docs).
 
 It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/best_practices.md), [Q&A guide](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/how_do_I_do_X.md), [libvlc specific information](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/libvlc_documentation.md) and [tutorials](https://code.videolan.org/videolan/LibVLCSharp/blob/master/docs/tutorials.md).
+
+### Linux Notes
+
+- **Graphics**: OpenGL only (Vulkan planned for a future release). Uses GLX on X11, EGL on XWayland. Select OpenGL in Unity Player Settings.
+- **Dependencies**: The plugin bundles LibVLC 4. System-installed VLC (typically v3 on most distros) is not used.
+- **Tested on**: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS.
+- **Wayland**: Native Wayland support is planned for a future release. Currently works via XWayland.
+- **DRI3 required**: DMA-BUF texture sharing needs the DRI3 X11 extension. Verify with `xdpyinfo -queryExtensions | grep DRI`. If missing, update XWayland or switch to a native Xorg session.
+- **Hardware GPU required**: `glxinfo | grep renderer` must show your real GPU, not `llvmpipe`. Software rendering does not support `GL_EXT_memory_object_fd`.
 
 ## Support
 
@@ -127,8 +142,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 ### Future platforms support
 
 - tvOS,
-- Browser,
-- Linux.
+- Browser.
 
 ### Future graphics APIs
 
