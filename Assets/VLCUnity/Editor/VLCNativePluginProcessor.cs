@@ -529,6 +529,57 @@ namespace Videolabs.VLCUnity.Editor
         }
     }
 
+    class LinuxPluginPostprocessor : AssetPostprocessor
+    {
+        const string LINUX_PATH = "VLCUnity/Plugins/Linux/x86_64";
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
+        {
+            try
+            {
+                AssetDatabase.StartAssetEditing();
+                foreach (string assetPath in importedAssets)
+                {
+                    if (!assetPath.Contains(LINUX_PATH))
+                    {
+                        continue;
+                    }
+
+                    PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                    if (pi == null || !pi.isNativePlugin) continue;
+
+                    var dirty = false;
+
+                    if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                    {
+                        pi.SetCompatibleWithAnyPlatform(false);
+                        pi.SetCompatibleWithEditor(true);
+                        pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, true);
+
+                        dirty = true;
+                    }
+
+                    var cpu = pi.GetPlatformData(BuildTarget.StandaloneLinux64, "CPU");
+                    if (cpu != "x86_64")
+                    {
+                        pi.SetPlatformData(BuildTarget.StandaloneLinux64, "CPU", "x86_64");
+                        dirty = true;
+                    }
+
+                    if (dirty)
+                    {
+                        pi.SaveAndReimport();
+                    }
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+    }
+
     class UWPPluginPostprocessor : AssetPostprocessor
     {
         static string[] UWP_ARCH = { "x86_64", "ARM64" };
@@ -649,8 +700,9 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
                     pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
                     pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, true);
+                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
                     pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
                     pi.SetCompatibleWithPlatform(BuildTarget.XboxOne, true);
 
