@@ -8,7 +8,13 @@ namespace LibVLCSharp
 {
     public static class TextureHelper
     {
+#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX)
+        const string UnityPlugin = "libVLCUnityPlugin";
+#elif UNITY_IOS
+        const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
+#else
         const string UnityPlugin = "VLCUnityPlugin";
+#endif
 
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_bit_depth_format")]
         static extern void SetBitDepthFormat(IntPtr mediaplayer, int bitDepth);
@@ -51,6 +57,11 @@ namespace LibVLCSharp
                 }
                 return false;
             }
+#endif
+
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
+            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
 
             // Standard approach for non-Vulkan
@@ -122,6 +133,11 @@ namespace LibVLCSharp
                 isVulkanMode = true;
                 return texture;
             }
+#endif
+
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
+            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
 
             // Standard approach for non-Vulkan or non-Android
