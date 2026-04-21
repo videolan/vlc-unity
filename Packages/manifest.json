@@ -1,8 +1,9 @@
 {
   "dependencies": {
-    "com.unity.package-manager-ui": "2.2.0",
-    "com.unity.ugui": "1.0.0",    
+    "com.unity.ugui": "2.0.0",
+    "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.audio": "1.0.0",
-    "com.unity.modules.uielements": "1.0.0"
+    "com.unity.modules.uielements": "1.0.0",
+    "com.unity.modules.vectorgraphics": "1.0.0"
   }
 }
