@@ -1,4 +1,4 @@
-Welcome to VLC for Unity on Windows!
+Welcome to VLC for Unity!
 
 ## Docs reference
 
@@ -8,10 +8,12 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 ## Components included
 
-For reference, you need to a bunch of components to get this working. On Windows, for example:
+For reference, you need a bunch of components to get this working. On Windows, for example:
 - libvlc.dll, libvlccore.dll (and its plugins in /plugins folder): These are nightly build DLLs of the VLC player libraries https://code.videolan.org/videolan/vlc
 - Custom build of libvlcsharp, the official VideoLAN C# binding to libvlc https://code.videolan.org/videolan/LibVLCSharp
 - VLCUnityPlugin.dll, the VLC-Unity native plugin https://code.videolan.org/videolan/vlc-unity
+
+On Linux, the equivalent files are libvlc.so, libvlccore.so, and libVLCUnityPlugin.so.
 
 This is all included in this package and it all works automatically for you.
 
@@ -90,6 +92,42 @@ The tool removes the `com.apple.quarantine` extended attribute that macOS applie
 **Note:** Standalone builds are not affected by this and work normally. This authorization is only needed for Editor testing.
 
 **Alternative:** If you have an Apple Developer certificate, you can sign the binaries yourself to permanently resolve this.
+
+## Linux
+
+For the Unity Linux target, we support:
+- x86_64.
+
+VLC for Unity requires Ubuntu 22.04 LTS or equivalent (glibc 2.35+).
+
+**Graphics API**: OpenGL only (Vulkan support planned for a future release). Uses GLX on X11 and EGL on XWayland. Select OpenGL in Unity Player Settings.
+
+/!\ The plugin bundles LibVLC 4. System-installed VLC packages (typically VLC 3 on most Linux distributions) are not used.
+
+/!\ Native Wayland support (without XWayland) is planned for a future release.
+
+/!\ If the scene starts but no video plays, ensure your system has working OpenGL drivers. Check with `glxinfo | grep "OpenGL version"`.
+
+### Linux Troubleshooting
+
+DMA-BUF texture sharing requires the **DRI3** X11 extension and a hardware GPU driver. If DRI3 is missing or your system falls back to software rendering (llvmpipe), video will not display.
+
+**Check DRI3 availability:**
+```
+xdpyinfo -queryExtensions | grep DRI
+```
+You should see `DRI3` in the output.
+
+**Check GPU renderer:**
+```
+glxinfo | grep "OpenGL renderer"
+```
+You should see your hardware GPU (e.g. `Mesa Intel(R) Iris(R) Xe Graphics`), not `llvmpipe`.
+
+**Common causes of DRI3/GPU issues:**
+- **Outdated XWayland**: older XWayland versions may not expose DRI3, causing glamor to fall back to software rendering. Update your XWayland package.
+- **simpledrm conflict**: on EFI systems, the `simpledrm` framebuffer driver may claim `card0` during early boot, pushing the real GPU to `card1`. XWayland/glamor may fail to use a non-`card0` device. Workaround: use a native Xorg session instead of Wayland+XWayland, or use a kernel with `CONFIG_DRM_SIMPLEDRM=n`.
+- **Missing GPU driver**: install Mesa drivers for your hardware (`mesa-vulkan-drivers`, `mesa-va-drivers`, etc.).
 
 ## General
 
