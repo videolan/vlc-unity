@@ -6,7 +6,7 @@ namespace LibVLCSharp
 {
     class OnLoad
     {
-#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX)
+#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX)
         const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
         const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
@@ -24,13 +24,19 @@ namespace LibVLCSharp
             Gamma = 0,
             Linear = 1,
         }
-        
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void OnBeforeSceneLoadRuntimeMethod()
         {
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            var libDir = LibVLCDirectory;
+            var pluginPath = libDir + "/vlc/plugins";
+            System.Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", pluginPath);
+            Debug.Log("[VLC] Set VLC_PLUGIN_PATH to " + pluginPath);
+#endif
           //  Debug.Log("UnityEngine.QualitySettings.activeColorSpace: " + PlayerColorSpace);
             SetColorSpace(PlayerColorSpace);
-#if UNITY_ANDROID || UNITY_IOS
+#if UNITY_ANDROID || UNITY_IOS || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
         }
