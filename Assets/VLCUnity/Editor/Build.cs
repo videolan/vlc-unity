@@ -16,14 +16,26 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
     const string plugins = "plugins";
     const string Data = "_Data";
     const string standaloneWindows = "StandaloneWindows64";
+    const string standaloneLinux = "StandaloneLinux64";
     const string Windows = "Windows";
+    const string Linux = "Linux";
+    const string vlc = "vlc";
     public int callbackOrder => 0;
     
     public void OnPostprocessBuild(BuildReport report)
     {
-        if(report.summary.platform.ToString() != standaloneWindows)
-            return;
+        if(report.summary.platform.ToString() == standaloneWindows)
+        {
+            PostprocessWindows(report);
+        }
+        else if(report.summary.platform.ToString() == standaloneLinux)
+        {
+            PostprocessLinux(report);
+        }
+    }
 
+    void PostprocessWindows(BuildReport report)
+    {
         var buildOutput = Path.GetDirectoryName(report.summary.outputPath);
         var libvlcBuildOutput = Path.Combine(buildOutput, $"{Application.productName}{Data}", Plugins, x64);
         var sourceLibvlcLocation = Path.Combine(Path.GetFullPath(Application.dataPath), VLCUnity, Plugins, Windows, x64);
@@ -34,6 +46,33 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         CopyFolder(Path.Combine(sourceLibvlcLocation, locale), Path.Combine(libvlcBuildOutput, locale));
 
         CopyFile(Path.Combine(sourcePluginsLibvlcLocation, pluginsDat), Path.Combine(libvlcBuildOutput, pluginsDat));
+    }
+
+    void PostprocessLinux(BuildReport report)
+    {
+        var buildOutput = Path.GetDirectoryName(report.summary.outputPath);
+        var exeName = Path.GetFileNameWithoutExtension(report.summary.outputPath);
+        var libvlcBuildOutput = Path.Combine(buildOutput, $"{exeName}{Data}", Plugins);
+        var sourceLibvlcLocation = Path.Combine(Path.GetFullPath(Application.dataPath), VLCUnity, Plugins, Linux, x64);
+
+        // Copy the vlc/ directory tree (plugins loaded by libvlc at runtime)
+        CopyFolder(Path.Combine(sourceLibvlcLocation, vlc), Path.Combine(libvlcBuildOutput, vlc));
+
+        // libVLCUnityPlugin.so has NEEDED entries for the SONAMEs
+        // (libvlc.so.12, libvlccore.so.9). Unity only copies the unversioned
+        // .so files into the build output, so duplicate them under their
+        // SONAME names here so the dynamic linker resolves them at runtime.
+        CopyAsSoname(libvlcBuildOutput, "libvlc.so", "libvlc.so.12");
+        CopyAsSoname(libvlcBuildOutput, "libvlccore.so", "libvlccore.so.9");
+    }
+
+    static void CopyAsSoname(string directory, string source, string sonameName)
+    {
+        var srcPath = Path.Combine(directory, source);
+        var dstPath = Path.Combine(directory, sonameName);
+        if (!File.Exists(srcPath) || File.Exists(dstPath))
+            return;
+        File.Copy(srcPath, dstPath);
     }
 
     void CopyFolder(string sourceFolder, string destFolder)

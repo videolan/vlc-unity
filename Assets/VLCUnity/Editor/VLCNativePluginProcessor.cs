@@ -529,9 +529,51 @@ namespace Videolabs.VLCUnity.Editor
         }
     }
 
+    [InitializeOnLoad]
     class LinuxPluginPostprocessor : AssetPostprocessor
     {
         const string LINUX_PATH = "VLCUnity/Plugins/Linux/x86_64";
+        const string VLC_PLUGINS_PATH = "VLCUnity/Plugins/Linux/x86_64/vlc/";
+
+        static LinuxPluginPostprocessor()
+        {
+            EditorApplication.delayCall += FixExistingLinuxPlugins;
+        }
+
+        static void FixExistingLinuxPlugins()
+        {
+            var guids = AssetDatabase.FindAssets("", new[] { "Assets/VLCUnity/Plugins/Linux" });
+            if (guids.Length == 0) return;
+
+            bool anyDirty = false;
+            foreach (var guid in guids)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                // Check vlc/ runtime plugins and versioned SONAME symlinks
+                if (!assetPath.Contains(VLC_PLUGINS_PATH)
+                    && !Regex.IsMatch(assetPath, @"\.so\.\d+$"))
+                    continue;
+
+                PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
+                if (pi == null || !pi.isNativePlugin) continue;
+
+                if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
+                    || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                {
+                    anyDirty = true;
+                    break;
+                }
+            }
+
+            if (!anyDirty) return;
+
+            var paths = new string[guids.Length];
+            for (int i = 0; i < guids.Length; i++)
+                paths[i] = AssetDatabase.GUIDToAssetPath(guids[i]);
+
+            OnPostprocessAllAssets(paths, new string[0], new string[0], new string[0]);
+        }
+
         static void OnPostprocessAllAssets(string[] importedAssets, string[] _, string[] __, string[] ___)
         {
             try
@@ -546,6 +588,25 @@ namespace Videolabs.VLCUnity.Editor
 
                     PluginImporter pi = AssetImporter.GetAtPath(assetPath) as PluginImporter;
                     if (pi == null || !pi.isNativePlugin) continue;
+
+                    // VLC runtime plugins (vlc/plugins/*) are loaded by libvlc,
+                    // not by Unity. Exclude them from the build and the Editor.
+                    // Also exclude versioned SONAME symlinks (e.g. libvlc.so.12)
+                    // — they exist on disk for the dynamic linker but are
+                    // duplicates of the unversioned .so that Unity already manages.
+                    if (assetPath.Contains(VLC_PLUGINS_PATH)
+                        || Regex.IsMatch(assetPath, @"\.so\.\d+$"))
+                    {
+                        if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
+                            || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                        {
+                            pi.SetCompatibleWithAnyPlatform(false);
+                            pi.SetCompatibleWithEditor(false);
+                            pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, false);
+                            pi.SaveAndReimport();
+                        }
+                        continue;
+                    }
 
                     var dirty = false;
 

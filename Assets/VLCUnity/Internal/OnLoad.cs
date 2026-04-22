@@ -23,12 +23,14 @@ namespace LibVLCSharp
                 // In the Editor, plugins live under the Assets tree
                 return System.IO.Path.Combine(Application.dataPath, "VLCUnity", "Plugins", "Linux", "x86_64");
 #else
-                // In a standalone build, Unity copies plugins next to the executable
-                return System.IO.Path.Combine(Application.dataPath, "Plugins", "x86_64");
+                // In a standalone build, Unity flattens all native plugins into
+                // <app>_Data/Plugins/ (no x86_64 subdirectory).
+                return System.IO.Path.Combine(Application.dataPath, "Plugins");
 #endif
             }
         }
 #endif
+
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_color_space")]
         static extern void SetColorSpace(UnityColorSpace colorSpace);
 
