@@ -51,6 +51,14 @@ cp -r macos-${MAC_ARCHS[1]}/macos-install/lib/vlc Plugins/MacOS/x86_64
 cp macos-${MAC_ARCHS[1]}/macos-install/lib/libvlc.dylib Plugins/MacOS/x86_64
 cp macos-${MAC_ARCHS[1]}/macos-install/lib/libvlccore.dylib Plugins/MacOS/x86_64
 
+# Linux
+mkdir -p Plugins/Linux/x86_64
+
+cp build_linux_x86_64/PluginSource/libVLCUnityPlugin.so Plugins/Linux/x86_64
+cp linux-x86_64/linux-install/lib/libvlc.so Plugins/Linux/x86_64
+cp linux-x86_64/linux-install/lib/libvlccore.so Plugins/Linux/x86_64
+cp -r linux-x86_64/linux-install/lib/vlc Plugins/Linux/x86_64
+
 # iOS
 mkdir -p Plugins/iOS
 
