@@ -47,7 +47,6 @@ private:
         GLuint unity_tex = 0;
         uint32_t stride = 0;
         uint64_t size = 0;
-        GLsync fence = nullptr;
     };
 
     // DMA-BUF state
