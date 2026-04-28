@@ -4,4 +4,12 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/VLCUnity/Demos/Scenes/VLC Canvas Example.unity
+    guid: b1b70164e45051b4fa2c1ea6575cdb0d
+  - enabled: 0
+    path: Assets/VLCUnity/Demos/Scenes/VLCMinimalPlayback.unity
+    guid: 3ab416dc90b6a1049a485c4e50f09bdc
+  m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

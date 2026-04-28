@@ -2781,7 +2781,7 @@ MonoBehaviour:
   screen: {fileID: 0}
   canvasScreen: {fileID: 4177636115776656969}
   texture: {fileID: 0}
-  path: http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
+  path: https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi
   flipTextureX: 0
   flipTextureY: 1
   automaticallyFlipOnAndroid: 1
