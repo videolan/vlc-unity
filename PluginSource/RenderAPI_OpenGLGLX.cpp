@@ -333,18 +333,28 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 
     } else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[GLX] kUnityGfxDeviceEventShutdown");
-#if defined(SUPPORT_DMABUF)
-        releaseDMABufResources();
-#endif
-        if (m_context) {
-            glXDestroyContext(m_display, m_context);
-            m_context = nullptr;
-        }
-        if (m_pbuffer) {
-            glXDestroyPbuffer(m_display, m_pbuffer);
-            m_pbuffer = None;
-        }
+        shutdownInternal();
     }
+}
+
+void RenderAPI_OpenGLGLX::shutdownInternal()
+{
+#if defined(SUPPORT_DMABUF)
+    releaseDMABufResources();
+#endif
+    if (m_context) {
+        glXDestroyContext(m_display, m_context);
+        m_context = nullptr;
+    }
+    if (m_pbuffer) {
+        glXDestroyPbuffer(m_display, m_pbuffer);
+        m_pbuffer = None;
+    }
+}
+
+RenderAPI_OpenGLGLX::~RenderAPI_OpenGLGLX()
+{
+    shutdownInternal();
 }
 
 void RenderAPI_OpenGLGLX::performRenderThreadWork()
@@ -669,6 +679,7 @@ void RenderAPI_OpenGLGLX::releaseDMABufResources()
         GLXDrawable prev_read = glXGetCurrentReadDrawable();
         makeCurrent(true);
         for (auto& buf : m_dmabuf_buffers) {
+            if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
             if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
             if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
             if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
@@ -718,6 +729,7 @@ void RenderAPI_OpenGLGLX::dmabuf_cleanup(void* opaque)
 
     that->makeCurrent(true);
     for (auto& buf : that->m_dmabuf_buffers) {
+        if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
         if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
         if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
         if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
@@ -734,58 +746,78 @@ bool RenderAPI_OpenGLGLX::dmabuf_resize(void* opaque,
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
     DEBUG("[GLX] DMA-BUF resize %ux%u", cfg->width, cfg->height);
 
-    if (cfg->width != that->m_dmabuf_width || cfg->height != that->m_dmabuf_height) {
-        // Release old resources
-        for (auto& buf : that->m_dmabuf_buffers) {
-            if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-            if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-            if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
-                that->glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
+    that->makeCurrent(true);
+
+    bool ok = true;
+    {
+        std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
+
+        if (cfg->width != that->m_dmabuf_width || cfg->height != that->m_dmabuf_height) {
+            for (auto& buf : that->m_dmabuf_buffers) {
+                if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
+                if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
+                if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
+                if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
+                    that->glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
+                }
+                if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
+                if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
+                buf.unity_tex = 0;
+                buf.unity_mem_obj = 0;
             }
-            if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-            if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-            buf.unity_tex = 0;
-            buf.unity_mem_obj = 0;
+
+            // Create new buffers
+            for (size_t i = 0; i < kDMABufSlots; i++) {
+                if (!that->createDMABufBuffer(that->m_dmabuf_buffers[i], cfg->width, cfg->height)) {
+                    DEBUG("[GLX] DMA-BUF buffer creation failed for slot %zu", i);
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (ok) {
+                that->m_dmabuf_width = cfg->width;
+                that->m_dmabuf_height = cfg->height;
+                that->m_unity_textures_imported = false;
+            }
         }
 
-        // Create new buffers
-        for (size_t i = 0; i < kDMABufSlots; i++) {
-            if (!that->createDMABufBuffer(that->m_dmabuf_buffers[i], cfg->width, cfg->height)) {
-                DEBUG("[GLX] DMA-BUF buffer creation failed for slot %zu", i);
-                return false;
-            }
+        if (ok) {
+            that->m_idx_render = 0;
+            that->m_idx_swap = 1;
+            that->m_idx_display = 2;
+            that->m_updated = false;
+            glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
         }
-
-        that->m_dmabuf_width = cfg->width;
-        that->m_dmabuf_height = cfg->height;
-        that->m_unity_textures_imported = false;
     }
 
-    that->m_idx_render = 0;
-    that->m_idx_swap = 1;
-    that->m_idx_display = 2;
+    if (ok) {
+        output->opengl_format = GL_RGBA;
+        output->full_range = true;
+        output->colorspace = libvlc_video_colorspace_BT709;
+        output->primaries  = libvlc_video_primaries_BT709;
+        output->transfer   = libvlc_video_transfer_func_SRGB;
+        output->orientation = libvlc_video_orient_bottom_right;
+    }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
-
-    output->opengl_format = GL_RGBA;
-    output->full_range = true;
-    output->colorspace = libvlc_video_colorspace_BT709;
-    output->primaries  = libvlc_video_primaries_BT709;
-    output->transfer   = libvlc_video_transfer_func_SRGB;
-    output->orientation = libvlc_video_orient_bottom_right;
-
-    return true;
+    that->makeCurrent(false);
+    return ok;
 }
 
 void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
 {
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
     std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
-    that->m_updated = true;
 
-    // Flush GPU commands so Unity sees the rendered content via implicit DMA-BUF sync
+    auto& rendered = that->m_dmabuf_buffers[that->m_idx_render];
+    if (rendered.fence) {
+        glDeleteSync(rendered.fence);
+        rendered.fence = nullptr;
+    }
+    rendered.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     glFlush();
 
+    that->m_updated = true;
     std::swap(that->m_idx_swap, that->m_idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
 }
@@ -814,7 +846,22 @@ void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned width, unsigned height, bool* 
             *out_updated = true;
     }
 
-    return (void*)(size_t)m_dmabuf_buffers[m_idx_display].unity_tex;
+    auto& display = m_dmabuf_buffers[m_idx_display];
+
+    if (display.fence) {
+        GLenum r = glClientWaitSync(display.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 16000000);
+        if (r == GL_ALREADY_SIGNALED || r == GL_CONDITION_SATISFIED) {
+            glDeleteSync(display.fence);
+            display.fence = nullptr;
+        } else {
+            DEBUG("[GLX] glClientWaitSync did not signal (r=0x%x), skipping frame", r);
+            if (out_updated)
+                *out_updated = false;
+            return nullptr;
+        }
+    }
+
+    return (void*)(size_t)display.unity_tex;
 }
 
 #endif // SUPPORT_DMABUF

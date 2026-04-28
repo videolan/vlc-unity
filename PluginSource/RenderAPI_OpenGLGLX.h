@@ -19,7 +19,7 @@ class RenderAPI_OpenGLGLX : public RenderAPI_OpenGLBase
 {
 public:
     RenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
-    virtual ~RenderAPI_OpenGLGLX() { }
+    virtual ~RenderAPI_OpenGLGLX();
 
     virtual void setVlcContext(libvlc_media_player_t *mp) override;
     virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
@@ -55,6 +55,7 @@ protected:
         GLuint unity_tex = 0;
         uint32_t stride = 0;
         uint64_t size = 0;
+        GLsync fence = nullptr;
     };
 
     // DMA-BUF state
@@ -95,6 +96,11 @@ protected:
     // DMA-BUF helpers
     bool initDMABuf();
     void releaseDMABufResources();
+#endif
+
+    void shutdownInternal();
+
+#if defined(SUPPORT_DMABUF)
     bool createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h);
     bool importDMABufToUnityContext(DMABufBuffer& buf, unsigned w, unsigned h);
     bool loadMemoryObjectExtensions();

@@ -14,7 +14,7 @@ class RenderAPI_OpenGLLinuxEGL : public RenderAPI_OpenEGL
 {
 public:
     RenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType);
-    virtual ~RenderAPI_OpenGLLinuxEGL() { }
+    virtual ~RenderAPI_OpenGLLinuxEGL();
 
     void setVlcContext(libvlc_media_player_t *mp) override;
     void unsetVlcContext(libvlc_media_player_t *mp) override;
@@ -46,6 +46,7 @@ private:
         GLuint unity_tex = 0;
         uint32_t stride = 0;
         uint64_t size = 0;
+        GLsync fence = nullptr;
     };
 
     // DMA-BUF state
