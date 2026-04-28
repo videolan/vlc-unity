@@ -35,8 +35,6 @@ public class VLCPlayerExample : MonoBehaviour
 	public bool flipTextureX = true;
 	public bool flipTextureY = true;
 	public bool playOnAwake = true; //Open path and Play during Awake
-	// Direct Audio through a Unity AudioSource. Default true in the Editor so
-	// new instances play audio out of the box; player builds default to false.
 	public bool useUnityAudio =
 #if UNITY_EDITOR
 		true;

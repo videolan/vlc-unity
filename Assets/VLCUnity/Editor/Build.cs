@@ -62,8 +62,7 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         // libVLCUnityPlugin.so has NEEDED entries for the SONAMEs
         // (libvlc.so.12, libvlccore.so.9). Unity only copies the unversioned
         // .so files into the build output, so make them resolvable under
-        // their SONAME names here. A relative symlink avoids duplicating the
-        // 8-15 MB binaries; we fall back to a copy if symlink fails.
+        // their SONAME names here so the dynamic linker resolves them at runtime.
         LinkAsSoname(libvlcBuildOutput, "libvlc.so", "libvlc.so.12");
         LinkAsSoname(libvlcBuildOutput, "libvlccore.so", "libvlccore.so.9");
     }
@@ -77,7 +76,6 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         var dstPath = Path.Combine(directory, sonameName);
         if (!File.Exists(srcPath) || File.Exists(dstPath))
             return;
-        // Relative target so the link works wherever the build is deployed.
         if (symlink(source, dstPath) != 0)
             File.Copy(srcPath, dstPath);
     }

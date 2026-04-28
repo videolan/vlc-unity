@@ -447,10 +447,6 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 #endif
 
 #if defined(UNITY_LINUX)
-    // Drive deferred Initialize on any RenderAPI that hasn't completed it yet.
-    // Each instance latches isInitialized() once its GL context is created,
-    // so steady-state this loop is a cheap walk with no virtual dispatch into
-    // ProcessDeviceEvent.
     {
         std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
         for(it = contexts.begin(); it != contexts.end(); it++)

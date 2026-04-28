@@ -77,9 +77,7 @@ void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
 {
     if (unity_context == nullptr) {
         libvlc_media_player_t* prev = m_pending_mp.exchange(mp);
-        // The pending slot only ever holds one mp at a time. A second
-        // setVlcContext before unsetVlcContext would silently drop the first.
-        assert(prev == nullptr || prev == mp);
+        assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
         (void)prev;
         DEBUG("[GLX] Unity context not ready, deferring setVlcContext");
         return;

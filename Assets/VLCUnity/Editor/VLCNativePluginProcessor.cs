@@ -537,7 +537,8 @@ namespace Videolabs.VLCUnity.Editor
 
         static LinuxPluginPostprocessor()
         {
-            EditorApplication.delayCall += FixExistingLinuxPlugins;
+            if (Application.platform == RuntimePlatform.LinuxEditor)
+                EditorApplication.delayCall += FixExistingLinuxPlugins;
         }
 
         static void FixExistingLinuxPlugins()

@@ -291,9 +291,7 @@ void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t *mp)
 {
     if (m_context == EGL_NO_CONTEXT) {
         libvlc_media_player_t* prev = m_pending_mp.exchange(mp);
-        // The pending slot only ever holds one mp at a time. A second
-        // setVlcContext before unsetVlcContext would silently drop the first.
-        assert(prev == nullptr || prev == mp);
+        assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
         (void)prev;
         DEBUG("[EGL-Linux] no EGL context, deferring setVlcContext");
         return;
