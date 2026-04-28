@@ -22,6 +22,7 @@ public:
     void retrieveOpenGLContext() override;
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
     void performRenderThreadWork() override;
+    bool isInitialized() const override { return m_context != EGL_NO_CONTEXT; }
 
     static void* get_proc_address_desktop(void* data, const char* procname);
 

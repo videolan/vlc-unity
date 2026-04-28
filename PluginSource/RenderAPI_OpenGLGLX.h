@@ -28,6 +28,7 @@ public:
     virtual void ensureCurrentContext() override;
     virtual bool makeCurrent(bool current) override;
     virtual void performRenderThreadWork() override;
+    bool isInitialized() const override { return m_context != nullptr; }
 
     static void* get_proc_address(void* /*data*/, const char* procname);
 

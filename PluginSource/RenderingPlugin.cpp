@@ -447,13 +447,16 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 #endif
 
 #if defined(UNITY_LINUX)
-    // Ensure per-player RenderAPI instances are initialized once Unity's GL context is available.
+    // Drive deferred Initialize on any RenderAPI that hasn't completed it yet.
+    // Each instance latches isInitialized() once its GL context is created,
+    // so steady-state this loop is a cheap walk with no virtual dispatch into
+    // ProcessDeviceEvent.
     {
         std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
         for(it = contexts.begin(); it != contexts.end(); it++)
         {
             RenderAPI* currentAPI = it->second;
-            if(currentAPI)
+            if(currentAPI && !currentAPI->isInitialized())
                 currentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
         }
     }

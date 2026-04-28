@@ -34,6 +34,9 @@ public:
 
     virtual void retrieveOpenGLContext() {}
     virtual void performRenderThreadWork() {}
+    // Returns false until ProcessDeviceEvent(Initialize) has successfully
+    // run on the render thread. Backends with deferred init (Linux) override.
+    virtual bool isInitialized() const { return true; }
     virtual void setColorSpace(int color_space) {
         (void)color_space;
     }

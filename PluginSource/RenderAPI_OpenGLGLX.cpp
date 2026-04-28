@@ -76,7 +76,11 @@ void* RenderAPI_OpenGLGLX::get_proc_address(void* /*data*/, const char* procname
 void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
 {
     if (unity_context == nullptr) {
-        m_pending_mp.store(mp);
+        libvlc_media_player_t* prev = m_pending_mp.exchange(mp);
+        // The pending slot only ever holds one mp at a time. A second
+        // setVlcContext before unsetVlcContext would silently drop the first.
+        assert(prev == nullptr || prev == mp);
+        (void)prev;
         DEBUG("[GLX] Unity context not ready, deferring setVlcContext");
         return;
     }
