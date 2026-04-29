@@ -3,6 +3,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 #endif
 
+#if !ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+#warning VLCInput: neither ENABLE_INPUT_SYSTEM nor ENABLE_LEGACY_INPUT_MANAGER is defined. Demo input will be inert.
+#endif
+
 namespace LibVLCSharp
 {
     /// <summary>
