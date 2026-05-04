@@ -490,7 +490,6 @@ unity-plugin-macos-aarch64-trial:
         paths:
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/*
             - vlc/build/vlc-$SDKNAME-$SHORT_ARCH/include/*
-            - vlc/extras/tools/meson/**/*
         expire_in: 2 weeks
 
 # libvlc-ios-x86_64:
@@ -514,8 +513,7 @@ libvlc-ios-arm64:
         - sed -i '' "1s|.*|prefix=$(pwd | sed 's#/#\\\/#g')|" lib/pkgconfig/libvlc.pc
         - cd ../../..
         - export PATH="$HOME/sandbox/bin:$PATH"
-        # Reuse the Meson version bootstrapped by the libvlc iOS job.
-        - PKG_CONFIG_PATH=./vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/pkgconfig python3 ./vlc/extras/tools/meson/meson.py setup --cross-file=cross/$SDKNAME.txt build_${SHORT_ARCH} ${ARGS_TRIAL} --buildtype release
+        - PKG_CONFIG_PATH=./vlc/build/vlc-$SDKNAME-$SHORT_ARCH/lib/pkgconfig meson setup --cross-file=cross/$SDKNAME.txt build_${SHORT_ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${SHORT_ARCH}
         - ./copy_ios.sh vlc/build/vlc-$SDKNAME-$SHORT_ARCH $SHORT_ARCH
     artifacts:
