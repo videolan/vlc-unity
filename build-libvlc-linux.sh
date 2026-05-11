@@ -8,7 +8,7 @@ set -e
 
 ARCH=x86_64
 TRIPLET=x86_64-linux-gnu
-IMAGE=registry.videolan.org/vlc-debian-unstable:20241112155431
+IMAGE=registry.videolan.org/vlc-debian-unstable:202601091456
 CONTAINER_NAME=vlc-build-linux
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
