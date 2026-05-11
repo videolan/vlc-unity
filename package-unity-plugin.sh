@@ -55,10 +55,11 @@ cp macos-${MAC_ARCHS[1]}/macos-install/lib/libvlccore.dylib Plugins/MacOS/x86_64
 mkdir -p Plugins/Linux/x86_64
 
 cp build_linux_x86_64/PluginSource/libVLCUnityPlugin.so Plugins/Linux/x86_64
-cp linux-x86_64/linux-install/lib/libvlc.so Plugins/Linux/x86_64
-cp linux-x86_64/linux-install/lib/libvlccore.so Plugins/Linux/x86_64
-cp -r linux-x86_64/linux-install/lib/vlc Plugins/Linux/x86_64
-
+# Preserve the SONAME symlinks (for example libvlc.so.12 -> libvlc.so)
+# from the libvlc install tree so the Linux loader can resolve DT_NEEDED.
+cp -a linux-x86_64/linux-install/lib/libvlc.so* Plugins/Linux/x86_64/
+cp -a linux-x86_64/linux-install/lib/libvlccore.so* Plugins/Linux/x86_64/
+cp -a linux-x86_64/linux-install/lib/vlc Plugins/Linux/x86_64
 find Plugins/Linux/x86_64 -type f \( -name "*.so" -o -name "*.so.*" \) -exec strip --strip-unneeded {} +
 
 # iOS
