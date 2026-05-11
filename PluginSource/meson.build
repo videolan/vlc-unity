@@ -173,7 +173,6 @@ vlc_unity_plugin = library(
     'VLCUnityPlugin',
     plugin_sources,
     include_directories: plugin_include_dirs,
-    version: '1.0.0', # TODO,
     dependencies: vlc_unity_deps,
     install: true,
     build_rpath: vlc_unity_install_rpath,
