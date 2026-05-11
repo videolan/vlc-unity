@@ -5,15 +5,11 @@
 #include "PlatformBase.h"
 #include <GL/glx.h>
 #include <X11/Xlib.h>
-#include <atomic>
-
-#if defined(SUPPORT_DMABUF)
 #include <mutex>
 #include <gbm.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <xf86drm.h>
-#endif
 
 class RenderAPI_OpenGLGLX : public RenderAPI_OpenGLBase
 {
@@ -31,20 +27,16 @@ public:
     bool isInitialized() const override { return m_context != nullptr; }
 
     static void* get_proc_address(void* /*data*/, const char* procname);
-
-#if defined(SUPPORT_DMABUF)
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
-#endif
 
 protected:
     Display* m_display = nullptr;
     GLXPbuffer m_pbuffer = None;
     GLXContext m_context = nullptr;
-    std::atomic<libvlc_media_player_t*> m_pending_mp{nullptr};
+    libvlc_media_player_t* m_pending_mp = nullptr;
     static GLXContext unity_context;
     static Display* unity_display;
 
-#if defined(SUPPORT_DMABUF)
     // DMA-BUF buffer descriptor (one per triple-buffer slot)
     struct DMABufBuffer {
         struct gbm_bo* bo = nullptr;
@@ -61,7 +53,6 @@ protected:
 
     // DMA-BUF state
     static constexpr size_t kDMABufSlots = 3;
-    bool m_use_dmabuf = false;
     bool m_unity_textures_imported = false;
     struct gbm_device* m_gbm_device = nullptr;
     int m_drm_fd = -1;
@@ -97,11 +88,9 @@ protected:
     // DMA-BUF helpers
     bool initDMABuf();
     void releaseDMABufResources();
-#endif
 
     void shutdownInternal();
 
-#if defined(SUPPORT_DMABUF)
     bool createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h);
     bool importDMABufToUnityContext(DMABufBuffer& buf, unsigned w, unsigned h);
     bool loadMemoryObjectExtensions();
@@ -113,7 +102,6 @@ protected:
     static bool dmabuf_resize(void* opaque, const libvlc_video_render_cfg_t* cfg,
                               libvlc_video_output_cfg_t* output);
     static void dmabuf_swap(void* opaque);
-#endif
 };
 
 #endif /* RENDER_API_OPENGL_GLX_H */

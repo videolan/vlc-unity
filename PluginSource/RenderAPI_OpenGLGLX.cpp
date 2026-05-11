@@ -2,18 +2,14 @@
 #include "Log.h"
 #include <cassert>
 #include <cstring>
-
-#if defined(SUPPORT_DMABUF)
 #include <dirent.h>
 #include <sys/stat.h>
-#endif
 
 #ifndef GLX_CONTEXT_MAJOR_VERSION_ARB
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define GLX_CONTEXT_PROFILE_MASK_ARB  0x9126
 #define GLX_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
-#define GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x00000002
 #endif
 
 #ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
@@ -24,13 +20,6 @@ GLXContext RenderAPI_OpenGLGLX::unity_context = nullptr;
 Display* RenderAPI_OpenGLGLX::unity_display = nullptr;
 
 namespace {
-
-static int glx_error_code = 0;
-static int x_error_handler(Display* /*dpy*/, XErrorEvent* ev)
-{
-    glx_error_code = ev->error_code;
-    return 0;
-}
 
 bool staticMakeCurrent(void* data, bool current)
 {
@@ -76,35 +65,26 @@ void* RenderAPI_OpenGLGLX::get_proc_address(void* /*data*/, const char* procname
 void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
 {
     if (unity_context == nullptr) {
-        libvlc_media_player_t* prev = m_pending_mp.exchange(mp);
+        libvlc_media_player_t* prev = m_pending_mp;
+        m_pending_mp = mp;
         assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
-        (void)prev;
         DEBUG("[GLX] Unity context not ready, deferring setVlcContext");
         return;
     }
-    m_pending_mp.store(nullptr);
+    m_pending_mp = nullptr;
 
-#if defined(SUPPORT_DMABUF)
-    if (m_use_dmabuf) {
-        DEBUG("[GLX] subscribing to DMA-BUF opengl output callbacks %p", this);
-        libvlc_video_set_output_callbacks(mp, libvlc_video_engine_opengl,
-            dmabuf_setup, dmabuf_cleanup, nullptr, dmabuf_resize, dmabuf_swap,
-            staticMakeCurrent, get_proc_address, nullptr, nullptr, this);
-        return;
-    }
-#endif
-
-    DEBUG("[GLX] subscribing to opengl output callbacks %p", this);
+    DEBUG("[GLX] subscribing to DMA-BUF opengl output callbacks %p", this);
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_opengl,
-        setup, cleanup, nullptr, resize, swap,
+        dmabuf_setup, dmabuf_cleanup, nullptr, dmabuf_resize, dmabuf_swap,
         staticMakeCurrent, get_proc_address, nullptr, nullptr, this);
 }
 
 void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t *mp)
 {
-    libvlc_media_player_t* expected = mp;
-    if (m_pending_mp.compare_exchange_strong(expected, nullptr))
+    if (m_pending_mp == mp) {
+        m_pending_mp = nullptr;
         return; // Cancelled pending setVlcContext before it was promoted
+    }
     // Callbacks were already registered — disable them
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
         nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -113,15 +93,17 @@ void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t *mp)
 
 void RenderAPI_OpenGLGLX::retrieveOpenGLContext()
 {
+    if (unity_context != nullptr)
+        return;
+
+    unity_context = glXGetCurrentContext();
     if (unity_context == nullptr) {
-        unity_context = glXGetCurrentContext();
-        if (unity_context == nullptr) {
-            DEBUG("[GLX] glXGetCurrentContext failed");
-        } else {
-            unity_display = glXGetCurrentDisplay();
-            DEBUG("[GLX] retrieved Unity OpenGL context %p display %p", unity_context, unity_display);
-        }
+        DEBUG("[GLX] glXGetCurrentContext failed");
+        return;
     }
+
+    unity_display = glXGetCurrentDisplay();
+    DEBUG("[GLX] retrieved Unity OpenGL context %p display %p", unity_context, unity_display);
 }
 
 void RenderAPI_OpenGLGLX::ensureCurrentContext()
@@ -197,10 +179,6 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
             }
         }
 
-        // Install X error handler
-        XSync(m_display, False);
-        auto old_handler = XSetErrorHandler(x_error_handler);
-
         typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(
             Display*, GLXFBConfig, GLXContext, Bool, const int*);
         auto glXCreateContextAttribsARB =
@@ -224,11 +202,8 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
                 static const int profiles[][3] = {
                     {4, 5, GLX_CONTEXT_CORE_PROFILE_BIT_ARB},
                     {3, 3, GLX_CONTEXT_CORE_PROFILE_BIT_ARB},
-                    {4, 5, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB},
-                    {3, 3, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB},
                 };
                 for (auto& p : profiles) {
-                    glx_error_code = 0;
                     const int ctx_attribs[] = {
                         GLX_CONTEXT_MAJOR_VERSION_ARB, p[0],
                         GLX_CONTEXT_MINOR_VERSION_ARB, p[1],
@@ -237,11 +212,9 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
                     };
                     m_context = glXCreateContextAttribsARB(
                         m_display, try_fbc, unity_context, unity_direct, ctx_attribs);
-                    XSync(m_display, False);
-                    if (m_context && glx_error_code == 0) {
-                        const char* prof = (p[2] == GLX_CONTEXT_CORE_PROFILE_BIT_ARB) ? "core" : "compat";
-                        DEBUG("[GLX] Created GL %d.%d %s shared context (fbc %d/%d)",
-                              p[0], p[1], prof, fi + 1, fbcount);
+                    if (m_context) {
+                        DEBUG("[GLX] Created GL %d.%d core shared context (fbc %d/%d)",
+                              p[0], p[1], fi + 1, fbcount);
                         chosen_fbc = try_fbc;
                         shared_context = true;
                         break;
@@ -251,11 +224,9 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
             }
 
             if (!m_context) {
-                glx_error_code = 0;
                 m_context = glXCreateNewContext(m_display, try_fbc, GLX_RGBA_TYPE,
                                                  unity_context, unity_direct);
-                XSync(m_display, False);
-                if (m_context && glx_error_code == 0) {
+                if (m_context) {
                     DEBUG("[GLX] Created shared context via glXCreateNewContext (fbc %d/%d)",
                           fi + 1, fbcount);
                     chosen_fbc = try_fbc;
@@ -270,19 +241,15 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
         if (!m_context) {
             DEBUG("[GLX] all %d FBConfigs failed for shared context, creating non-shared", fbcount);
             chosen_fbc = all_fbc[0];
-            glx_error_code = 0;
             m_context = glXCreateNewContext(m_display, chosen_fbc, GLX_RGBA_TYPE,
                                              nullptr, unity_direct);
-            XSync(m_display, False);
-            if (m_context && glx_error_code == 0) {
+            if (m_context) {
                 DEBUG("[GLX] created non-shared context");
             } else {
                 if (m_context) { glXDestroyContext(m_display, m_context); m_context = nullptr; }
-                DEBUG("[GLX] even non-shared context creation failed, X error=%d", glx_error_code);
+                DEBUG("[GLX] even non-shared context creation failed");
             }
         }
-
-        XSetErrorHandler(old_handler);
 
         if (!m_context) {
             XFree(all_fbc);
@@ -305,31 +272,23 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
             return;
         }
 
-#if defined(SUPPORT_DMABUF)
-        if (!shared_context) {
-            DEBUG("[GLX] no shared context, attempting DMA-BUF path");
-            if (initDMABuf()) {
-                m_use_dmabuf = true;
-                DEBUG("[GLX] DMA-BUF zero-copy path initialized successfully");
-            } else {
-                DEBUG("[GLX] DMA-BUF not available, falling back to non-shared context (textures won't work)");
+        if (!initDMABuf()) {
+            DEBUG("[GLX] DMA-BUF initialization failed");
+            if (m_pbuffer) {
+                glXDestroyPbuffer(m_display, m_pbuffer);
+                m_pbuffer = None;
             }
+            glXDestroyContext(m_display, m_context);
+            m_context = nullptr;
+            return;
         }
-#else
-        if (!shared_context) {
-            DEBUG("[GLX] WARNING: non-shared context and no DMA-BUF support compiled in");
-        }
-#endif
 
         DEBUG("[GLX] kUnityGfxDeviceEventInitialize success disp=%p pbuf=%lx ctx=%p shared=%d dmabuf=%d",
               m_display, m_pbuffer, m_context, shared_context,
-#if defined(SUPPORT_DMABUF)
-              m_use_dmabuf
-#else
-              0
-#endif
+              1
               );
-        libvlc_media_player_t* pending = m_pending_mp.exchange(nullptr);
+        libvlc_media_player_t* pending = m_pending_mp;
+        m_pending_mp = nullptr;
         if (pending)
             setVlcContext(pending);
 
@@ -341,9 +300,7 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 
 void RenderAPI_OpenGLGLX::shutdownInternal()
 {
-#if defined(SUPPORT_DMABUF)
     releaseDMABufResources();
-#endif
     if (m_context) {
         glXDestroyContext(m_display, m_context);
         m_context = nullptr;
@@ -361,10 +318,6 @@ RenderAPI_OpenGLGLX::~RenderAPI_OpenGLGLX()
 
 void RenderAPI_OpenGLGLX::performRenderThreadWork()
 {
-#if defined(SUPPORT_DMABUF)
-    if (!m_use_dmabuf)
-        return;
-
     std::lock_guard<std::mutex> lock(m_dmabuf_lock);
 
     if (m_unity_textures_imported || m_dmabuf_width == 0 || m_dmabuf_height == 0)
@@ -384,14 +337,11 @@ void RenderAPI_OpenGLGLX::performRenderThreadWork()
     }
     m_unity_textures_imported = true;
     DEBUG("[GLX] all DMA-BUF textures imported into Unity context");
-#endif
 }
 
 // ==========================================================================
 // DMA-BUF implementation (via GL_EXT_memory_object_fd)
 // ==========================================================================
-
-#if defined(SUPPORT_DMABUF)
 
 #ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
 #define GL_HANDLE_TYPE_OPAQUE_FD_EXT 0x9586
@@ -563,6 +513,18 @@ static bool importMemoryFd(
 
 bool RenderAPI_OpenGLGLX::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h)
 {
+    auto cleanup_failed_buffer = [&]() {
+        if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
+        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
+        if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
+            glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
+        }
+        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
+        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
+        buf.stride = 0;
+        buf.size = 0;
+    };
+
     buf.bo = gbm_bo_create(m_gbm_device, w, h, GBM_FORMAT_ABGR8888,
                            GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR);
     if (!buf.bo) {
@@ -602,14 +564,7 @@ bool RenderAPI_OpenGLGLX::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsi
                         glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
                         buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
                         w, h, "VLC")) {
-        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-        if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
-            glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-        }
-        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-        buf.stride = 0;
-        buf.size = 0;
+        cleanup_failed_buffer();
         return false;
     }
 
@@ -628,15 +583,7 @@ bool RenderAPI_OpenGLGLX::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsi
         DEBUG("[GLX] DMA-BUF FBO incomplete, status=0x%x", status);
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-        if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
-            glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-        }
-        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-        buf.stride = 0;
-        buf.size = 0;
+        cleanup_failed_buffer();
         return false;
     }
 
@@ -704,7 +651,6 @@ void RenderAPI_OpenGLGLX::releaseDMABufResources()
     m_unity_textures_imported = false;
     m_dmabuf_width = 0;
     m_dmabuf_height = 0;
-    m_use_dmabuf = false;
 
     if (m_gbm_device) { gbm_device_destroy(m_gbm_device); m_gbm_device = nullptr; }
     if (m_drm_fd >= 0) { close(m_drm_fd); m_drm_fd = -1; }
@@ -826,9 +772,6 @@ void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
 
 void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
 {
-    if (!m_use_dmabuf)
-        return RenderAPI_OpenGLBase::getVideoFrame(width, height, out_updated);
-
     std::lock_guard<std::mutex> lock(m_dmabuf_lock);
 
     if (out_updated)
@@ -865,5 +808,3 @@ void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned width, unsigned height, bool* 
 
     return (void*)(size_t)display.unity_tex;
 }
-
-#endif // SUPPORT_DMABUF

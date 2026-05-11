@@ -108,18 +108,15 @@ elif host_system == 'windows'
 elif host_system == 'linux'
     gl_dep = dependency('gl', required: true)
     x11_dep = dependency('x11', required: true)
+    gbm_dep = dependency('gbm', required: true)
+    libdrm_dep = dependency('libdrm', required: true)
     vlc_unity_deps += [ gl_dep, x11_dep ]
     vlc_unity_cppflags += [ '-DUNITY_LINUX=1' ]
     vlc_unity_install_rpath = '$ORIGIN'
     plugin_sources += [ opengl_sources_base, glx_sources ]
-    gbm_dep = dependency('gbm', required: false)
-    libdrm_dep = dependency('libdrm', required: false)
+    vlc_unity_deps += [ gbm_dep, libdrm_dep ]
     egl_dep = dependency('egl', required: false)
-    if gbm_dep.found() and libdrm_dep.found()
-        vlc_unity_deps += [ gbm_dep, libdrm_dep ]
-        vlc_unity_cppflags += [ '-DSUPPORT_DMABUF=1' ]
-    endif
-    if egl_dep.found() and gbm_dep.found() and libdrm_dep.found()
+    if egl_dep.found()
         vlc_unity_deps += [ egl_dep ]
         vlc_unity_cppflags += [ '-DSUPPORT_EGL=1' ]
         plugin_sources += [ egl_sources, linux_egl_sources ]
