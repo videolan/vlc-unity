@@ -824,18 +824,13 @@ void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(unsigned width, unsigned height, b
     }
 
     auto& display = m_dmabuf_buffers[m_idx_display];
-    if (display.fence) {
-        GLenum r = glClientWaitSync(display.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 16000000);
-        if (r == GL_ALREADY_SIGNALED || r == GL_CONDITION_SATISFIED) {
-            glDeleteSync(display.fence);
-            display.fence = nullptr;
-        } else {
-            DEBUG("[EGL-Linux] glClientWaitSync did not signal (r=0x%x), skipping frame", r);
-            if (out_updated)
-                *out_updated = false;
-            return nullptr;
-        }
-    }
+
+    // VLC renders in its own standalone EGL context while Unity consumes the
+    // imported DMA-BUF in a separate GLX context under XWayland. These
+    // contexts are not in the same GL share group, so waiting on a GLsync here
+    // from the managed GetTexture() call can crash inside the driver. Keep the
+    // fence lifetime on the VLC/EGL side and rely on DMA-BUF implicit sync for
+    // this path.
 
     return (void*)(size_t)display.unity_tex;
 }

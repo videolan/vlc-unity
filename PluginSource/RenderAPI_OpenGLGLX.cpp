@@ -770,7 +770,7 @@ void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
     glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
 }
 
-void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
+void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned, unsigned, bool* out_updated)
 {
     std::lock_guard<std::mutex> lock(m_dmabuf_lock);
 
