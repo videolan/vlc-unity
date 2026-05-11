@@ -580,8 +580,8 @@ libvlc-linux-x86_64:
         - cd ../..
         - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_linux_${ARCH}
-        - rm -f "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"
-        - mv "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so.1.0.0" "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"
+        - if [ -f "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so.1.0.0" ]; then mv "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so.1.0.0" "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"; fi
+        - strip --strip-unneeded "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"
     artifacts:
         paths:
             - build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so
