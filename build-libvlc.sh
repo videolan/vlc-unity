@@ -1,15 +1,16 @@
 #!/bin/bash
 # Build libvlc from source.
-# Expects: TRIPLET and ARCH environment variables.
 # Runs inside the VLC build container (locally via Docker, or natively in CI).
 #
 # Usage:
-#   TRIPLET=x86_64-linux-gnu ARCH=x86_64 ./build-libvlc.sh
+#   ./build-libvlc.sh <TRIPLET> <ARCH>
+#   e.g. ./build-libvlc.sh x86_64-linux-gnu x86_64
 #
 # Output: ./linux-install/  (relative to the working directory)
 set -ex
 
-: "${TRIPLET:?}" "${ARCH:?}"
+TRIPLET="${1:?Usage: $0 <TRIPLET> <ARCH>}"
+ARCH="${2:?Usage: $0 <TRIPLET> <ARCH>}"
 export NCPU=$(getconf _NPROCESSORS_ONLN)
 
 # Clone VLC if not already present

@@ -26,8 +26,8 @@ fi
 
 # Copy the build script into the container and run it
 docker cp "$SCRIPT_DIR/build-libvlc.sh" "$CONTAINER_NAME:/tmp/build-libvlc.sh"
-docker exec -e TRIPLET="$TRIPLET" -e ARCH="$ARCH" "$CONTAINER_NAME" \
-    bash -c "cd /tmp && bash build-libvlc.sh"
+docker exec "$CONTAINER_NAME" \
+    bash -c "cd /tmp && bash build-libvlc.sh '$TRIPLET' '$ARCH'"
 
 echo "=== Copying output from container ==="
 mkdir -p "linux-${ARCH}/linux-install"

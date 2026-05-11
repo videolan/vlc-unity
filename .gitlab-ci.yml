@@ -552,7 +552,7 @@ unity-plugin-ios-aarch64-trial:
     image:
         name: $VLC_DEBIAN_IMAGE
     script:
-        - TRIPLET=${TRIPLET} ARCH=${ARCH} bash build-libvlc.sh
+        - bash build-libvlc.sh ${TRIPLET} ${ARCH}
         # Organize artifacts
         - mkdir -p linux-${ARCH}
         - mv vlc/linux-install linux-${ARCH}/
