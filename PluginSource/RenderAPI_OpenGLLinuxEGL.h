@@ -3,7 +3,6 @@
 
 #include "RenderAPI_OpenGLEGL.h"
 #include <GL/glx.h>
-#include <atomic>
 #include <mutex>
 #include <gbm.h>
 #include <fcntl.h>
@@ -30,7 +29,7 @@ private:
     // DRM/GBM state
     int m_drm_fd = -1;
     struct gbm_device* m_gbm_device = nullptr;
-    std::atomic<libvlc_media_player_t*> m_pending_mp{nullptr};
+    libvlc_media_player_t* m_pending_mp = nullptr;
 
     // Unity context flag — static so it's shared across instances
     // (EarlyRenderAPI sets it, per-player instances read it)
@@ -47,6 +46,7 @@ private:
         GLuint unity_tex = 0;
         uint32_t stride = 0;
         uint64_t size = 0;
+        GLsync fence = nullptr;
     };
 
     // DMA-BUF state

@@ -230,22 +230,6 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
             }
         }
 
-        // Fallback: compatibility profile
-        if (m_context == EGL_NO_CONTEXT) {
-            for (auto& ver : gl_versions) {
-                const EGLint ctx_attr[] = {
-                    EGL_CONTEXT_MAJOR_VERSION, ver[0],
-                    EGL_CONTEXT_MINOR_VERSION, ver[1],
-                    EGL_NONE
-                };
-                m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
-                if (m_context != EGL_NO_CONTEXT) {
-                    DEBUG("[EGL-Linux] created GL %d.%d compat context", ver[0], ver[1]);
-                    break;
-                }
-            }
-        }
-
         if (m_context == EGL_NO_CONTEXT) {
             DEBUG("[EGL-Linux] all eglCreateContext attempts failed: 0x%x", eglGetError());
             return;
@@ -273,7 +257,8 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
 
         DEBUG("[EGL-Linux] init success: display=%p surface=%p context=%p gbm=%p",
               m_display, m_surface, m_context, m_gbm_device);
-        libvlc_media_player_t* pending = m_pending_mp.exchange(nullptr);
+        libvlc_media_player_t* pending = m_pending_mp;
+        m_pending_mp = nullptr;
         if (pending)
             setVlcContext(pending);
 
@@ -290,13 +275,13 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
 void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t *mp)
 {
     if (m_context == EGL_NO_CONTEXT) {
-        libvlc_media_player_t* prev = m_pending_mp.exchange(mp);
+        libvlc_media_player_t* prev = m_pending_mp;
+        m_pending_mp = mp;
         assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
-        (void)prev;
         DEBUG("[EGL-Linux] no EGL context, deferring setVlcContext");
         return;
     }
-    m_pending_mp.store(nullptr);
+    m_pending_mp = nullptr;
 
     DEBUG("[EGL-Linux] subscribing to DMA-BUF opengl output callbacks %p", this);
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_opengl,
@@ -306,9 +291,10 @@ void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t *mp)
 
 void RenderAPI_OpenGLLinuxEGL::unsetVlcContext(libvlc_media_player_t *mp)
 {
-    libvlc_media_player_t* expected = mp;
-    if (m_pending_mp.compare_exchange_strong(expected, nullptr))
+    if (m_pending_mp == mp) {
+        m_pending_mp = nullptr;
         return; // Cancelled pending setVlcContext before it was promoted
+    }
     // Callbacks were already registered — disable them
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
         nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -632,6 +618,7 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
     if (m_context != EGL_NO_CONTEXT) {
         makeCurrent(true);
         for (auto& buf : m_dmabuf_buffers) {
+            if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
             if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
             if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
             if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
@@ -642,6 +629,7 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
     }
 
     for (auto& buf : m_dmabuf_buffers) {
+        if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
         buf.unity_tex = 0;
         buf.unity_mem_obj = 0;
         if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
@@ -693,6 +681,7 @@ void RenderAPI_OpenGLLinuxEGL::dmabuf_cleanup(void* opaque)
 
     that->makeCurrent(true);
     for (auto& buf : that->m_dmabuf_buffers) {
+        if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
         if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
         if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
         if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
@@ -717,6 +706,7 @@ bool RenderAPI_OpenGLLinuxEGL::dmabuf_resize(void* opaque,
 
         if (cfg->width != that->m_dmabuf_width || cfg->height != that->m_dmabuf_height) {
             for (auto& buf : that->m_dmabuf_buffers) {
+                if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
                 if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
                 if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
                 if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
@@ -770,11 +760,13 @@ void RenderAPI_OpenGLLinuxEGL::dmabuf_swap(void* opaque)
     auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(opaque);
     std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
 
-    // VLC's EGL context is standalone (not shared with Unity's GLX context),
-    // so a GLsync created here can't be waited from Unity's main thread —
-    // glClientWaitSync derefs NULL on a foreign sync. glFinish blocks until
-    // VLC's GPU writes are done before the swap becomes visible.
-    glFinish();
+    auto& rendered = that->m_dmabuf_buffers[that->m_idx_render];
+    if (rendered.fence) {
+        glDeleteSync(rendered.fence);
+        rendered.fence = nullptr;
+    }
+    rendered.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    glFlush();
 
     that->m_updated = true;
     std::swap(that->m_idx_swap, that->m_idx_render);
@@ -831,5 +823,19 @@ void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(unsigned width, unsigned height, b
             *out_updated = true;
     }
 
-    return (void*)(size_t)m_dmabuf_buffers[m_idx_display].unity_tex;
+    auto& display = m_dmabuf_buffers[m_idx_display];
+    if (display.fence) {
+        GLenum r = glClientWaitSync(display.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 16000000);
+        if (r == GL_ALREADY_SIGNALED || r == GL_CONDITION_SATISFIED) {
+            glDeleteSync(display.fence);
+            display.fence = nullptr;
+        } else {
+            DEBUG("[EGL-Linux] glClientWaitSync did not signal (r=0x%x), skipping frame", r);
+            if (out_updated)
+                *out_updated = false;
+            return nullptr;
+        }
+    }
+
+    return (void*)(size_t)display.unity_tex;
 }
