@@ -19,6 +19,11 @@
 #	include "GL/glew.h"
 #endif
 
+inline void clearGlErrors()
+{
+    while (glGetError() != GL_NO_ERROR) {}
+}
+
 //#if defined(UNITY_WIN)
 //#  include <mingw.mutex.h>
 //#else
@@ -63,11 +68,11 @@ private:
     size_t idx_display = 2;
     bool updated = false;
 
+protected:
 #if defined(SHOW_WATERMARK)
     OpenGLWatermark watermark;
 #endif
 
-protected:
     libvlc_media_player_t *m_mp = nullptr;
 };
 

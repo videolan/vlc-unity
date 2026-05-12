@@ -482,6 +482,7 @@ static bool importMemoryFd(
         return false;
     }
 
+    clearGlErrors();
     glImportMemoryFdEXT(mem_obj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, import_fd);
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
@@ -494,6 +495,7 @@ static bool importMemoryFd(
         return false;
     }
 
+    clearGlErrors();
     glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, mem_obj, 0);
     err = glGetError();
     if (err != GL_NO_ERROR) {
@@ -667,7 +669,14 @@ bool RenderAPI_OpenGLGLX::dmabuf_setup(void** opaque,
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(*opaque);
     that->m_dmabuf_width = 0;
     that->m_dmabuf_height = 0;
+#if defined(SHOW_WATERMARK)
+    that->makeCurrent(true);
+    bool ok = that->watermark.setup();
+    that->makeCurrent(false);
+    return ok;
+#else
     return true;
+#endif
 }
 
 void RenderAPI_OpenGLGLX::dmabuf_cleanup(void* opaque)
@@ -684,6 +693,9 @@ void RenderAPI_OpenGLGLX::dmabuf_cleanup(void* opaque)
             that->glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
         }
     }
+#if defined(SHOW_WATERMARK)
+    that->watermark.cleanup();
+#endif
     that->makeCurrent(false);
 }
 
@@ -756,6 +768,13 @@ void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
 {
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
     std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
+
+#if defined(SHOW_WATERMARK)
+    if (that->m_dmabuf_width > 0 && that->m_dmabuf_height > 0) {
+        that->watermark.draw(that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo,
+                             that->m_dmabuf_width, that->m_dmabuf_height);
+    }
+#endif
 
     auto& rendered = that->m_dmabuf_buffers[that->m_idx_render];
     if (rendered.fence) {
