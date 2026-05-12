@@ -233,7 +233,7 @@ unity-android-armv8-trial-static:
         - sed -i "s|^prefix=.*|prefix=$(realpath ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32)|" ./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32/lib/pkgconfig/libvlc.pc
         - PKG_CONFIG_PATH=./vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32/lib/pkgconfig meson setup build_${PLATFORM} --cross-file=cross/${CROSSFILE} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${PLATFORM}
-        - mv build_${PLATFORM}/PluginSource/libVLCUnityPlugin-1.dll vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
+        - mv build_${PLATFORM}/PluginSource/libVLCUnityPlugin.dll vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
     artifacts:
         paths:
             - vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
@@ -412,7 +412,6 @@ libvlc-macos-aarch64:
         - cd ../..
         - PKG_CONFIG_PATH=./macos-${ARCH}/macos-install/lib/pkgconfig meson setup build_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_${ARCH}
-        - mv "build_${ARCH}/PluginSource/libVLCUnityPlugin.1.dylib" "build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib"
         - install_name_tool -add_rpath @loader_path/ build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib
     artifacts:
         paths:
@@ -580,7 +579,6 @@ libvlc-linux-x86_64:
         - cd ../..
         - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_linux_${ARCH}
-        - if [ -f "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so.1.0.0" ]; then mv "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so.1.0.0" "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"; fi
         - strip --strip-unneeded "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"
     artifacts:
         paths:
