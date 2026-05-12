@@ -36,28 +36,28 @@ void debugmsg( const char* fmt, ...)
 void windows_print(const char* fmt, va_list args)
 {
     int msgsize = _vsnprintf(NULL, 0, fmt, args);
+    if (msgsize < 0)
+        return;
     char* buff = (char*)malloc(msgsize + 1);
+    if (buff == NULL)
+        return;
     _vsnprintf(buff, msgsize + 1, fmt, args);
     buff[msgsize] = '\0';
 
-    int len = MultiByteToWideChar (CP_UTF8, 0, buff, -1, NULL, 0);
+    int len = MultiByteToWideChar(CP_UTF8, 0, buff, -1, NULL, 0);
     if (len == 0)
+    {
+        free(buff);
         return;
+    }
 
-    wchar_t *out = (wchar_t *)malloc (len * sizeof (wchar_t));
-
+    wchar_t *out = (wchar_t *)calloc(len, sizeof(wchar_t));
     if (out)
     {
-        MultiByteToWideChar (CP_UTF8, 0, buff, -1, out, len);
-    }
-    if(out != NULL)
-    {
+        MultiByteToWideChar(CP_UTF8, 0, buff, -1, out, len);
         OutputDebugStringW(out);
         free(out);
     }
-    if(buff != NULL)
-    {
-        free(buff);
-    }
+    free(buff);
 }
 #endif
