@@ -617,8 +617,14 @@ bool RenderAPI_OpenGLLinuxEGL::importDMABufToUnityContext(DMABufBuffer& buf, uns
 
 void RenderAPI_OpenGLLinuxEGL::releaseResources()
 {
-    if (m_context != EGL_NO_CONTEXT) {
-        makeCurrent(true);
+    const bool have_context = m_context != EGL_NO_CONTEXT;
+    const bool context_current = have_context && makeCurrent(true);
+
+    if (have_context && !context_current) {
+        DEBUG("[EGL-Linux] releaseResources: skipping explicit GL cleanup because makeCurrent failed");
+    }
+
+    if (context_current) {
         for (auto& buf : m_dmabuf_buffers) {
             if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
             if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
@@ -631,7 +637,10 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
     }
 
     for (auto& buf : m_dmabuf_buffers) {
-        if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
+        buf.fence = nullptr;
+        buf.vlc_fbo = 0;
+        buf.vlc_tex = 0;
+        buf.vlc_mem_obj = 0;
         buf.unity_tex = 0;
         buf.unity_mem_obj = 0;
         if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
@@ -688,7 +697,16 @@ void RenderAPI_OpenGLLinuxEGL::dmabuf_cleanup(void* opaque)
     DEBUG("[EGL-Linux] DMA-BUF output callback cleanup");
     auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(opaque);
 
-    that->makeCurrent(true);
+    if (!that->makeCurrent(true)) {
+        DEBUG("[EGL-Linux] DMA-BUF cleanup skipped because makeCurrent failed");
+        for (auto& buf : that->m_dmabuf_buffers) {
+            buf.fence = nullptr;
+            buf.vlc_fbo = 0;
+            buf.vlc_tex = 0;
+            buf.vlc_mem_obj = 0;
+        }
+        return;
+    }
     for (auto& buf : that->m_dmabuf_buffers) {
         if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
         if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
