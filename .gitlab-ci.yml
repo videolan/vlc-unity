@@ -579,10 +579,12 @@ libvlc-linux-x86_64:
         - cd ../..
         - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_linux_${ARCH}
-        - strip --strip-unneeded "build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so"
+        - rm -rf "build_linux_${ARCH}/install-root"
+        - meson install -C build_linux_${ARCH} --destdir "$(pwd)/build_linux_${ARCH}/install-root"
+        - strip --strip-unneeded "build_linux_${ARCH}/install-root/usr/local/lib/${TRIPLET}/libVLCUnityPlugin.so"
     artifacts:
         paths:
-            - build_linux_${ARCH}/PluginSource/libVLCUnityPlugin.so
+            - build_linux_${ARCH}/install-root/usr/local/lib/${TRIPLET}/libVLCUnityPlugin.so
         expire_in: 2 weeks
 
 unity-plugin-linux-x86_64:

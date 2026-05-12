@@ -54,7 +54,8 @@ cp macos-${MAC_ARCHS[1]}/macos-install/lib/libvlccore.dylib Plugins/MacOS/x86_64
 # Linux
 mkdir -p Plugins/Linux/x86_64
 
-cp build_linux_x86_64/PluginSource/libVLCUnityPlugin.so Plugins/Linux/x86_64
+LINUX_PLUGIN=build_linux_x86_64/install-root/usr/local/lib/x86_64-linux-gnu/libVLCUnityPlugin.so
+cp "$LINUX_PLUGIN" Plugins/Linux/x86_64
 # Preserve the SONAME symlinks (for example libvlc.so.12 -> libvlc.so)
 # from the libvlc install tree so the Linux loader can resolve DT_NEEDED.
 cp -a linux-x86_64/linux-install/lib/libvlc.so* Plugins/Linux/x86_64/

@@ -13,6 +13,40 @@ TRIPLET="${1:?Usage: $0 <TRIPLET> <ARCH>}"
 ARCH="${2:?Usage: $0 <TRIPLET> <ARCH>}"
 export NCPU=$(getconf _NPROCESSORS_ONLN)
 
+set_runpath_to_origin() {
+    local path="$1"
+    [ -f "$path" ] || return 0
+
+    if command -v patchelf >/dev/null 2>&1; then
+        patchelf --set-rpath '$ORIGIN' "$path"
+        return 0
+    fi
+
+    python3 - "$path" <<'PY'
+import pathlib
+import re
+import subprocess
+import sys
+
+path = pathlib.Path(sys.argv[1])
+out = subprocess.check_output(["readelf", "-d", str(path)], text=True, stderr=subprocess.DEVNULL)
+match = re.search(r"RUNPATH.*\[(.+)\]", out)
+if not match:
+    sys.exit(0)
+
+old = match.group(1).encode()
+new = b"$ORIGIN"
+if old == new:
+    sys.exit(0)
+if len(old) < len(new):
+    raise SystemExit(f"RUNPATH too short to patch in-place for {path}")
+
+data = path.read_bytes()
+data = data.replace(old, new + b"\x00" * (len(old) - len(new)), 1)
+path.write_bytes(data)
+PY
+}
+
 # Clone VLC if not already present
 if [ ! -d vlc ]; then
     git clone --depth 1 https://code.videolan.org/videolan/vlc
@@ -117,6 +151,14 @@ fi
 # Build and install
 make -j$NCPU
 make install
+
+# libtool bakes the install prefix into libvlc's RUNPATH. Replace it at build
+# time so deployed libraries resolve their sibling SONAMEs from the final
+# package location instead of the original build path.
+for f in linux-install/lib/libvlc.so*; do
+    [ -f "$f" ] || continue
+    set_runpath_to_origin "$f"
+done
 
 # Flatten only the top-level libvlc/libvlccore runtime libs and create SONAME
 # symlinks for them. Keep the lib/vlc helper libraries versioned: some VLC
