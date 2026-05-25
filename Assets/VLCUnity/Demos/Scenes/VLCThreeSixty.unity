@@ -131,6 +131,8 @@ GameObject:
   - component: {fileID: 246358334}
   - component: {fileID: 246358333}
   - component: {fileID: 246358332}
+  - component: {fileID: 246358337}
+  - component: {fileID: 246358338}
   - component: {fileID: 246358336}
   m_Layer: 0
   m_Name: Sphere
@@ -180,6 +182,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -201,9 +205,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &246358334
 MeshFilter:
@@ -240,6 +246,46 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 699ff01a0b194194c91de64b70b01b1d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mediaPlayerScreen: {fileID: 798205355}
+  mediaPlayerSphere: {fileID: 246358337}
+  sphereTransform: {fileID: 246358335}
+--- !u!114 &246358337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246358331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ef65a94acfb75647aa43c726385570b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCMediaPlayer
+  mediaPath: https://streams.videolan.org/streams/360/eagle_360.mp4
+  playOnAwake: 1
+  useUnityAudio: 0
+  targetAudioSource: {fileID: 0}
+  flipTextureX: 0
+  flipTextureY: 0
+  logToConsole: 0
+  libVLCArguments: []
+  OnPlayerStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &246358338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246358331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb45f004249d5cb4894ed7c9343a4fb5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCDisplayMesh
+  mediaPlayer: {fileID: 246358337}
+  textureProperty: _MainTex
 --- !u!1 &363825485
 GameObject:
   m_ObjectHideFlags: 0
@@ -265,14 +311,14 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 363825485}
   m_Enabled: 1
-  serializedVersion: 11
+  serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize: 10
+  m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
     m_Type: 2
     m_Resolution: -1
@@ -436,7 +482,7 @@ LightingSettings:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Settings.lighting
-  serializedVersion: 9
+  serializedVersion: 10
   m_EnableBakedLightmaps: 1
   m_EnableRealtimeLightmaps: 0
   m_RealtimeEnvironmentLighting: 1
@@ -451,6 +497,12 @@ LightingSettings:
   m_BakeResolution: 40
   m_Padding: 2
   m_LightmapCompression: 3
+  m_LightmapPackingMode: 1
+  m_LightmapPackingMethod: 0
+  m_XAtlasPackingAttempts: 16384
+  m_XAtlasBruteForce: 0
+  m_XAtlasBlockAlign: 0
+  m_XAtlasRepackUnderutilizedLightmaps: 1
   m_AO: 0
   m_AOMaxDistance: 1
   m_CompAOExponent: 1
@@ -501,7 +553,8 @@ GameObject:
   - component: {fileID: 798205351}
   - component: {fileID: 798205352}
   - component: {fileID: 798205353}
-  - component: {fileID: 798205354}
+  - component: {fileID: 798205355}
+  - component: {fileID: 798205356}
   m_Layer: 0
   m_Name: Screen
   m_TagString: Untagged
@@ -552,6 +605,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -573,11 +628,13 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &798205354
+--- !u!114 &798205355
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -586,9 +643,34 @@ MonoBehaviour:
   m_GameObject: {fileID: 798205350}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 699ff01a0b194194c91de64b70b01b1d, type: 3}
+  m_Script: {fileID: 11500000, guid: 9ef65a94acfb75647aa43c726385570b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCMediaPlayer
+  mediaPath: https://streams.videolan.org/streams/360/eagle_360.mp4
+  playOnAwake: 1
+  useUnityAudio: 0
+  targetAudioSource: {fileID: 0}
+  flipTextureX: 0
+  flipTextureY: 0
+  logToConsole: 0
+  libVLCArguments: []
+  OnPlayerStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &798205356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 798205350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb45f004249d5cb4894ed7c9343a4fb5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCDisplayMesh
+  mediaPlayer: {fileID: 798205355}
+  textureProperty: _MainTex
 --- !u!1 &1092884455
 GameObject:
   m_ObjectHideFlags: 0
@@ -649,6 +731,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -670,9 +754,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!4 &1092884458
 Transform:
