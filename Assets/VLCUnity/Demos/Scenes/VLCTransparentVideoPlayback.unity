@@ -13,7 +13,7 @@ OcclusionCullingSettings:
 --- !u!104 &2
 RenderSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 9
+  serializedVersion: 10
   m_Fog: 0
   m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   m_FogMode: 3
@@ -42,8 +42,8 @@ RenderSettings:
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 12
-  m_GIWorkflowMode: 1
+  serializedVersion: 13
+  m_BakeOnSceneLoad: 0
   m_GISettings:
     serializedVersion: 2
     m_BounceScale: 1
@@ -66,9 +66,6 @@ LightmapSettings:
     m_LightmapParameters: {fileID: 0}
     m_LightmapsBakeMode: 1
     m_TextureCompression: 1
-    m_FinalGather: 0
-    m_FinalGatherFiltering: 1
-    m_FinalGatherRayCount: 256
     m_ReflectionCompression: 2
     m_MixedBakeMode: 2
     m_BakeBackend: 0
@@ -410,6 +407,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 4294967295
   m_RendererPriority: 0
   m_Materials:
@@ -431,9 +433,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &555078209
 MeshFilter:
@@ -468,15 +472,14 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1025854279}
   m_Enabled: 1
-  serializedVersion: 10
+  serializedVersion: 12
   m_Type: 1
-  m_Shape: 0
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize: 10
+  m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
     m_Type: 2
     m_Resolution: -1
@@ -520,8 +523,12 @@ Light:
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
+  m_ForceVisible: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+  m_LightUnit: 1
+  m_LuxAtDistance: 1
+  m_EnableSpotReflector: 1
 --- !u!4 &1025854281
 Transform:
   m_ObjectHideFlags: 0
@@ -654,7 +661,6 @@ CharacterController:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -748,8 +754,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1326364073}
-        m_TargetAssemblyTypeName: VLCTransparentVideoPlayback, Assembly-CSharp
+      - m_Target: {fileID: 1283545440}
+        m_TargetAssemblyTypeName: VLCUIControls, VLCUnity
         m_MethodName: SeekBackward
         m_Mode: 1
         m_Arguments:
@@ -889,6 +895,7 @@ GameObject:
   - component: {fileID: 1283545438}
   - component: {fileID: 1283545437}
   - component: {fileID: 1283545436}
+  - component: {fileID: 1283545440}
   m_Layer: 0
   m_Name: Canvas
   m_TagString: Untagged
@@ -982,6 +989,20 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1283545440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283545435}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b108edeb037ca8e40b14e47cf6004c2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: VLCUnity::VLCUIControls
+  mediaPlayer: {fileID: 1326364073}
+  seekTimeDeltaMs: 5000
 --- !u!1 &1326364068
 GameObject:
   m_ObjectHideFlags: 0
@@ -995,6 +1016,7 @@ GameObject:
   - component: {fileID: 1326364070}
   - component: {fileID: 1326364069}
   - component: {fileID: 1326364073}
+  - component: {fileID: 1326364074}
   m_Layer: 0
   m_Name: VLC Screen 1
   m_TagString: Untagged
@@ -1019,6 +1041,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 4294967295
   m_RendererPriority: 0
   m_Materials:
@@ -1040,9 +1067,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!64 &1326364070
 MeshCollider:
@@ -1098,9 +1127,34 @@ MonoBehaviour:
   m_GameObject: {fileID: 1326364068}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bc4d2978e4c05844796770c995e729d7, type: 3}
+  m_Script: {fileID: 11500000, guid: 9ef65a94acfb75647aa43c726385570b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCMediaPlayer
+  mediaPath: https://github.com/mozilla/nestegg/raw/refs/heads/master/test/media/dancer1.webm
+  playOnAwake: 1
+  useUnityAudio: 0
+  targetAudioSource: {fileID: 0}
+  flipTextureX: 1
+  flipTextureY: 1
+  logToConsole: 0
+  libVLCArguments: []
+  OnPlayerStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &1326364074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1326364068}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb45f004249d5cb4894ed7c9343a4fb5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCDisplayMesh
+  mediaPlayer: {fileID: 1326364073}
+  textureProperty: _MainTex
 --- !u!1 &1555529393
 GameObject:
   m_ObjectHideFlags: 0
@@ -1151,6 +1205,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 4294967295
   m_RendererPriority: 0
   m_Materials:
@@ -1172,9 +1231,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1555529396
 MeshFilter:
@@ -1203,7 +1264,7 @@ GameObject:
   m_IsActive: 1
 --- !u!95 &1604843968
 Animator:
-  serializedVersion: 5
+  serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1217,6 +1278,7 @@ Animator:
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
@@ -1322,8 +1384,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1326364073}
-        m_TargetAssemblyTypeName: VLCTransparentVideoPlayback, Assembly-CSharp
+      - m_Target: {fileID: 1283545440}
+        m_TargetAssemblyTypeName: VLCUIControls, VLCUnity
         m_MethodName: SeekForward
         m_Mode: 1
         m_Arguments:
@@ -1456,8 +1518,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1326364073}
-        m_TargetAssemblyTypeName: VLCTransparentVideoPlayback, Assembly-CSharp
-        m_MethodName: PlayPause
+        m_TargetAssemblyTypeName: LibVLCSharp.VLCMediaPlayer, VLCUnity
+        m_MethodName: TogglePlayPause
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1657,7 +1719,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1326364073}
-        m_TargetAssemblyTypeName: VLCTransparentVideoPlayback, Assembly-CSharp
+        m_TargetAssemblyTypeName: LibVLCSharp.VLCMediaPlayer, VLCUnity
         m_MethodName: Stop
         m_Mode: 1
         m_Arguments:
