@@ -1,6 +1,7 @@
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -10,11 +11,9 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
     const string lua = "lua";
     const string hrtfs = "hrtfs";
     const string locale = "locale";
-    const string pluginsDat = "plugins.dat";
     const string VLCUnity = "VLCUnity";
     const string x64 = "x86_64";
     const string Plugins = "Plugins";
-    const string plugins = "plugins";
     const string Data = "_Data";
     const string standaloneWindows = "StandaloneWindows64";
     const string standaloneLinux = "StandaloneLinux64";
@@ -40,13 +39,21 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         var buildOutput = Path.GetDirectoryName(report.summary.outputPath);
         var libvlcBuildOutput = Path.Combine(buildOutput, $"{Application.productName}{Data}", Plugins, x64);
         var sourceLibvlcLocation = Path.Combine(Path.GetFullPath(Application.dataPath), VLCUnity, Plugins, Windows, x64);
-        var sourcePluginsLibvlcLocation = Path.Combine(sourceLibvlcLocation, plugins);
 
         CopyFolder(Path.Combine(sourceLibvlcLocation, lua), Path.Combine(libvlcBuildOutput, lua));
         CopyFolder(Path.Combine(sourceLibvlcLocation, hrtfs), Path.Combine(libvlcBuildOutput, hrtfs));
         CopyFolder(Path.Combine(sourceLibvlcLocation, locale), Path.Combine(libvlcBuildOutput, locale));
 
-        CopyFile(Path.Combine(sourcePluginsLibvlcLocation, pluginsDat), Path.Combine(libvlcBuildOutput, pluginsDat));
+        var cacheGenSource = Path.Combine(sourceLibvlcLocation, "vlc-cache-gen.exe");
+        if (!File.Exists(cacheGenSource))
+        {
+            UnityEngine.Debug.LogWarning("vlc-cache-gen.exe not found, skipping plugin cache generation.");
+            return;
+        }
+        var cacheGenExe = Path.Combine(libvlcBuildOutput, "vlc-cache-gen.exe");
+        CopyFile(cacheGenSource, cacheGenExe);
+        RunCacheGen(cacheGenExe, libvlcBuildOutput);
+        File.Delete(cacheGenExe);
     }
 
     void PostprocessLinux(BuildReport report)
@@ -107,6 +114,34 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         if(File.Exists(sourceFile))
         {
             File.Copy(sourceFile, destFile, overwrite);
+        }
+    }
+
+    static void RunCacheGen(string exePath, string pluginsPath)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = $"\"{pluginsPath}\"",
+                WorkingDirectory = pluginsPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var process = Process.Start(psi);
+            process.WaitForExit();
+            if (process.ExitCode != 0)
+            {
+                var stderr = process.StandardError.ReadToEnd();
+                UnityEngine.Debug.LogWarning($"vlc-cache-gen exited with code {process.ExitCode}: {stderr}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            UnityEngine.Debug.LogWarning($"Failed to run vlc-cache-gen: {e.Message}");
         }
     }
 }
