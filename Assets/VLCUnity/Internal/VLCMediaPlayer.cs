@@ -1,6 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LibVLCSharp
@@ -76,9 +78,12 @@ namespace LibVLCSharp
             }
 
             CreateMediaPlayer();
+        }
 
+        private async void Start()
+        {
             if (playOnAwake)
-                Open(mediaPath);
+                await OpenAsync(mediaPath);
         }
 
         private void Update()
@@ -131,6 +136,29 @@ namespace LibVLCSharp
 
             var trimmedPath = mediaPath.Trim(new char[] { '"' }); // Windows likes to copy paths with quotes but Uri does not like to open them
             MediaPlayer.Media = new Media(new Uri(trimmedPath));
+            Play();
+        }
+
+        public async Task OpenAsync(string path = null)
+        {
+            if (!string.IsNullOrEmpty(path))
+                mediaPath = path;
+
+            Log($"VLCMediaPlayer Opening: {mediaPath}");
+
+            var currentMedia = MediaPlayer.Media;
+            currentMedia?.Dispose();
+
+            var trimmedPath = mediaPath.Trim(new char[] { '"' });
+            var uri = new Uri(trimmedPath);
+            var media = new Media(uri);
+
+            var parseOptions = uri.IsFile ? MediaParseOptions.ParseLocal : MediaParseOptions.ParseNetwork;
+
+            await media.ParseAsync(LibVLC, parseOptions);
+
+            MediaPlayer.Media = media.SubItems.FirstOrDefault() ?? media;
+
             Play();
         }
 

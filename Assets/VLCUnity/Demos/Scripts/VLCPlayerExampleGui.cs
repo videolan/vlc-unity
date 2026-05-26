@@ -78,7 +78,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
         });
         tracksButton.onClick.AddListener(() => { ToggleElement(tracksButtonsGroup); SetupTrackButtons(); });
         volumeButton.onClick.AddListener(() => { ToggleElement(volumeBar.gameObject); });
-        openButton.onClick.AddListener(() => { vlcPlayer.Open(pathInputField.text); });
+        openButton.onClick.AddListener(async () => { await vlcPlayer.OpenAsync(pathInputField.text); });
 
         UpdatePlayPauseButton(vlcPlayer.playOnAwake);
 
