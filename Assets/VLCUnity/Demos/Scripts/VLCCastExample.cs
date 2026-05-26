@@ -5,74 +5,58 @@ using System.Collections;
 using LibVLCSharp;
 using UnityEngine.UI;
 
+
 public class VLCCastExample : MonoBehaviour
 {
-    public static LibVLC libVLC;
+    [SerializeField] private VLCMediaPlayer mediaPlayer;
     public Text text;
-    private MediaPlayer mediaPlayer;
     private RendererItem rendererItem;
     private RendererDiscoverer rendererDiscoverer;
 
-    public string path = "https://streams.videolan.org//streams/mp4/Mr_MrsSmith-h264_aac.mp4"; //Can be a web path or a local path
-
-    void Awake()
+    void Start()
     {
-        if (libVLC == null)
-            CreateLibVLC();
+        if (VLCMediaPlayer.LibVLC != null)
+        {
+            VLCMediaPlayer.LibVLC.SetDialogHandlers(
+                (dialog, title, text, username, store, token) => Task.CompletedTask,
+                (dialog, title, text, type, cancelText, actionText, secondActionText, token) =>
+                {
+                    ScreenLog("QuestionCallback called");
+                    var result = dialog.PostAction(1);
+                    ScreenLog("QuestionCallback PostAction " + result.ToString());
+                    return Task.CompletedTask;
+                },
+                (dialog, title, text, indeterminate, position, cancelText, token) => Task.CompletedTask,
+                (dialog, position, text) => Task.CompletedTask);
+        }
 
-        CreateMediaPlayer();
+        StartCoroutine(WaitAndDiscover());
     }
 
-    void OnDestroy()
+    void OnDisable()
     {
-        DestroyMediaPlayer();
+        rendererDiscoverer?.Dispose();
+        rendererDiscoverer = null;
+        rendererItem = null;
     }
 
     public void Open()
     {
-        if ((mediaPlayer != null) && (rendererItem != null))
+        if (mediaPlayer != null && mediaPlayer.MediaPlayer != null && rendererItem != null)
         {
             ScreenLog("remote media player created");
             // set the previously discovered renderer item (chromecast) on the mediaplayer
-            // if you set it to null, it will start to render normally (i.e. locally) again
-            if (mediaPlayer.SetRenderer(rendererItem))
+            if (mediaPlayer.MediaPlayer.SetRenderer(rendererItem))
             {
-                mediaPlayer.Media = new Media(new Uri(path));
+                mediaPlayer.MediaPlayer.Media = new Media(new Uri(mediaPlayer.mediaPath));
             }
         }
     }
 
     public void Play()
     {
-        bool result = mediaPlayer.Play();
-        ScreenLog("Play: " + result);
-    }
-
-    void CreateLibVLC()
-    {
-        if (libVLC != null)
-        {
-            libVLC.Dispose();
-            libVLC = null;
-        }
-
-        Core.Initialize(Application.dataPath); //Load VLC dlls
-        libVLC = new LibVLC(enableDebugLogs: true); //You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
-        libVLC.Log += (s, e) => ScreenLog(e.FormattedLog);
-        libVLC.SetDialogHandlers(
-            (dialog, title, text, username, store, token) => Task.CompletedTask,
-            (dialog, title, text, type, cancelText, actionText, secondActionText, token) =>
-            {
-                ScreenLog("QuestionCallback called");
-                var result = dialog.PostAction(1);
-                ScreenLog("QuestionCallback PostAction " + result.ToString());
-                return Task.CompletedTask;
-            },
-            (dialog, title, text, indeterminate, position, cancelText, token) => Task.CompletedTask,
-            (dialog, position, text) => Task.CompletedTask);
-
-        ScreenLog("Changeset: " + libVLC.Changeset);
-        ScreenLog("LibVLCSharp version: " + typeof(LibVLC).Assembly.GetName().Version);
+        mediaPlayer?.Play();
+        ScreenLog("Play called.");
     }
 
     void RendererDiscoverer_ItemAdded(object sender, RendererDiscovererItemAddedEventArgs e)
@@ -85,10 +69,10 @@ public class VLCCastExample : MonoBehaviour
     IEnumerator WaitAndDiscover()
     {
         yield return new WaitForSeconds(5.0f);
-        if (mediaPlayer != null)
+        if (mediaPlayer != null && mediaPlayer.MediaPlayer != null)
         {
             ScreenLog("attempt to create RendererDiscoverer ...");
-            rendererDiscoverer = new RendererDiscoverer(libVLC);
+            rendererDiscoverer = new RendererDiscoverer(VLCMediaPlayer.LibVLC);
             if (rendererDiscoverer != null)
             {
                 ScreenLog("success.");
@@ -104,27 +88,6 @@ public class VLCCastExample : MonoBehaviour
             yield return new WaitForSeconds(5.0f);
             Play();
         }
-    }
-
-    void CreateMediaPlayer()
-    {
-        if (mediaPlayer != null)
-        {
-            DestroyMediaPlayer();
-        }
-        mediaPlayer = new MediaPlayer(libVLC);
-
-        StartCoroutine(WaitAndDiscover());
-    }
-
-    void DestroyMediaPlayer()
-    {
-        rendererDiscoverer?.Dispose();
-        rendererDiscoverer = null;
-        rendererItem = null;
-        mediaPlayer?.Stop();
-        mediaPlayer?.Dispose();
-        mediaPlayer = null;
     }
 
     void ScreenLog(string message)
