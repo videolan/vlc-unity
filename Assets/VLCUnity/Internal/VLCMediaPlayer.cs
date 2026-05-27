@@ -21,7 +21,7 @@ namespace LibVLCSharp
     public class VLCMediaPlayer : MonoBehaviour
     {
         public static LibVLC LibVLC { get; private set; }
-        public MediaPlayer MediaPlayer;
+        public MediaPlayer MediaPlayer { get; private set;  }
         public RenderTexture OutputTexture { get; private set; }
 
         [Tooltip("The URL or local file path to the media you want to play.")]
@@ -105,7 +105,7 @@ namespace LibVLCSharp
 
             if (_vlcTexture != null)
             {
-                if (TextureHelper.UpdateTexture(_vlcTexture, ref MediaPlayer))
+                if (TextureHelper.UpdateTexture(_vlcTexture, MediaPlayer))
                 {
                     var flip = new Vector2(flipTextureX ? -1 : 1, flipTextureY ? -1 : 1);
                     Graphics.Blit(_vlcTexture, OutputTexture, flip, Vector2.zero); // If you wanted to do post processing outside of VLC you could use a shader here.
@@ -335,7 +335,7 @@ namespace LibVLCSharp
             if (GetVideoOrientation() == VideoOrientation.BottomRight)
                 (py, px) = (px, py);
 
-            _vlcTexture = TextureHelper.CreateNativeTexture(ref MediaPlayer, linear: true);
+            _vlcTexture = TextureHelper.CreateNativeTexture(MediaPlayer, linear: true);
 
             if (_vlcTexture != null)
             {

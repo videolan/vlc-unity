@@ -35,7 +35,7 @@ namespace LibVLCSharp
         /// <param name="texture">The texture to update</param>
         /// <param name="player">The media player</param>
         /// <returns>true if frame was updated</returns>
-        public static bool UpdateTexture(Texture2D texture, ref MediaPlayer player)
+        public static bool UpdateTexture(Texture2D texture, MediaPlayer player)
         {
             if (texture == null)
                 return false;
@@ -82,7 +82,7 @@ namespace LibVLCSharp
         /// <param name="linear">true for linear color space</param>
         /// <param name="mipmap">default to false</param>
         /// <returns>texture or null / throw if fails</returns>
-        public static Texture2D CreateNativeTexture(ref MediaPlayer player, bool linear, BitDepth bitDepth = BitDepth.Bit8, bool mipmap = false)
+        public static Texture2D CreateNativeTexture(MediaPlayer player, bool linear, BitDepth bitDepth = BitDepth.Bit8, bool mipmap = false)
         {
             uint width = 0;
             uint height = 0;
