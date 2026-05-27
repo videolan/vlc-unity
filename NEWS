@@ -4,6 +4,20 @@ This document will focus on the release notes of vlc-unity itself, unless specif
 For LibVLC changes, head over to https://code.videolan.org/videolan/vlc/-/blob/master/NEWS and the git history.
 For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/NEWS.
 
+2026-3 (All platforms)
+- Linux: Initial x86_64 support with OpenGL rendering (GLX and EGL/Wayland backends, DMA-BUF texture sharing)
+- Linux: Editor and standalone build integration with automatic plugin postprocessing
+- Linux: CI pipeline for x86_64 build, plugin packaging, and release
+- Unity: Add centralized VLCMediaPlayer component with custom editor by @krish
+- Unity: Add VLCDisplayMesh and VLCDisplayUGUI helper components for automatic texture binding by @krish
+- Unity: Add OpenAsync method for proper network media parsing by @krish
+- Unity: Add event-driven architecture with OnPlayerStateChanged and OnTextureResized events by @krish
+- Unity: Add new Input System support to demo scripts by @krish
+- Unity: Input System package presence check with version defines and build-time warnings by @krish
+- Scenes: Refactor all demo scenes to use VLCMediaPlayer (eliminates ~570 lines of duplicated code) by @krish
+- Breaking: Remove VLCMinimalPlayback, VLCPlayerExample, VLCTransparentVideoPlayback, VLCYouTubePlayback scripts (use VLCMediaPlayer component instead) by @krish
+- Editor: upgrade Unity project to 6000.3.10f1
+
 2026-2 (All platforms)
 - iOS/macOS: Fix texture cache resource leaks on shutdown and frame buffer release
 - Audio: Fix race conditions and optimize VLCAudioSource callbacks
