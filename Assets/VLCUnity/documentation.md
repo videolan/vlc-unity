@@ -135,25 +135,67 @@ The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to ge
 
 Select any scene (*.unity) and press play in the Unity Editor (or make a standalone build), and the video will start playing.
 
-## Getting started with the minimal sample script 
+## VLCMediaPlayer Component
 
-The following information is to give you more context regarding what happens in the Demo scenes provided in the Asset.
-Understanding the scripts will allow you to know where to look when customizing your own player.
+The plugin provides a centralized `VLCMediaPlayer` component for easy integration:
 
-Regarding the basic integration code that you need, you will find it in MinimalPlayback.cs.
+**Quick Setup:**
+1. Add `VLCMediaPlayer` component to any GameObject
+2. Configure media path, audio, and texture options in the Inspector
+3. Use `VLCDisplayMesh` or `VLCDisplayUGUI` to automatically apply video to renderers or UI
 
-First, you need to load the native libraries (libvlc):
+**Key Features:**
+- Drag-and-drop setup with custom Inspector
+- Event-driven architecture (`OnPlayerStateChanged`, `OnTextureResized`)
+- Async media loading for network streams (`OpenAsync`)
+- Built-in controls for volume, seeking, track selection, and subtitles
+- Automatic texture flipping for Android
+- Multiple players per scene with shared LibVLC instance
+
+**Helper Components:**
+- `VLCDisplayMesh` - Applies video texture to any 3D mesh/renderer
+- `VLCDisplayUGUI` - Applies video texture to UI RawImage elements
+
+**Example Usage:**
+```csharp
+[SerializeField] private VLCMediaPlayer mediaPlayer;
+
+void Start()
+{
+    mediaPlayer.OnPlayerStateChanged.AddListener((state) => {
+        Debug.Log($"Player state: {state}");
+    });
+    
+    mediaPlayer.OnTextureResized += (texture) => {
+        Debug.Log($"Video size: {texture.width}x{texture.height}");
+    };
+}
+
+public void PlayVideo(string url)
+{
+    mediaPlayer.OpenAsync(url);
+}
+```
+
+## Advanced: Manual Integration
+
+The following information provides context on how the VLCMediaPlayer component works internally.
+For most use cases, the VLCMediaPlayer component is all you need. See the section above.
+
+The VLCMediaPlayer component handles all of this automatically:
+
+1. Loading native libraries (libvlc):
 ```
 Core.Initialize(UnityEngine.Application.dataPath);
 ```
 
-You can then create LibVLCSharp objects like so:
+2. Creating LibVLCSharp objects:
 ```
 LibVLC = new LibVLC();
 MediaPlayer = new MediaPlayer(LibVLC);
 ```
 
-The frame updating is done in a Unity coroutine or Update() function:
+3. Frame updating in Update():
 ```
 IntPtr texptr = MediaPlayer.GetFrame(width, height, out bool updated);
 if (updated)
@@ -162,15 +204,13 @@ if (updated)
 }
 ```
 
-See Update() function for more details.
-
-Once that is all setup, you can create a new Media and start playback like so
+4. Starting playback:
 ```
 MediaPlayer.Play(new Media(new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")));
 ```
 
-To get up and running easily and quickly, I recommend you to load the Assets/VLCUnity/Demos/Scenes/MinimalPlayback.unity scene and press "Play". 
-The few lines of setup code I mentioned above are located in Assets/VLCUnity/Demos/Scripts/MinimalPlayback.cs.
+To get up and running easily and quickly, load the Assets/VLCUnity/Demos/Scenes/VLCMinimalPlayback.unity scene and press "Play".
+The scene uses the VLCMediaPlayer component with all configuration visible in the Inspector.
 
 ## Scenes
 
