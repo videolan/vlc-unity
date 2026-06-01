@@ -70,6 +70,30 @@ It is possible to test things via the Editor on macOS beforehand though, on both
 
 > For Apple validation errors regarding OS Minimal version of the plugin when pushing to the AppStore, see this issue for a solution: https://code.videolan.org/videolan/vlc-unity/-/issues/227
 
+### iOS plugin coexistence
+
+The VLC iOS plugin registers its rendering callbacks from an Objective-C `+load` method in `Assets/VLCUnity/Plugins/iOS/LoadPlugin.mm`. It intentionally does **not** use the `IMPL_APP_CONTROLLER_SUBCLASS` macro, so it never competes for the global `AppControllerClassName` symbol and coexists with other plugins that do subclass `UnityAppController`. See Unity's [Initialization paths for native iOS plug-ins](https://docs.unity3d.com/6000.5/Documentation/Manual/ios-native-plugin-initialization.html) for background on why only one `IMPL_APP_CONTROLLER_SUBCLASS` can win.
+
+If you still see an `EXC_BAD_ACCESS` crash inside `libvlc_unity_media_player_new` at startup, it means our `+load` never ran and the rendering plugin is unregistered. Most often this is caused by `LoadPlugin.mm` being removed from the Xcode project's **Compile Sources** for the `UnityFramework` target. Re-add it (or re-import the VLC Unity package) and rebuild.
+
+As a last resort, if your project also embeds a custom `UnityAppController` subclass that you cannot modify, add the registration manually from inside that subclass:
+
+```objc
+#include "Unity/IUnityGraphics.h"
+
+typedef void (*UnityPluginLoadFunc)(IUnityInterfaces* unityInterfaces);
+typedef void (*UnityPluginUnloadFunc)();
+extern "C" void UnityRegisterRenderingPluginV5(UnityPluginLoadFunc loadPlugin,
+                                               UnityPluginUnloadFunc unloadPlugin);
+extern "C" void VLCUnity_UnityPluginLoad(IUnityInterfaces* unityInterfaces);
+extern "C" void VLCUnity_UnityPluginUnload();
+
+- (void)shouldAttachRenderDelegate
+{
+    UnityRegisterRenderingPluginV5(VLCUnity_UnityPluginLoad, VLCUnity_UnityPluginUnload);
+}
+```
+
 ## macOS
 
 Both Apple Silicon (ARM64) and Intel Macs builds are supported, in Editor and through XCode.

@@ -1,4 +1,4 @@
-#import "UnityAppController.h"
+#import <UIKit/UIKit.h>
 #include "Unity/IUnityGraphics.h"
 
 typedef void (*UnityPluginLoadFunc)(IUnityInterfaces* unityInterfaces);
@@ -15,21 +15,21 @@ static void debugmsg( const char* fmt, ...);
 void windows_print(const char* fmt, va_list args);
 #endif
 
-@interface MyAppController : UnityAppController
-{
-}
-- (void)shouldAttachRenderDelegate;
+@interface VLCUnityPluginLoader : NSObject
 @end
-@implementation MyAppController
-- (void)shouldAttachRenderDelegate
+@implementation VLCUnityPluginLoader
++ (void)load
 {
-    // unlike desktops where plugin dynamic library is automatically loaded and registered
-    // we need to do that manually on iOS
-    UnityRegisterRenderingPluginV5(VLCUnity_UnityPluginLoad, VLCUnity_UnityPluginUnload);
+    [[NSNotificationCenter defaultCenter]
+        addObserverForName:UIApplicationDidFinishLaunchingNotification
+                    object:nil
+                     queue:nil
+                usingBlock:^(NSNotification *note) {
+        UnityRegisterRenderingPluginV5(VLCUnity_UnityPluginLoad,
+                                       VLCUnity_UnityPluginUnload);
+    }];
 }
-
 @end
-IMPL_APP_CONTROLLER_SUBCLASS(MyAppController);
 
 extern "C"
 {
