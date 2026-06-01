@@ -364,22 +364,6 @@ namespace Videolabs.VLCUnity.Editor
 
     }
 
-    static class PluginErrorCleaner
-    {
-        internal static void ClearPluginErrors()
-        {
-            try
-            {
-                var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor");
-                var clearMethod = logEntries?.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                clearMethod?.Invoke(null, null);
-            }
-            catch
-            {
-            }
-        }
-    }
-
     class MacOSPluginPostprocessor : AssetPostprocessor
     {
         private const string MACOS_PATH = "VLCUnity/Plugins/MacOS";
@@ -473,8 +457,6 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
-            // the macOS editor is wrongly showing errors about duplicate architecture libvlc binaries being both Editor-compatible. Its confused, builds just fine and clears errors automatically after. We clear these errors immediately as to not confuse the user
-            PluginErrorCleaner.ClearPluginErrors();
         }
     }
 
@@ -526,8 +508,6 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
-            // Clear false positive plugin errors about Windows plugin conflicts
-            PluginErrorCleaner.ClearPluginErrors();
         }
     }
 
@@ -721,8 +701,6 @@ namespace Videolabs.VLCUnity.Editor
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
-            // Clear false positive plugin errors about Windows plugin conflicts
-            PluginErrorCleaner.ClearPluginErrors();
         }
 
     }
