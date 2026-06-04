@@ -49,7 +49,25 @@ namespace LibVLCSharp
         [Tooltip("Invoked whenever the playback state changes.")]
         public VLCPlayerEvent OnPlayerStateChanged = new();
 
+        public event Action<float> OnBuffering;
+        public event Action<float> OnPreloadBuffering;
+
         public event Action<RenderTexture> OnTextureResized;
+
+        public event Action<string> OnPreloadPrepared;
+        public event Action<string> OnPreloadFailed;
+
+        public enum PreloadState { None, Preparing, Prepared }
+        public PreloadState CurrentPreloadState { get; private set; }
+        public string PreloadedMediaPath { get; private set; }
+
+        private string[] _preloadedOptions = Array.Empty<string>();
+
+        private bool _isBackgroundPlayerReady;
+        private bool _isBackgroundBufferFull;
+
+        private MediaPlayer _backgroundNativePlayer;
+        private int _cachedVolume = 100;
 
         private Texture2D _vlcTexture = null;
         private VLCAudioSource _vlcAudioSource;
@@ -114,6 +132,8 @@ namespace LibVLCSharp
 
         private void OnDestroy()
         {
+            CancelPreload();
+
             if (LibVLC != null)
                 LibVLC.Log -= OnLibVLCLog;
 
@@ -123,42 +143,124 @@ namespace LibVLCSharp
         #endregion
 
         #region vlc
-        public void Open(string path = null)
+        public void Open(string path = null, params string[] options)
         {
-            if (!string.IsNullOrEmpty(path))
-                mediaPath = path;
+            PrepareForNewMedia(path);
 
-            Log($"VLCMediaPlayer Opening: {mediaPath}");
-
-            var currentMedia = MediaPlayer.Media;
-            currentMedia?.Dispose();
-
-            var trimmedPath = mediaPath.Trim(new char[] { '"' }); // Windows likes to copy paths with quotes but Uri does not like to open them
-            MediaPlayer.Media = new Media(new Uri(trimmedPath));
+            var trimmedPath = mediaPath.Trim(new char[] { '"' });
+            MediaPlayer.Media = new Media(new Uri(trimmedPath), options);
             Play();
         }
 
-        public async Task OpenAsync(string path = null)
+        public async Task OpenAsync(string path = null, params string[] options)
         {
-            if (!string.IsNullOrEmpty(path))
-                mediaPath = path;
+            PrepareForNewMedia(path);
 
-            Log($"VLCMediaPlayer Opening: {mediaPath}");
-
-            var currentMedia = MediaPlayer.Media;
-            currentMedia?.Dispose();
-
-            var trimmedPath = mediaPath.Trim(new char[] { '"' });
-            var uri = new Uri(trimmedPath);
-            var media = new Media(uri);
-
-            var parseOptions = uri.IsFile ? MediaParseOptions.ParseLocal : MediaParseOptions.ParseNetwork;
-
-            await media.ParseAsync(LibVLC, parseOptions);
+            var media = await CreateAndParseMediaAsync(mediaPath, false, options);
 
             MediaPlayer.Media = media.SubItems.FirstOrDefault() ?? media;
-
             Play();
+        }
+
+        public async Task PreloadAsync(string path, params string[] options)
+        {
+            options ??= Array.Empty<string>();
+
+            if (path == PreloadedMediaPath && options.SequenceEqual(_preloadedOptions) && CurrentPreloadState != PreloadState.None)
+            {
+                Log("Ignoring duplicate Preload call.");
+                return;
+            }
+
+            CancelPreload();
+
+            PreloadedMediaPath = path;
+            _preloadedOptions = options;
+            CurrentPreloadState = PreloadState.Preparing;
+
+            _isBackgroundPlayerReady = false;
+            _isBackgroundBufferFull = false;
+
+            var player = new MediaPlayer(LibVLC);
+            player.Playing += OnBackgroundPlayerReady;
+            player.EncounteredError += OnBackgroundPlayerError;
+            player.Buffering += OnBackgroundPlayerBuffering;
+            _backgroundNativePlayer = player;
+
+            try
+            {
+                Media media = await CreateAndParseMediaAsync(path, true, options);
+
+                if (_backgroundNativePlayer != player)
+                {
+                    media?.Dispose();
+                    return;
+                }
+
+                player.Media = media.SubItems.FirstOrDefault() ?? media;
+                player.Play();
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to preload media. Exception: {ex.Message}");
+
+                var failedPath = PreloadedMediaPath;
+                CancelPreload();
+                OnPreloadFailed?.Invoke(failedPath);
+            }
+        }
+
+        public void CancelPreload()
+        {
+            if (_backgroundNativePlayer == null)
+                return;
+
+            _backgroundNativePlayer.Stop();
+            _backgroundNativePlayer.Playing -= OnBackgroundPlayerReady;
+            _backgroundNativePlayer.EncounteredError -= OnBackgroundPlayerError;
+            _backgroundNativePlayer.Buffering -= OnBackgroundPlayerBuffering;
+            _backgroundNativePlayer.Media?.Dispose();
+            _backgroundNativePlayer.Dispose();
+            _backgroundNativePlayer = null;
+
+            PreloadedMediaPath = null;
+            _preloadedOptions = Array.Empty<string>();
+            CurrentPreloadState = PreloadState.None;
+        }
+
+        public void SwapAndPlayNext()
+        {
+            if (CurrentPreloadState == PreloadState.None || _backgroundNativePlayer == null)
+            {
+                Log("No preloaded video ready to swap.");
+                return;
+            }
+
+            Log("Swapping to preloaded video: " + PreloadedMediaPath);
+
+            DestroyMediaPlayer();
+
+            MediaPlayer = _backgroundNativePlayer;
+
+            if (_vlcAudioSource != null)
+                _vlcAudioSource.Attach(MediaPlayer);
+
+            AttachMainPlayerEvents(MediaPlayer);
+
+            _backgroundNativePlayer.Playing -= OnBackgroundPlayerReady;
+            _backgroundNativePlayer.EncounteredError -= OnBackgroundPlayerError;
+            _backgroundNativePlayer.Buffering -= OnBackgroundPlayerBuffering;
+            _backgroundNativePlayer = null;
+
+            mediaPath = PreloadedMediaPath;
+            PreloadedMediaPath = null;
+            _preloadedOptions = Array.Empty<string>();
+            CurrentPreloadState = PreloadState.None;
+
+            DestroyTextures();
+            MediaPlayer.SetVolume(_cachedVolume);
+
+            MediaPlayer.Play();
         }
 
         public void Play()
@@ -203,6 +305,7 @@ namespace LibVLCSharp
         public void SetVolume(int volume = 100)
         {
             Log("VLCMediaPlayer SetVolume " + volume);
+            _cachedVolume = volume;
             MediaPlayer.SetVolume(volume);
         }
 
@@ -286,13 +389,7 @@ namespace LibVLCSharp
             if (_vlcAudioSource != null)
                 _vlcAudioSource.Attach(MediaPlayer);
 
-            MediaPlayer.Opening += (s, e) => OnStateChange(VLCState.Opening);
-            MediaPlayer.Buffering += (s, e) => OnStateChange(VLCState.Buffering);
-            MediaPlayer.Playing += (s, e) => OnStateChange(VLCState.Playing);
-            MediaPlayer.Paused += (s, e) => OnStateChange(VLCState.Paused);
-            MediaPlayer.Stopping += (s, e) => OnStateChange(VLCState.Stopping);
-            MediaPlayer.Stopped += (s, e) => OnStateChange(VLCState.Stopped);
-            MediaPlayer.EncounteredError += (s, e) => OnStateChange(VLCState.Error);
+            AttachMainPlayerEvents(MediaPlayer);
         }
 
         private void DestroyMediaPlayer()
@@ -367,6 +464,99 @@ namespace LibVLCSharp
                 DestroyImmediate(_vlcTexture);
                 _vlcTexture = null;
             }
+        }
+
+        private void AttachMainPlayerEvents(MediaPlayer player)
+        {
+            if (player == null)
+                return;
+
+            player.Opening += (s, e) => OnStateChange(VLCState.Opening);
+
+            player.Buffering += (s, e) =>
+            {
+                OnStateChange(VLCState.Buffering);
+                DispatchToMainThread(() => OnBuffering?.Invoke(e.Cache));
+            };
+
+            player.Playing += (s, e) => OnStateChange(VLCState.Playing);
+            player.Paused += (s, e) => OnStateChange(VLCState.Paused);
+            player.Stopping += (s, e) => OnStateChange(VLCState.Stopping);
+            player.Stopped += (s, e) => OnStateChange(VLCState.Stopped);
+            player.EncounteredError += (s, e) => OnStateChange(VLCState.Error);
+        }
+
+        private void PrepareForNewMedia(string path)
+        {
+            if (!string.IsNullOrEmpty(path))
+                mediaPath = path;
+
+            Log($"VLCMediaPlayer Opening: {mediaPath}");
+
+            var currentMedia = MediaPlayer.Media;
+            currentMedia?.Dispose();
+        }
+
+        private async Task<Media> CreateAndParseMediaAsync(string path, bool startPaused, params string[] options)
+        {
+            options ??= Array.Empty<string>();
+
+            var trimmedPath = path.Trim(new char[] { '"' }); // Windows likes to copy paths with quotes but Uri does not like to open them
+            var uri = new Uri(trimmedPath);
+            var media = new Media(uri, options);
+
+            if (startPaused)
+                media.AddOption(":start-paused");
+
+            var parseOptions = uri.IsFile ? MediaParseOptions.ParseLocal : MediaParseOptions.ParseNetwork;
+            await media.ParseAsync(LibVLC, parseOptions);
+
+            return media;
+        }
+
+        private void OnBackgroundPlayerReady(object sender, EventArgs e)
+        {
+            DispatchToMainThread(() =>
+            {
+                _isBackgroundPlayerReady = true;
+
+                TryFinalizePreload();
+            });
+        }
+
+        private void TryFinalizePreload()
+        {
+            if (CurrentPreloadState == PreloadState.Preparing && _isBackgroundPlayerReady && _isBackgroundBufferFull)
+            {
+                CurrentPreloadState = PreloadState.Prepared;
+                OnPreloadPrepared?.Invoke(PreloadedMediaPath);
+            }
+        }
+
+        private void OnBackgroundPlayerError(object sender, EventArgs e)
+        {
+            DispatchToMainThread(() =>
+            {
+                var failedPath = PreloadedMediaPath;
+                CancelPreload();
+                OnPreloadFailed?.Invoke(failedPath);
+            });
+        }
+
+        private void OnBackgroundPlayerBuffering(object sender, MediaPlayerBufferingEventArgs e)
+        {
+            float cachePercent = e.Cache;
+
+            DispatchToMainThread(() =>
+            {
+                OnPreloadBuffering?.Invoke(cachePercent);
+
+                if (cachePercent >= 100f && !_isBackgroundBufferFull)
+                {
+                    _isBackgroundBufferFull = true;
+                    TryFinalizePreload();
+                }
+            });
         }
 
         //Converts MediaTrackList objects to Unity-friendly generic lists. Might not be worth the trouble.
