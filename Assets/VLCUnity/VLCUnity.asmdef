@@ -2,8 +2,7 @@
     "name": "VLCUnity",
     "rootNamespace": "Videolabs.VLCUnity",
     "references": [
-        "Unity.InputSystem",
-        "Unity.TextMeshPro"
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
