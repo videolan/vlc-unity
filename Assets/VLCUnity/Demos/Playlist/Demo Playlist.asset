@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac5086794b66eb3438079d9b2995b90b, type: 3}
+  m_Name: Demo Playlist
+  m_EditorClassIdentifier: VLCUnity::VLCPlaylistAsset
+  items:
+  - title: Video 1
+    path: https://streams.videolan.org/samples/mov/wsurf_casioex-v7.mov
+    options: []
+    overridePlaylistTransition: 0
+    transitionType: 0
+    transitionDuration: 0
+  - title: Video 2
+    path: https://streams.videolan.org/samples/V-codecs/h264/indiana_jones_4-tlr3_h640w.mov
+    options: []
+    overridePlaylistTransition: 0
+    transitionType: 0
+    transitionDuration: 0
+  loopMode: 2
+  shuffle: 0
+  defaultTransition: 5
+  defaultTransitionDuration: 2
+  transitionNoiseMap: {fileID: 0}
