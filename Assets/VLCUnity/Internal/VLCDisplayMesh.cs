@@ -5,7 +5,7 @@ namespace LibVLCSharp
     [RequireComponent(typeof(Renderer))]
     public class VLCDisplayMesh : MonoBehaviour
     {
-        [SerializeField] private VLCMediaPlayer mediaPlayer;
+        [SerializeField] private VLCVideoProviderBase mediaPlayer;
 
         [Tooltip("Use _MainTex for Built-in shaders, or whatever your shader exposes.")]
         [SerializeField] private string textureProperty = "_MainTex";

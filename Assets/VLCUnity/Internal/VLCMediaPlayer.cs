@@ -18,11 +18,11 @@ namespace LibVLCSharp
     /// LibVLC parameters: https://wiki.videolan.org/VLC_command-line_help/
     /// Report a bug: https://code.videolan.org/videolan/vlc-unity/-/issues
     /// </summary>
-    public class VLCMediaPlayer : MonoBehaviour
+    public class VLCMediaPlayer : VLCVideoProviderBase
     {
         public static LibVLC LibVLC { get; private set; }
         public MediaPlayer MediaPlayer { get; private set;  }
-        public RenderTexture OutputTexture { get; private set; }
+        public override RenderTexture OutputTexture { get; protected set; }
 
         [Tooltip("The URL or local file path to the media you want to play.")]
         public string mediaPath = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi";
@@ -52,7 +52,7 @@ namespace LibVLCSharp
         public event Action<float> OnBuffering;
         public event Action<float> OnPreloadBuffering;
 
-        public event Action<RenderTexture> OnTextureResized;
+        public override event Action<RenderTexture> OnTextureResized;
 
         public event Action<string> OnPreloadPrepared;
         public event Action<string> OnPreloadFailed;

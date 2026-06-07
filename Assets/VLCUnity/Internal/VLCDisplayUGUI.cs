@@ -6,7 +6,7 @@ namespace LibVLCSharp
     [RequireComponent(typeof(RawImage))]
     public class VLCDisplayUGUI : MonoBehaviour
     {
-        public VLCMediaPlayer mediaPlayer;
+        public VLCVideoProviderBase mediaPlayer;
 
         private RawImage _rawImage;
         private static readonly Rect UnflippedUVRect = new Rect(0, 0, 1, 1);
