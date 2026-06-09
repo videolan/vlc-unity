@@ -707,30 +707,49 @@ namespace Videolabs.VLCUnity.Editor
 
     class VLCUnityPluginPreprocessor : AssetPostprocessor
     {
+        const string WINDOWS_PATH = "VLCUnity/Plugins/Windows/x86_64";
+        const string UWP_PATH = "VLCUnity/Plugins/WSA/UWP";
+        const string MACOS_PATH = "VLCUnity/Plugins/MacOS";
+
         void OnPreprocessAsset()
         {
-            // Only process VLCUnityPlugin.dll files to workaround incorrect Unity Editor error
-            if (!assetPath.EndsWith("VLCUnityPlugin.dll"))
-                return;
-
             PluginImporter pi = assetImporter as PluginImporter;
-            if (pi == null || !pi.isNativePlugin) 
+            if (pi == null || !pi.isNativePlugin)
                 return;
 
-            if (assetPath.Contains("VLCUnity/Plugins/Windows/x86_64"))
+            if (assetPath.Contains(WINDOWS_PATH))
             {
                 pi.SetCompatibleWithAnyPlatform(false);
                 pi.SetCompatibleWithEditor(true);
                 pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
+                pi.SetPlatformData(BuildTarget.StandaloneWindows64, "CPU", "x86_64");
             }
-            else if (assetPath.Contains("VLCUnity/Plugins/WSA/UWP"))
+            else if (assetPath.Contains(UWP_PATH))
             {
                 pi.SetCompatibleWithAnyPlatform(false);
                 pi.SetCompatibleWithEditor(false);
+                pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, false);
                 pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
-                
-                var isX64 = assetPath.Contains("VLCUnity/Plugins/WSA/UWP/x86_64");
+
+                var isX64 = assetPath.Contains($"{UWP_PATH}/x86_64");
                 pi.SetPlatformData(BuildTarget.WSAPlayer, "CPU", isX64 ? "X64" : "ARM64");
+            }
+            else if (assetPath.Contains(MACOS_PATH))
+            {
+                bool isArm64Host = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+                pi.SetCompatibleWithAnyPlatform(false);
+                pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
+
+                if (assetPath.Contains($"{MACOS_PATH}/ARM64/"))
+                {
+                    pi.SetCompatibleWithEditor(isArm64Host);
+                    pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "ARM64");
+                }
+                else if (assetPath.Contains($"{MACOS_PATH}/x86_64/"))
+                {
+                    pi.SetCompatibleWithEditor(!isArm64Host);
+                    pi.SetPlatformData(BuildTarget.StandaloneOSX, "CPU", "x86_64");
+                }
             }
         }
     }
