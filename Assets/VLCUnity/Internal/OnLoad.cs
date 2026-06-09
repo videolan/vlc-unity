@@ -15,7 +15,7 @@ namespace LibVLCSharp
 #endif
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
-        static string LibVLCDirectory
+        internal static string LibVLCDirectory
         {
             get
             {

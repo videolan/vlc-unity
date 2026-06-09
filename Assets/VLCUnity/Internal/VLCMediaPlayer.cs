@@ -259,7 +259,11 @@ namespace LibVLCSharp
             LibVLC?.Dispose();
             LibVLC = null;
 
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            Core.Initialize(OnLoad.LibVLCDirectory); // Load bundled Linux libvlc.
+#else
             Core.Initialize(Application.dataPath); // Load VLC dlls
+#endif
 
             var args = new List<string>();
             if (libVLCArguments != null)
