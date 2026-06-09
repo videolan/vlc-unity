@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Authors: Alexandre Janniaux <ajanni@videolabs.io>
+set -euo pipefail
 
 VLC_INSTALL_DIR="$1"
 ARCH="$2"
