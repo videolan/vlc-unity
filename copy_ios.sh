@@ -34,7 +34,7 @@ env -i \
       "${SCRIPT_DIR}/Info.plist.template.sh" > "${IOS_DIR}/${ARCH}/vlccore.framework/Info.plist"
 
 mkdir -p "${SCRIPT_DIR}/Assets/VLCUnity/Plugins/iOS/${ARCH}/VLCUnityPlugin.framework/"
-cp "${SCRIPT_DIR}/build_${ARCH}/PluginSource/libVLCUnityPlugin.1.dylib" "${SCRIPT_DIR}/Assets/VLCUnity/Plugins/iOS/${ARCH}/VLCUnityPlugin.framework/VLCUnityPlugin"
+cp "${SCRIPT_DIR}/build_${ARCH}/PluginSource/libVLCUnityPlugin.dylib" "${SCRIPT_DIR}/Assets/VLCUnity/Plugins/iOS/${ARCH}/VLCUnityPlugin.framework/VLCUnityPlugin"
 install_name_tool -id "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin" "${SCRIPT_DIR}/Assets/VLCUnity/Plugins/iOS/${ARCH}/VLCUnityPlugin.framework/VLCUnityPlugin"
 install_name_tool -change "@rpath/libvlc.dylib" "@rpath/vlc.framework/vlc" "${SCRIPT_DIR}/Assets/VLCUnity/Plugins/iOS/${ARCH}/VLCUnityPlugin.framework/VLCUnityPlugin"
 
