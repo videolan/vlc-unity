@@ -31,6 +31,8 @@ egl_sources = files(
 )
 
 glx_sources = files(
+    'RenderAPI_OpenGLLinuxDMABuf.cpp',
+    'RenderAPI_OpenGLLinuxDMABuf.h',
     'RenderAPI_OpenGLGLX.cpp',
     'RenderAPI_OpenGLGLX.h',
 )

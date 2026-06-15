@@ -9,19 +9,17 @@
 #define EGL_PLATFORM_GBM_KHR 0x31D7
 #endif
 
-#ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
-#define GL_HANDLE_TYPE_OPAQUE_FD_EXT 0x9586
-#endif
-#ifndef GL_DEDICATED_MEMORY_OBJECT_EXT
-#define GL_DEDICATED_MEMORY_OBJECT_EXT 0x9581
-#endif
-
 namespace {
 
 bool staticMakeCurrent(void* data, bool current)
 {
     auto that = static_cast<RenderAPI_OpenGLLinuxEGL*>(data);
     return that->makeCurrent(current);
+}
+
+void* loadDesktopProc(const char* name, void*)
+{
+    return RenderAPI_OpenGLLinuxEGL::get_proc_address_desktop(nullptr, name);
 }
 
 } // namespace
@@ -350,143 +348,31 @@ bool RenderAPI_OpenGLLinuxEGL::initDRMAndGBM()
 
 bool RenderAPI_OpenGLLinuxEGL::loadMemoryObjectExtensions()
 {
-    // In core profile (GL 3.2+), glGetString(GL_EXTENSIONS) is deprecated
-    // and may return NULL. Must use glGetStringi(GL_EXTENSIONS, i) instead.
-    bool has_memory_object = false;
-    bool has_memory_object_fd = false;
-
-    const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-    if (extensions) {
-        has_memory_object = strstr(extensions, "GL_EXT_memory_object") != nullptr;
-        has_memory_object_fd = strstr(extensions, "GL_EXT_memory_object_fd") != nullptr;
-    } else {
-        // Core profile: enumerate extensions individually
-        typedef const GLubyte* (*PFNGLGETSTRINGIPROC)(GLenum, GLuint);
-        auto glGetStringi_ = reinterpret_cast<PFNGLGETSTRINGIPROC>(
-            eglGetProcAddress("glGetStringi"));
-        if (glGetStringi_) {
-            GLint num_ext = 0;
-            glGetIntegerv(GL_NUM_EXTENSIONS, &num_ext);
-            DEBUG("[EGL-Linux] enumerating %d GL extensions (core profile)", num_ext);
-            for (GLint i = 0; i < num_ext; i++) {
-                const char* ext = reinterpret_cast<const char*>(glGetStringi_(GL_EXTENSIONS, i));
-                if (ext) {
-                    if (strcmp(ext, "GL_EXT_memory_object") == 0) has_memory_object = true;
-                    if (strcmp(ext, "GL_EXT_memory_object_fd") == 0) has_memory_object_fd = true;
-                }
-            }
-        }
-    }
-
-    if (!has_memory_object || !has_memory_object_fd) {
-        DEBUG("[EGL-Linux] GL_EXT_memory_object=%d GL_EXT_memory_object_fd=%d — not available",
-              has_memory_object, has_memory_object_fd);
-        return false;
-    }
-
-    auto loadProc = [](const char* name) -> void* {
-        void* p = reinterpret_cast<void*>(eglGetProcAddress(name));
-        if (!p)
-            p = reinterpret_cast<void*>(glXGetProcAddressARB(
-                reinterpret_cast<const GLubyte*>(name)));
-        return p;
+    static const char* requiredExtensions[] = {
+        "GL_EXT_memory_object",
+        "GL_EXT_memory_object_fd",
     };
-
-    glCreateMemoryObjectsEXT = reinterpret_cast<PFNGLCREATEMEMORYOBJECTSEXTPROC>(
-        loadProc("glCreateMemoryObjectsEXT"));
-    glTexStorageMem2DEXT = reinterpret_cast<PFNGLTEXSTORAGEMEM2DEXTPROC>(
-        loadProc("glTexStorageMem2DEXT"));
-    glImportMemoryFdEXT = reinterpret_cast<PFNGLIMPORTMEMORYFDEXTPROC>(
-        loadProc("glImportMemoryFdEXT"));
-    glDeleteMemoryObjectsEXT = reinterpret_cast<PFNGLDELETEMEMORYOBJECTSEXTPROC>(
-        loadProc("glDeleteMemoryObjectsEXT"));
-    glMemoryObjectParameterivEXT = reinterpret_cast<PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_>(
-        loadProc("glMemoryObjectParameterivEXT"));
-
-    if (!glCreateMemoryObjectsEXT || !glTexStorageMem2DEXT ||
-        !glImportMemoryFdEXT || !glDeleteMemoryObjectsEXT) {
-        DEBUG("[EGL-Linux] failed to load GL_EXT_memory_object_fd functions");
+    if (!LinuxGLHasExtensions("EGL-Linux", loadDesktopProc, nullptr,
+                              requiredExtensions,
+                              sizeof(requiredExtensions) / sizeof(requiredExtensions[0]))) {
         return false;
     }
 
-    // Load raw GL functions (bypass Unity's GL wrapper for Unity-context ops)
-    raw_glGenTextures = reinterpret_cast<PFNGLGENTEXTURESPROC_RAW>(loadProc("glGenTextures"));
-    raw_glBindTexture = reinterpret_cast<PFNGLBINDTEXTUREPROC_RAW>(loadProc("glBindTexture"));
-    raw_glTexParameteri = reinterpret_cast<PFNGLTEXPARAMETERIPROC_RAW>(loadProc("glTexParameteri"));
-    raw_glDeleteTextures = reinterpret_cast<PFNGLDELETETEXTURESPROC_RAW>(loadProc("glDeleteTextures"));
-
-    if (!raw_glGenTextures || !raw_glBindTexture || !raw_glTexParameteri) {
-        DEBUG("[EGL-Linux] failed to load raw GL function pointers");
-        return false;
-    }
-
-    DEBUG("[EGL-Linux] GL_EXT_memory_object_fd extensions loaded");
-    return true;
+    return LinuxGLLoadMemoryObjectFunctions("EGL-Linux", loadDesktopProc, nullptr,
+                                            glCreateMemoryObjectsEXT,
+                                            glTexStorageMem2DEXT,
+                                            glImportMemoryFdEXT,
+                                            glDeleteMemoryObjectsEXT,
+                                            glMemoryObjectParameterivEXT,
+                                            raw_glGenTextures,
+                                            raw_glBindTexture,
+                                            raw_glTexParameteri,
+                                            raw_glDeleteTextures);
 }
 
 // ---------------------------------------------------------------------------
 // DMA-BUF buffer creation and import
 // ---------------------------------------------------------------------------
-
-typedef void (*PFN_glMemoryObjectParameterivEXT)(GLuint, GLenum, const GLint*);
-
-static bool importMemoryFd(
-    PFNGLCREATEMEMORYOBJECTSEXTPROC glCreateMemoryObjectsEXT,
-    PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT,
-    PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT,
-    PFN_glMemoryObjectParameterivEXT glMemoryObjectParameterivEXT,
-    PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT,
-    GLuint& mem_obj, GLuint tex, int dmabuf_fd, uint64_t size,
-    unsigned w, unsigned h, const char* label)
-{
-    glCreateMemoryObjectsEXT(1, &mem_obj);
-
-    if (glMemoryObjectParameterivEXT) {
-        GLint dedicated = GL_TRUE;
-        glMemoryObjectParameterivEXT(mem_obj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-    }
-
-    // dup() because glImportMemoryFdEXT takes ownership of the fd
-    int import_fd = dup(dmabuf_fd);
-    if (import_fd < 0) {
-        DEBUG("[EGL-Linux] dup(dmabuf_fd) failed for %s import", label);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        return false;
-    }
-
-    clearGlErrors();
-    glImportMemoryFdEXT(mem_obj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, import_fd);
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        DEBUG("[EGL-Linux] glImportMemoryFdEXT failed for %s, GL error=0x%x", label, err);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        close(import_fd);
-        return false;
-    }
-
-    clearGlErrors();
-    glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, mem_obj, 0);
-    err = glGetError();
-    if (err != GL_NO_ERROR) {
-        DEBUG("[EGL-Linux] glTexStorageMem2DEXT failed for %s, GL error=0x%x (size=%lu, %ux%u)",
-              label, err, (unsigned long)size, w, h);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        return false;
-    }
-
-    DEBUG("[EGL-Linux] memory object imported for %s: tex=%u mem=%u size=%lu",
-          label, tex, mem_obj, (unsigned long)size);
-    return true;
-}
 
 bool RenderAPI_OpenGLLinuxEGL::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h)
 {
@@ -523,10 +409,10 @@ bool RenderAPI_OpenGLLinuxEGL::createDMABufBuffer(DMABufBuffer& buf, unsigned w,
     glGenTextures(1, &buf.vlc_tex);
     glBindTexture(GL_TEXTURE_2D, buf.vlc_tex);
 
-    if (!importMemoryFd(glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                        glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                        buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
-                        w, h, "VLC")) {
+    if (!LinuxGLImportMemoryFd("EGL-Linux", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
+                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
+                               buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
+                               w, h, "VLC")) {
         if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
         if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
             glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
@@ -592,10 +478,10 @@ bool RenderAPI_OpenGLLinuxEGL::importDMABufToUnityContext(DMABufBuffer& buf, uns
           buf.unity_tex, glGetError());
     raw_glBindTexture(GL_TEXTURE_2D, buf.unity_tex);
 
-    if (!importMemoryFd(glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                        glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                        buf.unity_mem_obj, buf.unity_tex, buf.dmabuf_fd, buf.size,
-                        w, h, "Unity")) {
+    if (!LinuxGLImportMemoryFd("EGL-Linux", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
+                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
+                               buf.unity_mem_obj, buf.unity_tex, buf.dmabuf_fd, buf.size,
+                               w, h, "Unity")) {
         if (buf.unity_tex) { raw_glDeleteTextures(1, &buf.unity_tex); buf.unity_tex = 0; }
         buf.unity_mem_obj = 0;
         return false;
@@ -667,6 +553,16 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
     }
     if (m_gbm_device) { gbm_device_destroy(m_gbm_device); m_gbm_device = nullptr; }
     if (m_drm_fd >= 0) { close(m_drm_fd); m_drm_fd = -1; }
+
+    glCreateMemoryObjectsEXT = nullptr;
+    glTexStorageMem2DEXT = nullptr;
+    glImportMemoryFdEXT = nullptr;
+    glDeleteMemoryObjectsEXT = nullptr;
+    glMemoryObjectParameterivEXT = nullptr;
+    raw_glGenTextures = nullptr;
+    raw_glBindTexture = nullptr;
+    raw_glTexParameteri = nullptr;
+    raw_glDeleteTextures = nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -679,6 +575,10 @@ bool RenderAPI_OpenGLLinuxEGL::dmabuf_setup(void** opaque,
 {
     (void)cfg; (void)out;
     DEBUG("[EGL-Linux] DMA-BUF output callback setup");
+    if (!opaque || !*opaque) {
+        DEBUG("[EGL-Linux] DMA-BUF setup called without backend instance");
+        return false;
+    }
     auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(*opaque);
     that->m_dmabuf_width = 0;
     that->m_dmabuf_height = 0;

@@ -2,6 +2,7 @@
 #define RENDER_API_OPENGL_GLX_H
 
 #include "RenderAPI_OpenGLBase.h"
+#include "RenderAPI_OpenGLLinuxDMABuf.h"
 #include "PlatformBase.h"
 #include <GL/glx.h>
 #include <X11/Xlib.h>
@@ -24,7 +25,7 @@ public:
     virtual void ensureCurrentContext() override;
     virtual bool makeCurrent(bool current) override;
     virtual void performRenderThreadWork() override;
-    bool isInitialized() const override { return m_context != nullptr; }
+    bool isInitialized() const override { return m_dmabuf_initialized && m_context != nullptr && m_pbuffer != None && m_gbm_device != nullptr; }
 
     static void* get_proc_address(void* /*data*/, const char* procname);
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
@@ -53,6 +54,7 @@ protected:
 
     // DMA-BUF state
     static constexpr size_t kDMABufSlots = 3;
+    bool m_dmabuf_initialized = false;
     bool m_unity_textures_imported = false;
     struct gbm_device* m_gbm_device = nullptr;
     int m_drm_fd = -1;
@@ -72,14 +74,9 @@ protected:
     PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT = nullptr;
     PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT = nullptr;
     PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT = nullptr;
-    typedef void (*PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_)(GLuint, GLenum, const GLint*);
     PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_ glMemoryObjectParameterivEXT = nullptr;
 
     // Raw GL function pointers (bypass Unity's GL wrapper for Unity-context ops)
-    typedef void (*PFNGLGENTEXTURESPROC_RAW)(GLsizei, GLuint*);
-    typedef void (*PFNGLBINDTEXTUREPROC_RAW)(GLenum, GLuint);
-    typedef void (*PFNGLTEXPARAMETERIPROC_RAW)(GLenum, GLenum, GLint);
-    typedef void (*PFNGLDELETETEXTURESPROC_RAW)(GLsizei, const GLuint*);
     PFNGLGENTEXTURESPROC_RAW raw_glGenTextures = nullptr;
     PFNGLBINDTEXTUREPROC_RAW raw_glBindTexture = nullptr;
     PFNGLTEXPARAMETERIPROC_RAW raw_glTexParameteri = nullptr;

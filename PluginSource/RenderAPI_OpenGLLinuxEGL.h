@@ -2,6 +2,7 @@
 #define RENDER_API_OPENGL_LINUX_EGL_H
 
 #include "RenderAPI_OpenGLEGL.h"
+#include "RenderAPI_OpenGLLinuxDMABuf.h"
 #include <GL/glx.h>
 #include <mutex>
 #include <gbm.h>
@@ -68,14 +69,9 @@ private:
     PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT = nullptr;
     PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT = nullptr;
     PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT = nullptr;
-    typedef void (*PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_)(GLuint, GLenum, const GLint*);
     PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_ glMemoryObjectParameterivEXT = nullptr;
 
     // Raw GL function pointers (bypass Unity's GL wrapper for Unity-context ops)
-    typedef void (*PFNGLGENTEXTURESPROC_RAW)(GLsizei, GLuint*);
-    typedef void (*PFNGLBINDTEXTUREPROC_RAW)(GLenum, GLuint);
-    typedef void (*PFNGLTEXPARAMETERIPROC_RAW)(GLenum, GLenum, GLint);
-    typedef void (*PFNGLDELETETEXTURESPROC_RAW)(GLsizei, const GLuint*);
     PFNGLGENTEXTURESPROC_RAW raw_glGenTextures = nullptr;
     PFNGLBINDTEXTUREPROC_RAW raw_glBindTexture = nullptr;
     PFNGLTEXPARAMETERIPROC_RAW raw_glTexParameteri = nullptr;

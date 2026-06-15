@@ -12,10 +12,6 @@
 #define GLX_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
 #endif
 
-#ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
-#define GL_HANDLE_TYPE_OPAQUE_FD_EXT 0x9586
-#endif
-
 GLXContext RenderAPI_OpenGLGLX::unity_context = nullptr;
 Display* RenderAPI_OpenGLGLX::unity_display = nullptr;
 
@@ -25,6 +21,12 @@ bool staticMakeCurrent(void* data, bool current)
 {
     auto that = static_cast<RenderAPI_OpenGLGLX*>(data);
     return that->makeCurrent(current);
+}
+
+void* loadGlxProc(const char* name, void*)
+{
+    return reinterpret_cast<void*>(glXGetProcAddressARB(
+        reinterpret_cast<const GLubyte*>(name)));
 }
 
 }
@@ -43,6 +45,8 @@ bool RenderAPI_OpenGLGLX::makeCurrent(bool current)
 {
     if (current)
     {
+        if (!m_display || !m_context || m_pbuffer == None)
+            return false;
         GLXContext currentCtx = glXGetCurrentContext();
         if (currentCtx == m_context)
             return true;
@@ -64,11 +68,12 @@ void* RenderAPI_OpenGLGLX::get_proc_address(void* /*data*/, const char* procname
 
 void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
 {
-    if (unity_context == nullptr) {
+    if (!isInitialized()) {
         libvlc_media_player_t* prev = m_pending_mp;
         m_pending_mp = mp;
         assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
-        DEBUG("[GLX] Unity context not ready, deferring setVlcContext");
+        DEBUG("[GLX] DMA-BUF backend not initialized, deferring setVlcContext (unity=%p ctx=%p pbuf=%lx gbm=%p initialized=%d)",
+              unity_context, m_context, m_pbuffer, m_gbm_device, m_dmabuf_initialized);
         return;
     }
     m_pending_mp = nullptr;
@@ -117,9 +122,10 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 {
     (void)interfaces;
     if (type == kUnityGfxDeviceEventInitialize) {
-        if (m_context) {
+        if (isInitialized()) {
             return;
         }
+        m_dmabuf_initialized = false;
         DEBUG("[GLX] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize");
 
         if (unity_context == nullptr) {
@@ -274,12 +280,7 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 
         if (!initDMABuf()) {
             DEBUG("[GLX] DMA-BUF initialization failed");
-            if (m_pbuffer) {
-                glXDestroyPbuffer(m_display, m_pbuffer);
-                m_pbuffer = None;
-            }
-            glXDestroyContext(m_display, m_context);
-            m_context = nullptr;
+            shutdownInternal();
             return;
         }
 
@@ -309,6 +310,8 @@ void RenderAPI_OpenGLGLX::shutdownInternal()
         glXDestroyPbuffer(m_display, m_pbuffer);
         m_pbuffer = None;
     }
+    m_dmabuf_initialized = false;
+    m_display = nullptr;
 }
 
 RenderAPI_OpenGLGLX::~RenderAPI_OpenGLGLX()
@@ -319,6 +322,9 @@ RenderAPI_OpenGLGLX::~RenderAPI_OpenGLGLX()
 void RenderAPI_OpenGLGLX::performRenderThreadWork()
 {
     std::lock_guard<std::mutex> lock(m_dmabuf_lock);
+
+    if (!isInitialized())
+        return;
 
     if (m_unity_textures_imported || m_dmabuf_width == 0 || m_dmabuf_height == 0)
         return;
@@ -343,65 +349,41 @@ void RenderAPI_OpenGLGLX::performRenderThreadWork()
 // DMA-BUF implementation (via GL_EXT_memory_object_fd)
 // ==========================================================================
 
-#ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
-#define GL_HANDLE_TYPE_OPAQUE_FD_EXT 0x9586
-#endif
-#ifndef GL_DEDICATED_MEMORY_OBJECT_EXT
-#define GL_DEDICATED_MEMORY_OBJECT_EXT 0x9581
-#endif
-
 bool RenderAPI_OpenGLGLX::loadMemoryObjectExtensions()
 {
-    glCreateMemoryObjectsEXT = reinterpret_cast<PFNGLCREATEMEMORYOBJECTSEXTPROC>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glCreateMemoryObjectsEXT")));
-    glTexStorageMem2DEXT = reinterpret_cast<PFNGLTEXSTORAGEMEM2DEXTPROC>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glTexStorageMem2DEXT")));
-    glImportMemoryFdEXT = reinterpret_cast<PFNGLIMPORTMEMORYFDEXTPROC>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glImportMemoryFdEXT")));
-    glDeleteMemoryObjectsEXT = reinterpret_cast<PFNGLDELETEMEMORYOBJECTSEXTPROC>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glDeleteMemoryObjectsEXT")));
-    glMemoryObjectParameterivEXT = reinterpret_cast<PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glMemoryObjectParameterivEXT")));
-
-    if (!glCreateMemoryObjectsEXT || !glTexStorageMem2DEXT ||
-        !glImportMemoryFdEXT || !glDeleteMemoryObjectsEXT) {
-        DEBUG("[GLX] GL_EXT_memory_object_fd extension functions not available");
+    static const char* requiredExtensions[] = {
+        "GL_EXT_memory_object",
+        "GL_EXT_memory_object_fd",
+    };
+    if (!LinuxGLHasExtensions("GLX", loadGlxProc, nullptr,
+                              requiredExtensions,
+                              sizeof(requiredExtensions) / sizeof(requiredExtensions[0]))) {
         return false;
     }
 
-    // Load raw GL core functions (bypass Unity's GL wrapper)
-    raw_glGenTextures = reinterpret_cast<PFNGLGENTEXTURESPROC_RAW>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glGenTextures")));
-    raw_glBindTexture = reinterpret_cast<PFNGLBINDTEXTUREPROC_RAW>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glBindTexture")));
-    raw_glTexParameteri = reinterpret_cast<PFNGLTEXPARAMETERIPROC_RAW>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glTexParameteri")));
-    raw_glDeleteTextures = reinterpret_cast<PFNGLDELETETEXTURESPROC_RAW>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>("glDeleteTextures")));
-
-    if (!raw_glGenTextures || !raw_glBindTexture || !raw_glTexParameteri) {
-        DEBUG("[GLX] failed to load raw GL function pointers");
-        return false;
-    }
-
-    DEBUG("[GLX] GL_EXT_memory_object_fd extensions loaded");
-    return true;
+    return LinuxGLLoadMemoryObjectFunctions("GLX", loadGlxProc, nullptr,
+                                            glCreateMemoryObjectsEXT,
+                                            glTexStorageMem2DEXT,
+                                            glImportMemoryFdEXT,
+                                            glDeleteMemoryObjectsEXT,
+                                            glMemoryObjectParameterivEXT,
+                                            raw_glGenTextures,
+                                            raw_glBindTexture,
+                                            raw_glTexParameteri,
+                                            raw_glDeleteTextures);
 }
 
 bool RenderAPI_OpenGLGLX::initDMABuf()
 {
+    m_dmabuf_initialized = false;
+
     // Check GL extensions — need a current context
     GLXContext prev_ctx = glXGetCurrentContext();
     GLXDrawable prev_draw = glXGetCurrentDrawable();
     GLXDrawable prev_read = glXGetCurrentReadDrawable();
 
-    makeCurrent(true);
-
-    const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-    if (!extensions ||
-        (strstr(extensions, "GL_EXT_memory_object") == nullptr ||
-         strstr(extensions, "GL_EXT_memory_object_fd") == nullptr)) {
-        DEBUG("[GLX] GL_EXT_memory_object_fd not in extension string");
+    if (!makeCurrent(true)) {
+        DEBUG("[GLX] cannot make GLX context current for DMA-BUF initialization");
         glXMakeContextCurrent(m_display, prev_draw, prev_read, prev_ctx);
         return false;
     }
@@ -449,72 +431,17 @@ bool RenderAPI_OpenGLGLX::initDMABuf()
     }
     DEBUG("[GLX] GBM device created");
 
-    return true;
-}
-
-typedef void (*PFN_glMemoryObjectParameterivEXT)(GLuint, GLenum, const GLint*);
-
-static bool importMemoryFd(
-    PFNGLCREATEMEMORYOBJECTSEXTPROC glCreateMemoryObjectsEXT,
-    PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT,
-    PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT,
-    PFN_glMemoryObjectParameterivEXT glMemoryObjectParameterivEXT,
-    PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT,
-    GLuint& mem_obj, GLuint tex, int dmabuf_fd, uint64_t size,
-    unsigned w, unsigned h, const char* label)
-{
-    glCreateMemoryObjectsEXT(1, &mem_obj);
-
-    // Mark as dedicated allocation (required by some drivers for DMA-BUF)
-    if (glMemoryObjectParameterivEXT) {
-        GLint dedicated = GL_TRUE;
-        glMemoryObjectParameterivEXT(mem_obj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-    }
-
-    // dup() because glImportMemoryFdEXT takes ownership of the fd
-    int import_fd = dup(dmabuf_fd);
-    if (import_fd < 0) {
-        DEBUG("[GLX] dup(dmabuf_fd) failed for %s import", label);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        return false;
-    }
-
-    clearGlErrors();
-    glImportMemoryFdEXT(mem_obj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, import_fd);
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        DEBUG("[GLX] glImportMemoryFdEXT failed for %s, GL error=0x%x", label, err);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        close(import_fd);
-        return false;
-    }
-
-    clearGlErrors();
-    glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, mem_obj, 0);
-    err = glGetError();
-    if (err != GL_NO_ERROR) {
-        DEBUG("[GLX] glTexStorageMem2DEXT failed for %s, GL error=0x%x (size=%lu, %ux%u)",
-              label, err, (unsigned long)size, w, h);
-        if (glDeleteMemoryObjectsEXT && mem_obj) {
-            glDeleteMemoryObjectsEXT(1, &mem_obj);
-            mem_obj = 0;
-        }
-        return false;
-    }
-
-    DEBUG("[GLX] memory object imported for %s: tex=%u mem=%u size=%lu",
-          label, tex, mem_obj, (unsigned long)size);
+    m_dmabuf_initialized = true;
     return true;
 }
 
 bool RenderAPI_OpenGLGLX::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h)
 {
+    if (!isInitialized()) {
+        DEBUG("[GLX] createDMABufBuffer called before DMA-BUF initialization");
+        return false;
+    }
+
     auto cleanup_failed_buffer = [&]() {
         if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
         if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
@@ -562,10 +489,10 @@ bool RenderAPI_OpenGLGLX::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsi
     glGenTextures(1, &buf.vlc_tex);
     glBindTexture(GL_TEXTURE_2D, buf.vlc_tex);
 
-    if (!importMemoryFd(glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                        glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                        buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
-                        w, h, "VLC")) {
+    if (!LinuxGLImportMemoryFd("GLX", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
+                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
+                               buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
+                               w, h, "VLC")) {
         cleanup_failed_buffer();
         return false;
     }
@@ -602,10 +529,10 @@ bool RenderAPI_OpenGLGLX::importDMABufToUnityContext(DMABufBuffer& buf, unsigned
     raw_glGenTextures(1, &buf.unity_tex);
     raw_glBindTexture(GL_TEXTURE_2D, buf.unity_tex);
 
-    if (!importMemoryFd(glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                        glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                        buf.unity_mem_obj, buf.unity_tex, buf.dmabuf_fd, buf.size,
-                        w, h, "Unity")) {
+    if (!LinuxGLImportMemoryFd("GLX", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
+                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
+                               buf.unity_mem_obj, buf.unity_tex, buf.dmabuf_fd, buf.size,
+                               w, h, "Unity")) {
         if (buf.unity_tex) { raw_glDeleteTextures(1, &buf.unity_tex); buf.unity_tex = 0; }
         buf.unity_mem_obj = 0;
         return false;
@@ -623,12 +550,22 @@ bool RenderAPI_OpenGLGLX::importDMABufToUnityContext(DMABufBuffer& buf, unsigned
 
 void RenderAPI_OpenGLGLX::releaseDMABufResources()
 {
-    // Release VLC-side GL resources (need VLC context current)
-    if (m_context) {
-        GLXContext prev_ctx = glXGetCurrentContext();
-        GLXDrawable prev_draw = glXGetCurrentDrawable();
-        GLXDrawable prev_read = glXGetCurrentReadDrawable();
-        makeCurrent(true);
+    const bool have_context = m_context != nullptr;
+    GLXContext prev_ctx = nullptr;
+    GLXDrawable prev_draw = None;
+    GLXDrawable prev_read = None;
+    if (have_context) {
+        prev_ctx = glXGetCurrentContext();
+        prev_draw = glXGetCurrentDrawable();
+        prev_read = glXGetCurrentReadDrawable();
+    }
+    const bool context_current = have_context && makeCurrent(true);
+
+    if (have_context && !context_current) {
+        DEBUG("[GLX] releaseDMABufResources: skipping explicit GL cleanup because makeCurrent failed");
+    }
+
+    if (context_current) {
         for (auto& buf : m_dmabuf_buffers) {
             if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
             if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
@@ -641,6 +578,10 @@ void RenderAPI_OpenGLGLX::releaseDMABufResources()
     }
 
     for (auto& buf : m_dmabuf_buffers) {
+        buf.fence = nullptr;
+        buf.vlc_fbo = 0;
+        buf.vlc_tex = 0;
+        buf.vlc_mem_obj = 0;
         buf.unity_tex = 0;
         buf.unity_mem_obj = 0;
 
@@ -656,6 +597,17 @@ void RenderAPI_OpenGLGLX::releaseDMABufResources()
 
     if (m_gbm_device) { gbm_device_destroy(m_gbm_device); m_gbm_device = nullptr; }
     if (m_drm_fd >= 0) { close(m_drm_fd); m_drm_fd = -1; }
+
+    glCreateMemoryObjectsEXT = nullptr;
+    glTexStorageMem2DEXT = nullptr;
+    glImportMemoryFdEXT = nullptr;
+    glDeleteMemoryObjectsEXT = nullptr;
+    glMemoryObjectParameterivEXT = nullptr;
+    raw_glGenTextures = nullptr;
+    raw_glBindTexture = nullptr;
+    raw_glTexParameteri = nullptr;
+    raw_glDeleteTextures = nullptr;
+    m_dmabuf_initialized = false;
 }
 
 // --- DMA-BUF VLC callbacks ---
@@ -666,7 +618,15 @@ bool RenderAPI_OpenGLGLX::dmabuf_setup(void** opaque,
 {
     (void)cfg; (void)out;
     DEBUG("[GLX] DMA-BUF output callback setup");
+    if (!opaque || !*opaque) {
+        DEBUG("[GLX] DMA-BUF setup called without backend instance");
+        return false;
+    }
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(*opaque);
+    if (!that || !that->isInitialized()) {
+        DEBUG("[GLX] DMA-BUF setup called before initialization");
+        return false;
+    }
     that->m_dmabuf_width = 0;
     that->m_dmabuf_height = 0;
 #if defined(SHOW_WATERMARK)
@@ -683,8 +643,20 @@ void RenderAPI_OpenGLGLX::dmabuf_cleanup(void* opaque)
 {
     DEBUG("[GLX] DMA-BUF output callback cleanup");
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
+    if (!that) {
+        return;
+    }
 
-    that->makeCurrent(true);
+    if (!that->makeCurrent(true)) {
+        DEBUG("[GLX] DMA-BUF cleanup skipped because makeCurrent failed");
+        for (auto& buf : that->m_dmabuf_buffers) {
+            buf.fence = nullptr;
+            buf.vlc_fbo = 0;
+            buf.vlc_tex = 0;
+            buf.vlc_mem_obj = 0;
+        }
+        return;
+    }
     for (auto& buf : that->m_dmabuf_buffers) {
         if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
         if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
@@ -704,9 +676,16 @@ bool RenderAPI_OpenGLGLX::dmabuf_resize(void* opaque,
                                          libvlc_video_output_cfg_t* output)
 {
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
+    if (!that || !cfg || !output || !that->isInitialized()) {
+        DEBUG("[GLX] DMA-BUF resize called before initialization");
+        return false;
+    }
     DEBUG("[GLX] DMA-BUF resize %ux%u", cfg->width, cfg->height);
 
-    that->makeCurrent(true);
+    if (!that->makeCurrent(true)) {
+        DEBUG("[GLX] DMA-BUF resize failed because makeCurrent failed");
+        return false;
+    }
 
     bool ok = true;
     {
@@ -767,7 +746,14 @@ bool RenderAPI_OpenGLGLX::dmabuf_resize(void* opaque,
 void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
 {
     auto* that = static_cast<RenderAPI_OpenGLGLX*>(opaque);
+    if (!that || !that->isInitialized()) {
+        DEBUG("[GLX] DMA-BUF swap called before initialization");
+        return;
+    }
     std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
+
+    if (that->m_dmabuf_width == 0 || that->m_dmabuf_height == 0)
+        return;
 
 #if defined(SHOW_WATERMARK)
     if (that->m_dmabuf_width > 0 && that->m_dmabuf_height > 0) {
