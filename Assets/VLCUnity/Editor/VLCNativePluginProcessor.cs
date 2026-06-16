@@ -754,37 +754,62 @@ namespace Videolabs.VLCUnity.Editor
         }
     }
 
-    class LibVLCSharpPluginPreprocessor : AssetPostprocessor
+    [InitializeOnLoad]
+    class LibVLCSharpPluginPostprocessor : AssetPostprocessor
     {
+        const string LIBVLCSHARP_DLL = "LibVLCSharp.dll";
         const string IOS_PATH = "VLCUnity/Plugins/iOS/";
-        void OnPreprocessAsset()
+
+        static LibVLCSharpPluginPostprocessor()
         {
-            var libvlcsharpDlls = PluginImporter.GetAllImporters().Where(pi => pi.assetPath.EndsWith("LibVLCSharp.dll")).ToList();
-
-            foreach (var pi in libvlcsharpDlls)
+            EditorApplication.delayCall += () =>
             {
-                if (pi.assetPath.Contains(IOS_PATH))
-                {
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(false);
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, true);
-                }
-                else
-                {
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneOSX, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneWindows64, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.Android, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.WSAPlayer, true);
-                    pi.SetCompatibleWithPlatform(BuildTarget.XboxOne, true);
-
-                    pi.SetCompatibleWithPlatform(BuildTarget.iOS, false);
-
-                    pi.SetCompatibleWithAnyPlatform(false);
-                    pi.SetCompatibleWithEditor(true);
-                }
-            }
+                foreach (var pi in PluginImporter.GetAllImporters())
+                    if (pi != null && pi.assetPath.EndsWith(LIBVLCSHARP_DLL))
+                        Configure(pi);
+            };
         }
+
+        static void OnPostprocessAllAssets(string[] imported, string[] _, string[] __, string[] ___)
+        {
+            foreach (var path in imported)
+                if (path.EndsWith(LIBVLCSHARP_DLL) &&
+                    AssetImporter.GetAtPath(path) is PluginImporter pi)
+                    Configure(pi);
+        }
+
+        static void Configure(PluginImporter pi)
+        {
+            bool isIOS = pi.assetPath.Contains(IOS_PATH);
+            bool changed = false;
+
+            changed |= SetAny(pi, false);
+            if (isIOS)
+            {
+                changed |= SetEditor(pi, false);
+                changed |= SetPlatform(pi, BuildTarget.iOS, true);
+            }
+            else
+            {
+                changed |= SetEditor(pi, true);
+                changed |= SetPlatform(pi, BuildTarget.iOS, false);
+                changed |= SetPlatform(pi, BuildTarget.StandaloneOSX, true);
+                changed |= SetPlatform(pi, BuildTarget.StandaloneWindows, true);
+                changed |= SetPlatform(pi, BuildTarget.StandaloneWindows64, true);
+                changed |= SetPlatform(pi, BuildTarget.StandaloneLinux64, true);
+                changed |= SetPlatform(pi, BuildTarget.Android, true);
+                changed |= SetPlatform(pi, BuildTarget.WSAPlayer, true);
+                changed |= SetPlatform(pi, BuildTarget.XboxOne, true);
+            }
+
+            if (changed) pi.SaveAndReimport();
+        }
+
+        static bool SetAny(PluginImporter pi, bool v)
+        { if (pi.GetCompatibleWithAnyPlatform() == v) return false; pi.SetCompatibleWithAnyPlatform(v); return true; }
+        static bool SetEditor(PluginImporter pi, bool v)
+        { if (pi.GetCompatibleWithEditor() == v) return false; pi.SetCompatibleWithEditor(v); return true; }
+        static bool SetPlatform(PluginImporter pi, BuildTarget t, bool v)
+        { if (pi.GetCompatibleWithPlatform(t) == v) return false; pi.SetCompatibleWithPlatform(t, v); return true; }
     }
 }
