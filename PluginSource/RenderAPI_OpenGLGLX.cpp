@@ -762,13 +762,8 @@ void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
     }
 #endif
 
-    auto& rendered = that->m_dmabuf_buffers[that->m_idx_render];
-    if (rendered.fence) {
-        glDeleteSync(rendered.fence);
-        rendered.fence = nullptr;
-    }
-    rendered.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     glFlush();
+    glFinish();
 
     that->m_updated = true;
     std::swap(that->m_idx_swap, that->m_idx_render);
@@ -796,20 +791,5 @@ void* RenderAPI_OpenGLGLX::getVideoFrame(unsigned, unsigned, bool* out_updated)
             *out_updated = true;
     }
 
-    auto& display = m_dmabuf_buffers[m_idx_display];
-
-    if (display.fence) {
-        GLenum r = glClientWaitSync(display.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 16000000);
-        if (r == GL_ALREADY_SIGNALED || r == GL_CONDITION_SATISFIED) {
-            glDeleteSync(display.fence);
-            display.fence = nullptr;
-        } else {
-            DEBUG("[GLX] glClientWaitSync did not signal (r=0x%x), skipping frame", r);
-            if (out_updated)
-                *out_updated = false;
-            return nullptr;
-        }
-    }
-
-    return (void*)(size_t)display.unity_tex;
+    return (void*)(size_t)m_dmabuf_buffers[m_idx_display].unity_tex;
 }
