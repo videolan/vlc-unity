@@ -265,11 +265,11 @@ namespace LibVLCSharp
             Core.Initialize(Application.dataPath); // Load VLC dlls
 #endif
 
-            var args = new List<string>();
-            if (libVLCArguments != null)
-                args.AddRange(libVLCArguments);
+            var args = (libVLCArguments ?? Array.Empty<string>())
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .ToArray();
 
-            LibVLC = new LibVLC(enableDebugLogs: true, args.ToArray()); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
+            LibVLC = new LibVLC(enableDebugLogs: true, args); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
                                                                         // Setup Error Logging
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
