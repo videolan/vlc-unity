@@ -2767,8 +2767,8 @@ MonoBehaviour:
   playOnAwake: 1
   useUnityAudio: 0
   targetAudioSource: {fileID: 0}
-  flipTextureX: 1
-  flipTextureY: 1
+  flipTextureX: 0
+  flipTextureY: 0
   logToConsole: 0
   libVLCArguments: []
   OnPlayerStateChanged:

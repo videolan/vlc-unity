@@ -33,11 +33,10 @@ namespace LibVLCSharp
         public bool useUnityAudio = false;
         public AudioSource targetAudioSource;
 
-        // The orientation mapping is incorrect on Android, so we flip it over.
         [Tooltip("Flips the output texture horizontally.")]
-        public bool flipTextureX = true;
+        public bool flipTextureX = false;
         [Tooltip("Flips the output texture vertically.")]
-        public bool flipTextureY = true;
+        public bool flipTextureY = false;
 
         [Tooltip("Logs function calls and LibVLC logs to Unity console.")]
         public bool logToConsole = false;
