@@ -730,6 +730,7 @@ MonoBehaviour:
   flipTextureX: 1
   flipTextureY: 1
   logToConsole: 0
+  Configuration: {fileID: 11400000, guid: 531a538722d88cf4fb27c8f59707ca27, type: 2}
   libVLCArguments: []
   OnPlayerStateChanged:
     m_PersistentCalls:

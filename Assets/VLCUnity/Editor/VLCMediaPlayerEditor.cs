@@ -16,7 +16,11 @@ namespace LibVLCSharp
         private bool _showDebug = true;
 
         private SerializedProperty _mediaPath;
+        private SerializedProperty _mediaOptions;
         private SerializedProperty _playOnAwake;
+
+        private SerializedProperty _configuration;
+        private Editor _configEditor;
 
         private SerializedProperty _useUnityAudio;
         private SerializedProperty _targetAudioSource;
@@ -35,7 +39,10 @@ namespace LibVLCSharp
             _bannerTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/VLCUnity/Textures/VLCForUnityBanner.png");
 
             _mediaPath = serializedObject.FindProperty("mediaPath");
+            _mediaOptions = serializedObject.FindProperty("mediaOptions");
             _playOnAwake = serializedObject.FindProperty("playOnAwake");
+
+            _configuration = serializedObject.FindProperty("Configuration");
 
             _useUnityAudio = serializedObject.FindProperty("useUnityAudio");
             _targetAudioSource = serializedObject.FindProperty("targetAudioSource");
@@ -65,15 +72,15 @@ namespace LibVLCSharp
                 GUILayout.Space(5);
             }
 
-            _showMedia = EditorGUILayout.BeginFoldoutHeaderGroup(_showMedia, "Media Settings");
+            _showMedia = EditorGUILayout.Foldout(_showMedia, "Media Settings", true, EditorStyles.foldoutHeader);
             if (_showMedia)
             {
                 EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(_mediaPath);
+                EditorGUILayout.PropertyField(_mediaOptions, true);
                 EditorGUILayout.PropertyField(_playOnAwake);
                 EditorGUI.indentLevel--;
             }
-            EditorGUILayout.EndFoldoutHeaderGroup();
             GUILayout.Space(2);
 
             _showAudio = EditorGUILayout.BeginFoldoutHeaderGroup(_showAudio, "Audio Settings");
@@ -114,6 +121,20 @@ namespace LibVLCSharp
             if (_showAdvanced)
             {
                 EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(_configuration);
+
+                if (_configuration.objectReferenceValue != null)
+                {
+                    EditorGUI.indentLevel++;
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+                    CreateCachedEditor(_configuration.objectReferenceValue, null, ref _configEditor);
+                    _configEditor.OnInspectorGUI();
+
+                    EditorGUILayout.EndVertical();
+                    EditorGUI.indentLevel--;
+                }
+
                 EditorGUILayout.PropertyField(_libVLCArguments, true);
                 EditorGUI.indentLevel--;
             }

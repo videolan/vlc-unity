@@ -26,6 +26,10 @@ namespace LibVLCSharp
 
         [Tooltip("The URL or local file path to the media you want to play.")]
         public string mediaPath = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi";
+
+        [Tooltip("Media-specific LibVLC options (e.g., :start-time=10, :rate=1.5).")]
+        public string[] mediaOptions = Array.Empty<string>();
+
         [Tooltip("Automatically load and play video when the scene starts.")]
         public bool playOnAwake = true;
 
@@ -40,6 +44,9 @@ namespace LibVLCSharp
 
         [Tooltip("Logs function calls and LibVLC logs to Unity console.")]
         public bool logToConsole = false;
+
+        [Tooltip("Global configuration for LibVLC caching and networking.")]
+        public VLCPlayerConfiguration Configuration;
 
         [Tooltip("Advanced LibVLC command-line options.")]
         public string[] libVLCArguments = Array.Empty<string>();
@@ -100,7 +107,7 @@ namespace LibVLCSharp
         private async void Start()
         {
             if (playOnAwake)
-                await OpenAsync(mediaPath);
+                await OpenAsync(mediaPath, mediaOptions);
         }
 
         private void Update()
@@ -148,7 +155,8 @@ namespace LibVLCSharp
             PrepareForNewMedia(path);
 
             var trimmedPath = mediaPath.Trim(new char[] { '"' });
-            MediaPlayer.Media = new Media(new Uri(trimmedPath), options);
+            var finalOptions = options?.Length > 0 ? options : mediaOptions;
+            MediaPlayer.Media = new Media(new Uri(trimmedPath), finalOptions);
             Play();
         }
 
@@ -156,7 +164,8 @@ namespace LibVLCSharp
         {
             PrepareForNewMedia(path);
 
-            var media = await CreateAndParseMediaAsync(mediaPath, false, options);
+            var finalOptions = options?.Length > 0 ? options : mediaOptions;
+            var media = await CreateAndParseMediaAsync(mediaPath, false, finalOptions);
 
             MediaPlayer.Media = media.SubItems.FirstOrDefault() ?? media;
             Play();
@@ -164,9 +173,9 @@ namespace LibVLCSharp
 
         public async Task PreloadAsync(string path, params string[] options)
         {
-            options ??= Array.Empty<string>();
+            var finalOptions = options?.Length > 0 ? options : mediaOptions;
 
-            if (path == PreloadedMediaPath && options.SequenceEqual(_preloadedOptions) && CurrentPreloadState != PreloadState.None)
+            if (path == PreloadedMediaPath && finalOptions.SequenceEqual(_preloadedOptions) && CurrentPreloadState != PreloadState.None)
             {
                 Log("Ignoring duplicate Preload call.");
                 return;
@@ -175,7 +184,7 @@ namespace LibVLCSharp
             CancelPreload();
 
             PreloadedMediaPath = path;
-            _preloadedOptions = options;
+            _preloadedOptions = finalOptions;
             CurrentPreloadState = PreloadState.Preparing;
 
             _isBackgroundPlayerReady = false;
@@ -189,7 +198,7 @@ namespace LibVLCSharp
 
             try
             {
-                Media media = await CreateAndParseMediaAsync(path, true, options);
+                Media media = await CreateAndParseMediaAsync(path, true, finalOptions);
 
                 if (_backgroundNativePlayer != player)
                 {
@@ -377,11 +386,14 @@ namespace LibVLCSharp
             Core.Initialize(Application.dataPath); // Load VLC dlls
 #endif
 
-            var args = (libVLCArguments ?? Array.Empty<string>())
-                .Where(a => !string.IsNullOrWhiteSpace(a))
-                .ToArray();
+            var args = new List<string>();
 
-            LibVLC = new LibVLC(enableDebugLogs: true, args); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
+            if (Configuration != null)
+                args.AddRange(Configuration.GetOptions());
+
+            args.AddRange(libVLCArguments?.Where(arg => !string.IsNullOrWhiteSpace(arg)) ?? Array.Empty<string>());
+
+            LibVLC = new LibVLC(enableDebugLogs: true, args.ToArray()); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
                                                                         // Setup Error Logging
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 

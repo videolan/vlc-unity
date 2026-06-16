@@ -509,6 +509,12 @@ PrefabInstance:
       propertyPath: m_Name
       value: VLC Player Example (Canvas)
       objectReference: {fileID: 0}
+    - target: {fileID: 6279618247038641685, guid: f0c7360e3bd822949ac713631924504a,
+        type: 3}
+      propertyPath: Configuration
+      value:
+      objectReference: {fileID: 11400000, guid: 531a538722d88cf4fb27c8f59707ca27,
+        type: 2}
     - target: {fileID: 7294197369580330168, guid: f0c7360e3bd822949ac713631924504a,
         type: 3}
       propertyPath: m_Text
