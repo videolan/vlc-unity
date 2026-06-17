@@ -9,6 +9,8 @@ namespace LibVLCSharp
         public VLCMediaPlayer mediaPlayer;
 
         private RawImage _rawImage;
+        private static readonly Rect UnflippedUVRect = new Rect(0, 0, 1, 1);
+        private static readonly Rect VideoUVRect = new Rect(1, 1, -1, -1);
 
         private void Awake()
         {
@@ -31,12 +33,19 @@ namespace LibVLCSharp
 
         private void ApplyTexture(RenderTexture texture)
         {
+            _rawImage.uvRect = GetPlatformUVRect();
             _rawImage.texture = texture;
         }
 
         private void ClearTexture()
         {
             _rawImage.texture = null;
+            _rawImage.uvRect = UnflippedUVRect;
+        }
+
+        private Rect GetPlatformUVRect()
+        {
+            return VideoUVRect;
         }
     }
 }

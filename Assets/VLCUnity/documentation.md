@@ -173,12 +173,27 @@ The plugin provides a centralized `VLCMediaPlayer` component for easy integratio
 - Event-driven architecture (`OnPlayerStateChanged`, `OnTextureResized`)
 - Async media loading for network streams (`OpenAsync`)
 - Built-in controls for volume, seeking, track selection, and subtitles
-- Automatic texture flipping for Android
+- Configurable texture orientation handling for Unity display targets
 - Multiple players per scene with shared LibVLC instance
 
 **Helper Components:**
 - `VLCDisplayMesh` - Applies video texture to any 3D mesh/renderer
 - `VLCDisplayUGUI` - Applies video texture to UI RawImage elements
+
+### Demo Scene Orientation Notes
+
+Video orientation depends on both the native texture backend and the Unity surface that displays the texture. The demo scenes intentionally do not all use the same correction values: mesh UVs, UI `RawImage` UVs, and platform graphics backends can have different coordinate origins.
+
+Do not normalize `flipTextureX`, `flipTextureY`, or `RawImage.uvRect` values across all demos without testing the affected display path.
+
+| Scene or display path | Windows | Android | Linux | Notes |
+| --- | --- | --- | --- | --- |
+| `VLCMinimalPlayback`, `VLCYouTubePlayback`, `VLCTransparentVideoPlayback`, `VLCSubtitles` using `VLCDisplayMesh` | `flipTextureX=false`, `flipTextureY=false` | Same expected setup | Same expected setup | These use a regular mesh screen and the shared `VLCMediaPlayer.OutputTexture`. |
+| `VLC 3D Example` using `VLCDisplayMesh` | `flipTextureX=true`, `flipTextureY=true` | Same scene-level correction expected | Same scene-level correction expected | The cinema-room screen mesh has its own UV/coordinate orientation, so this scene keeps explicit player flips. |
+| `VLC Canvas Example` / `VLCDisplayUGUI` using `RawImage` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | UI rendering has a different texture coordinate path than mesh rendering. The Canvas path corrects both UI axes locally instead of changing the shared `VLCMediaPlayer` flips. |
+| Custom UI with `RawImage` | Start from `VLCDisplayUGUI` | Start from `VLCDisplayUGUI` | Start from `VLCDisplayUGUI` | If a custom UI is mirrored or upside down, prefer correcting the UI `uvRect` instead of changing the shared `VLCMediaPlayer` flips. |
+
+When diagnosing orientation, use a test frame with identifiable corners. For example, if content that should appear at bottom right appears at bottom left, the X axis is mirrored. If it appears at top right, the Y axis is mirrored. If it appears at top left, both axes are mirrored.
 
 **Example Usage:**
 ```csharp
