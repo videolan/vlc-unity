@@ -287,4 +287,4 @@ VLC Unity is distributed as either a trial package or a pro package:
 - Trial packages include all supported platforms, with watermarked video output and a 60 second playback limit per session.
 - Pro packages include all supported platforms without trial limitations.
 
-VLC Unity is provided as standalone .unitypackage files that you can import using the Unity Editor. You no longer need to merge separate per-platform paid packages or selectively import platform-specific binaries.
+VLC Unity is provided as standalone .unitypackage files that you can import using the Unity Editor.
