@@ -236,6 +236,16 @@ namespace LibVLCSharp
                 return;
             }
 
+            if (CurrentPreloadState == PreloadState.Preparing && _backgroundNativePlayer.Media == null)
+            {
+                Log("Swap requested before parsing finished. Falling back to OpenAsync.");
+                var path = PreloadedMediaPath;
+                var opts = _preloadedOptions;
+                CancelPreload();
+                _ = OpenAsync(path, opts);
+                return;
+            }
+
             Log("Swapping to preloaded video: " + PreloadedMediaPath);
 
             DestroyMediaPlayer();

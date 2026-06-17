@@ -25,6 +25,10 @@ namespace LibVLCSharp
         [SerializeField] private bool useUnityAudio = true;
         [SerializeField] private bool logToConsole = false;
 
+        [Header("Rendering")]
+        [Tooltip("Assign the Hidden/VLC/Crossfade shader here.")]
+        [SerializeField] private Shader crossfadeShader;
+
         [Header("Events")]
         public UnityEvent<PlaylistContext> OnContextUpdated = new();
         public UnityEvent OnPlaylistEnded = new();
@@ -53,11 +57,11 @@ namespace LibVLCSharp
         {
             InitializePlayers();
 
-            Shader shader = Shader.Find("Hidden/VLC/Crossfade");
+            Shader shader = crossfadeShader != null ? crossfadeShader : Shader.Find("Hidden/VLC/Crossfade");
             if (shader != null)
                 _blendMaterial = new Material(shader);
             else
-                Log("Could not find crossfade shader!");
+                Log("Could not find crossfade shader! Please assign it in the inspector.");
         }
 
         private void Start()

@@ -622,6 +622,7 @@ MonoBehaviour:
   playOnAwake: 1
   useUnityAudio: 1
   logToConsole: 0
+  crossfadeShader: {fileID: 4800000, guid: e178064d5252b9c46a028dcb70328516, type: 3}
   OnContextUpdated:
     m_PersistentCalls:
       m_Calls: []
