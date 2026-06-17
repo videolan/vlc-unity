@@ -33,16 +33,16 @@ For the Unity Android target, we support:
 - x86,
 - x86_64.
 
-/!\ OpenGL ES MUST be selected in the project settings as a target graphics API. Vulkan is NOT supported at this time.
+/!\ OpenGL ES is supported on all listed Android architectures. Vulkan is supported only on arm64-v8a builds and requires Android 26 (Android 8.0 Oreo) or higher.
 
 /!\ If the plugin complains about missing binaries and there is an error about this, make sure you have each architecture properly setup in the inspector for each binaries in each VLCUnity/Plugins/Android/libs folders. Select a libvlc.so in any given folder, check the Inspector window of the Unity Editor and make sure the selected "Platform" and "CPU" are correct.
 
 /!\ If the scene starts but no video plays, make sure you set internet access to "required" in Unity player settings. The demo scenes play HTTP videos so your app needs the Android Internet permission.
 
-Reminded: If you want to target arm64-v8a CPU architecture, you must select it in the player settings. To be able to select it, you need to switch the scripting backend to IL2CPP (as opposed to Mono). This is a Unity requirement unrelated to libvlc.
+Reminder: If you want to target arm64-v8a CPU architecture, you must select it in the player settings. To be able to select it, you need to switch the scripting backend to IL2CPP (as opposed to Mono). This is a Unity requirement unrelated to libvlc.
 
 VLC for Unity requires Android 21 (Android 5.0 Lollipop) minimum for OpenGL ES.
-For Vulkan support, Android 26 (Android 8.0 Oreo) or higher is required with ARM64 architecture.
+For Vulkan support, Android 26 (Android 8.0 Oreo) or higher is required with arm64-v8a architecture.
 
 ## UWP
 
@@ -151,7 +151,7 @@ You should see your hardware GPU (e.g. `Mesa Intel(R) Iris(R) Xe Graphics`), not
 **Common causes of DRI3/GPU issues:**
 - **Outdated XWayland**: older XWayland versions may not expose DRI3, causing glamor to fall back to software rendering. Update your XWayland package.
 - **simpledrm conflict**: on EFI systems, the `simpledrm` framebuffer driver may claim `card0` during early boot, pushing the real GPU to `card1`. XWayland/glamor may fail to use a non-`card0` device. Workaround: use a native Xorg session instead of Wayland+XWayland, or use a kernel with `CONFIG_DRM_SIMPLEDRM=n`.
-- **Missing GPU driver**: install Mesa drivers for your hardware (`mesa-vulkan-drivers`, `mesa-va-drivers`, etc.).
+- **Missing GPU driver**: install Mesa OpenGL and VA-API drivers for your hardware (`mesa-utils`, `mesa-va-drivers`, etc.).
 
 ## General
 
@@ -228,24 +228,33 @@ The VLCMediaPlayer component handles all of this automatically:
 Core.Initialize(UnityEngine.Application.dataPath);
 ```
 
-2. Creating LibVLCSharp objects:
+2. Creating LibVLCSharp objects and starting playback:
 ```
 LibVLC = new LibVLC();
 MediaPlayer = new MediaPlayer(LibVLC);
-```
-
-3. Frame updating in Update():
-```
-IntPtr texptr = MediaPlayer.GetFrame(width, height, out bool updated);
-if (updated)
-{
-    tex.UpdateExternalTexture(texptr);
-}
-```
-
-4. Starting playback:
-```
 MediaPlayer.Play(new Media(new Uri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")));
+```
+
+3. Texture creation and frame updating after video dimensions are available:
+```
+Texture2D vlcTexture = null;
+RenderTexture outputTexture = null;
+
+// In Update():
+if (vlcTexture == null)
+{
+    vlcTexture = TextureHelper.CreateNativeTexture(MediaPlayer, linear: true);
+    if (vlcTexture != null)
+    {
+        outputTexture = new RenderTexture(vlcTexture.width, vlcTexture.height, 0, RenderTextureFormat.ARGB32);
+        outputTexture.Create();
+    }
+}
+
+if (vlcTexture != null && TextureHelper.UpdateTexture(vlcTexture, MediaPlayer))
+{
+    Graphics.Blit(vlcTexture, outputTexture);
+}
 ```
 
 To get up and running easily and quickly, load the Assets/VLCUnity/Demos/Scenes/VLCMinimalPlayback.unity scene and press "Play".
@@ -256,7 +265,7 @@ The scene uses the VLCMediaPlayer component with all configuration visible in th
 - A minimal playback example with buttons,
 - 360 playback with keyboard navigation built-in,
 - A video with subtitles showcasing support,
-- The VLCPlayerExample provides a great base with more controls,
+- The VLC Canvas Example provides a UI-based player with more controls,
 - 3D scene you can move around in with a movie screen and chairs in a cinema room.
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
@@ -272,18 +281,10 @@ Removing one of the System.Numerics.Vectors.dll in your project seems to be a va
 
 ## Asset import management
 
-All releases include binaries for all platforms.
+All releases include binaries for all supported platforms.
 
-The free trial contains binaries that are watermarked on all platforms.
+VLC Unity is distributed as either a trial package or a pro package:
+- Trial packages include all supported platforms, with watermarked video output and a 60 second playback limit per session.
+- Pro packages include all supported platforms without trial limitations.
 
-The Windows paid version contains binaries that are watermarked on all platforms, _except_ on Windows. The iOS paid version contains binaries that are watermarked on all platforms, _except_ iOS. And so on...
-
-VLC Unity is provided as standalone .unitypackage files, that you can import using the Unity Editor. 
-
-In the scenario that you have bought multiple plugins, let's say Android and Windows, you want to have no watermark on Android and Windows inside your single project.
-This can be achieved by selectively importing binaries of the plugins during the import process. Let's walk through the necessary steps:
-
-1. So first, import the Windows asset for example, but untick the Android specific binaries. All binaries will be included in your project except for the Android ones from the Windows asset (which are watermarked).
-2. Then, import the Android asset, and untick all binaries except for the Android ones (which are watermark-free).
-
-This way you will have imported your paid, watermark-free binaries for Windows and Android into your project but still retain the free, watermark binaries for all other platforms, such as UWP, macOS and iOS.
+VLC Unity is provided as standalone .unitypackage files that you can import using the Unity Editor. You no longer need to merge separate per-platform paid packages or selectively import platform-specific binaries.
