@@ -7,16 +7,21 @@ For LibVLCSharp changes, see https://code.videolan.org/videolan/LibVLCSharp/-/bl
 2026-3 (All platforms)
 - Linux: Initial x86_64 support with OpenGL rendering (GLX and EGL/Wayland backends, DMA-BUF texture sharing)
 - Linux: Editor and standalone build integration with automatic plugin postprocessing
-- Linux: CI pipeline for x86_64 build, plugin packaging, and release
+- Linux: Fix Unity editor crash and harden GLX/DMA-BUF rendering stability
 - Unity: Add centralized VLCMediaPlayer component with custom editor by @krish
 - Unity: Add VLCDisplayMesh and VLCDisplayUGUI helper components for automatic texture binding by @krish
 - Unity: Add OpenAsync method for proper network media parsing by @krish
 - Unity: Add event-driven architecture with OnPlayerStateChanged and OnTextureResized events by @krish
-- Unity: Add new Input System support to demo scripts by @krish
-- Unity: Input System package presence check with version defines and build-time warnings by @krish
+- Unity: Add new Input System support to demo scripts (with package presence check and build-time warnings) by @krish
+- Unity: Correct RawImage video orientation and default flipTextureX/Y to false
+- Unity: Auto-fix LibVLCSharp.dll platform settings on editor load
+- Unity: Protect MediaPlayer property and remove ref keywords
 - Scenes: Refactor all demo scenes to use VLCMediaPlayer (eliminates ~570 lines of duplicated code) by @krish
 - Breaking: Remove VLCMinimalPlayback, VLCPlayerExample, VLCTransparentVideoPlayback, VLCYouTubePlayback scripts (use VLCMediaPlayer component instead) by @krish
+- Windows: Fix plugin cache generation on standalone builds
+- iOS: Fix rendering plugin registration to avoid app controller conflicts
 - Editor: upgrade Unity project to 6000.3.10f1
+- libvlc engine update (17/06/2026)
 
 2026-2 (All platforms)
 - iOS/macOS: Fix texture cache resource leaks on shutdown and frame buffer release
