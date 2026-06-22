@@ -26,6 +26,9 @@ namespace LibVLCSharp
         [SerializeField] private bool logToConsole = false;
 
         [Header("Rendering")]
+        [SerializeField] private bool flipTextureX = false;
+        [SerializeField] private bool flipTextureY = false;
+
         [Tooltip("Assign the Hidden/VLC/Crossfade shader here.")]
         [SerializeField] private Shader crossfadeShader;
 
@@ -194,6 +197,8 @@ namespace LibVLCSharp
                 VLCMediaPlayer player = playerObj.AddComponent<VLCMediaPlayer>();
                 player.useUnityAudio = useUnityAudio;
                 player.playOnAwake = false;
+                player.flipTextureX = flipTextureX;
+                player.flipTextureY = flipTextureY;
                 player.logToConsole = logToConsole;
 
                 playerObj.SetActive(true);
