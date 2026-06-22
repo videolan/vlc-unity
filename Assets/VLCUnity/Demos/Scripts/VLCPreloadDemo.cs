@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using LibVLCSharp;
 
 public class VLCPreloadDemo : MonoBehaviour
@@ -8,7 +7,7 @@ public class VLCPreloadDemo : MonoBehaviour
     [SerializeField] private VLCMediaPlayer vlcPlayer;
     [SerializeField] private Button preloadButton;
     [SerializeField] private Button swapButton;
-    [SerializeField] private TextMeshProUGUI statusText;
+    [SerializeField] private Text statusText;
 
     [SerializeField] private string video1 = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi";
     [SerializeField] private string video2 = "https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv";
