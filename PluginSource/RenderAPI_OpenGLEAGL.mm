@@ -25,6 +25,7 @@
 /* VLCUnity includes */
 #include "RenderAPI_OpenGLEAGL.h"
 #include "Log.h"
+#include "TrialWatermark.h"
 
 /* Unity includes */
 #include "Unity/IUnityGraphicsMetal.h"
@@ -42,12 +43,6 @@
 
 /* Libvlc includes */
 #import <vlc/libvlc_media_player.h>
-
-#if defined(SHOW_WATERMARK)
-extern "C" bool libvlc_unity_trial_tick();
-extern "C" bool libvlc_unity_trial_is_paused();
-extern "C" bool libvlc_unity_trial_is_stopped();
-#endif
 
 namespace {
 

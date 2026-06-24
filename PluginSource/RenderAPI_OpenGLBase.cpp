@@ -1,12 +1,7 @@
 #include "RenderAPI_OpenGLBase.h"
 #include "Log.h"
+#include "TrialWatermark.h"
 #include <vlc/vlc.h>
-
-#if defined(SHOW_WATERMARK)
-extern "C" bool libvlc_unity_trial_tick();
-extern "C" bool libvlc_unity_trial_is_paused();
-extern "C" bool libvlc_unity_trial_is_stopped();
-#endif
 
 RenderAPI_OpenGLBase::RenderAPI_OpenGLBase(UnityGfxRenderer apiType)
 {

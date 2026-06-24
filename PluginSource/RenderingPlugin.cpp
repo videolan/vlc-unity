@@ -1,6 +1,7 @@
 #include "PlatformBase.h"
 #include "RenderAPI.h"
 #include "Log.h"
+#include "TrialWatermark.h"
 
 #include <map>
 #include <atomic>
@@ -39,7 +40,6 @@ libvlc_instance_t * inst;
 #if defined(SHOW_WATERMARK)
 static void trial_reset();
 static void trial_pause();
-extern "C" bool libvlc_unity_trial_is_stopped();
 
 static void on_media_player_stopped(const libvlc_event_t* event, void* data)
 {

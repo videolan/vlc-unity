@@ -22,13 +22,8 @@
 
 #include "RenderAPI_Vulkan.h"
 #include "Log.h"
+#include "TrialWatermark.h"
 #include <cassert>
-
-#if defined(SHOW_WATERMARK)
-extern "C" bool libvlc_unity_trial_tick();
-extern "C" bool libvlc_unity_trial_is_paused();
-extern "C" bool libvlc_unity_trial_is_stopped();
-#endif
 #include <stdexcept>
 #include <vector>
 #include <jni.h>

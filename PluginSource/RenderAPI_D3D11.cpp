@@ -23,6 +23,7 @@
 #include "Unity/IUnityGraphicsD3D12.h"
 #endif
 #include "Log.h"
+#include "TrialWatermark.h"
 
 #include <algorithm>
 #include <dxgi1_2.h>
@@ -31,11 +32,6 @@
 #include <random>
 
 #if defined(SHOW_WATERMARK)
-extern "C" bool libvlc_unity_trial_tick();
-extern "C" uint32_t libvlc_unity_trial_seconds_remaining();
-extern "C" bool libvlc_unity_trial_is_paused();
-extern "C" bool libvlc_unity_trial_is_stopped();
-
 static int64_t getCurrentTimeMs()
 {
     auto now = std::chrono::steady_clock::now().time_since_epoch();
