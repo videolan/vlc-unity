@@ -1,5 +1,6 @@
 #include "RenderAPI_OpenGLLinuxEGL.h"
 #include "Log.h"
+#include "TrialWatermark.h"
 #include <cassert>
 #include <cstring>
 #include <dirent.h>
@@ -691,6 +692,16 @@ void RenderAPI_OpenGLLinuxEGL::dmabuf_swap(void* opaque)
     std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
 
 #if defined(SHOW_WATERMARK)
+    bool isPaused = libvlc_unity_trial_is_paused();
+    bool isStopped = libvlc_unity_trial_is_stopped();
+    bool isPlaying = !isPaused && !isStopped;
+    if (isPaused && that->m_dmabuf_width > 0)
+        return;
+    if (isPlaying && !libvlc_unity_trial_tick())
+    {
+        libvlc_media_player_stop_async(that->m_mp);
+        return;
+    }
     if (that->m_dmabuf_width > 0 && that->m_dmabuf_height > 0) {
         that->watermark.draw(that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo,
                              that->m_dmabuf_width, that->m_dmabuf_height);
