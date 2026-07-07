@@ -622,9 +622,9 @@ namespace Videolabs.VLCUnity.Editor
                     }
 
                     cpu = pi.GetPlatformData(BuildTarget.EmbeddedLinux, "CPU");
-                    if (cpu != "x86_64")
+                    if (cpu != "X64")
                     {
-                        pi.SetPlatformData(BuildTarget.EmbeddedLinux, "CPU", "x86_64");
+                        pi.SetPlatformData(BuildTarget.EmbeddedLinux, "CPU", "X64");
                         dirty = true;
                     }
 
