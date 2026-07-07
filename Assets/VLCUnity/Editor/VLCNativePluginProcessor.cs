@@ -539,7 +539,8 @@ namespace Videolabs.VLCUnity.Editor
                 if (ShouldExcludeFromUnityPluginLoading(assetPath))
                 {
                     if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
-                        || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                        || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
+                        || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
                     {
                         anyDirty = true;
                         break;
@@ -548,7 +549,8 @@ namespace Videolabs.VLCUnity.Editor
                 }
 
                 if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor()
-                    || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                    || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
+                    || !pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
                 {
                     anyDirty = true;
                     break;
@@ -587,11 +589,13 @@ namespace Videolabs.VLCUnity.Editor
                     if (ShouldExcludeFromUnityPluginLoading(assetPath))
                     {
                         if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
-                            || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                            || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
+                            || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
                         {
                             pi.SetCompatibleWithAnyPlatform(false);
                             pi.SetCompatibleWithEditor(false);
                             pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, false);
+                            pi.SetCompatibleWithPlatform(BuildTarget.EmbeddedLinux, false);
                             pi.SaveAndReimport();
                         }
                         continue;
@@ -599,11 +603,13 @@ namespace Videolabs.VLCUnity.Editor
 
                     var dirty = false;
 
-                    if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64))
+                    if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor() || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
+                        || !pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
                     {
                         pi.SetCompatibleWithAnyPlatform(false);
                         pi.SetCompatibleWithEditor(true);
                         pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, true);
+                        pi.SetCompatibleWithPlatform(BuildTarget.EmbeddedLinux, true);
 
                         dirty = true;
                     }
@@ -612,6 +618,13 @@ namespace Videolabs.VLCUnity.Editor
                     if (cpu != "x86_64")
                     {
                         pi.SetPlatformData(BuildTarget.StandaloneLinux64, "CPU", "x86_64");
+                        dirty = true;
+                    }
+
+                    cpu = pi.GetPlatformData(BuildTarget.EmbeddedLinux, "CPU");
+                    if (cpu != "x86_64")
+                    {
+                        pi.SetPlatformData(BuildTarget.EmbeddedLinux, "CPU", "x86_64");
                         dirty = true;
                     }
 
@@ -797,6 +810,7 @@ namespace Videolabs.VLCUnity.Editor
                 changed |= SetPlatform(pi, BuildTarget.StandaloneWindows, true);
                 changed |= SetPlatform(pi, BuildTarget.StandaloneWindows64, true);
                 changed |= SetPlatform(pi, BuildTarget.StandaloneLinux64, true);
+                changed |= SetPlatform(pi, BuildTarget.EmbeddedLinux, true);
                 changed |= SetPlatform(pi, BuildTarget.Android, true);
                 changed |= SetPlatform(pi, BuildTarget.WSAPlayer, true);
                 changed |= SetPlatform(pi, BuildTarget.XboxOne, true);
