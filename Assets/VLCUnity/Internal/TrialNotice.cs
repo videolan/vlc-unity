@@ -15,7 +15,7 @@ using UnityEditor;
 #endif
 public static class TrialNotice
 {
-#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX)
+#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX)
     const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
     const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";

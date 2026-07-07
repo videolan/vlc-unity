@@ -8,7 +8,7 @@ namespace LibVLCSharp
 {
     public static class TextureHelper
     {
-#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX)
+#if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX)
         const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
         const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
@@ -59,7 +59,7 @@ namespace LibVLCSharp
             }
 #endif
 
-#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
@@ -135,7 +135,7 @@ namespace LibVLCSharp
             }
 #endif
 
-#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
