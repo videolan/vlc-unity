@@ -69,6 +69,8 @@ void* RenderAPI_OpenGLGLX::get_proc_address(void* /*data*/, const char* procname
 
 void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
 {
+    m_mp = mp;
+
     if (!isInitialized()) {
         libvlc_media_player_t* prev = m_pending_mp;
         m_pending_mp = mp;
@@ -89,12 +91,14 @@ void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t *mp)
 {
     if (m_pending_mp == mp) {
         m_pending_mp = nullptr;
+        m_mp = nullptr;
         return; // Cancelled pending setVlcContext before it was promoted
     }
     // Callbacks were already registered — disable them
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
         nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr);
+    m_mp = nullptr;
 }
 
 void RenderAPI_OpenGLGLX::retrieveOpenGLContext()
@@ -764,7 +768,6 @@ void RenderAPI_OpenGLGLX::dmabuf_swap(void* opaque)
         return;
     if (isPlaying && !libvlc_unity_trial_tick())
     {
-        libvlc_media_player_stop_async(that->m_mp);
         return;
     }
     if (that->m_dmabuf_width > 0 && that->m_dmabuf_height > 0) {

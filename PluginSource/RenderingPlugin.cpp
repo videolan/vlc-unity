@@ -40,6 +40,7 @@ libvlc_instance_t * inst;
 #if defined(SHOW_WATERMARK)
 static void trial_reset();
 static void trial_pause();
+static bool trial_is_expired();
 
 static void on_media_player_stopped(const libvlc_event_t* event, void* data)
 {
@@ -467,6 +468,24 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
                 currentAPI->performRenderThreadWork();
         }
     }
+
+#if defined(SHOW_WATERMARK)
+    if (trial_is_expired() && !g_trialIsStopped.load())
+    {
+        DEBUG("[Trial] stopping media players after trial expiry");
+        g_trialIsStopped.store(true);
+        g_trialIsPaused.store(false);
+        trial_pause();
+
+        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+        for(it = contexts.begin(); it != contexts.end(); it++)
+        {
+            libvlc_media_player_t* mp = it->first;
+            if(mp && libvlc_media_player_is_playing(mp))
+                libvlc_media_player_stop_async(mp);
+        }
+    }
+#endif
 #endif
 
 #if defined(UNITY_ANDROID)
@@ -509,6 +528,11 @@ static void trial_reset()
 static void trial_pause()
 {
     g_trialLastTickMs.store(-1);
+}
+
+static bool trial_is_expired()
+{
+    return g_trialAccumulatedMs.load() >= TRIAL_TIME_LIMIT_MS;
 }
 
 extern "C" bool libvlc_unity_trial_tick()
