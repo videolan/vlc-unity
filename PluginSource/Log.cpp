@@ -1,5 +1,6 @@
 #include "PlatformBase.h"
 #include "Log.h"
+#include "Unity/IUnityInterface.h"
 
 #if defined(UNITY_WIN)
 #include <windows.h>
@@ -15,11 +16,42 @@ extern "C"
 #include <stdio.h>
 }
 
-void debugmsg( const char* fmt, ...)
+static LogCallbackFunc g_logCallback = nullptr;
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetLogCallback(LogCallbackFunc callback)
+{
+    g_logCallback = callback;
+    if (callback != nullptr)
+    {
+        DEBUG("Native logging callback registered successfully from C++ side");
+    }
+}
+
+void debugmsg(uint32_t hexColor, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
 
+    if (g_logCallback != nullptr)
+    {
+        va_list args_copy;
+        va_copy(args_copy, args);
+        int size = vsnprintf(NULL, 0, fmt, args_copy) + 1;
+        va_end(args_copy);
+
+        if (size > 0)
+        {
+            char* buffer = (char*)malloc(size);
+            if (buffer != NULL)
+            {
+                vsnprintf(buffer, size, fmt, args);
+                g_logCallback(buffer, hexColor);
+                free(buffer);
+            }
+        }
+    }
+    else
+    {
 #if defined(UNITY_WIN)
     windows_print(fmt, args);
 #elif defined(UNITY_ANDROID)
@@ -28,6 +60,7 @@ void debugmsg( const char* fmt, ...)
     vfprintf(stderr, fmt, args);
     vfprintf(stderr, "\n", args);
 #endif
+    }
 
     va_end(args);
 }
