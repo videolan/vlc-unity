@@ -7,11 +7,11 @@ namespace LibVLCSharp
     class OnLoad
     {
 #if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX)
-        const string UnityPlugin = "libVLCUnityPlugin";
+        internal const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
-        const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
+        internal const string UnityPlugin = "@rpath/VLCUnityPlugin.framework/VLCUnityPlugin";
 #else
-        const string UnityPlugin = "VLCUnityPlugin";
+        internal const string UnityPlugin = "VLCUnityPlugin";
 #endif
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
