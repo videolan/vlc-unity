@@ -40,35 +40,45 @@ libvlc_instance_t * inst;
 #if defined(SHOW_WATERMARK)
 static void trial_reset();
 static void trial_pause();
+#if defined(UNITY_LINUX)
 static bool trial_is_expired();
+#endif
 
-static void on_media_player_stopped(const libvlc_event_t* event, void* data)
+static void on_media_player_state_changed(void* opaque, libvlc_state_t state)
 {
-    (void)event;
-    (void)data;
-    DEBUG("[Trial] Event: MediaPlayerStopped");
-    g_trialIsStopped.store(true);
-    g_trialIsPaused.store(false);
-    trial_reset();
+    (void)opaque;
+    switch (state)
+    {
+    case libvlc_Stopped:
+        DEBUG("[Trial] Event: MediaPlayerStopped");
+        g_trialIsStopped.store(true);
+        g_trialIsPaused.store(false);
+        trial_reset();
+        break;
+    case libvlc_Paused:
+        DEBUG("[Trial] Event: MediaPlayerPaused");
+        g_trialIsPaused.store(true);
+        trial_pause();
+        break;
+    case libvlc_Playing:
+        DEBUG("[Trial] Event: MediaPlayerPlaying");
+        g_trialIsStopped.store(false);
+        g_trialIsPaused.store(false);
+        break;
+    default:
+        break;
+    }
 }
 
-static void on_media_player_paused(const libvlc_event_t* event, void* data)
+static libvlc_media_player_cbs create_media_player_callbacks()
 {
-    (void)event;
-    (void)data;
-    DEBUG("[Trial] Event: MediaPlayerPaused");
-    g_trialIsPaused.store(true);
-    trial_pause();
+    libvlc_media_player_cbs callbacks = {};
+    callbacks.version = 0;
+    callbacks.on_state_changed = on_media_player_state_changed;
+    return callbacks;
 }
 
-static void on_media_player_playing(const libvlc_event_t* event, void* data)
-{
-    (void)event;
-    (void)data;
-    DEBUG("[Trial] Event: MediaPlayerPlaying");
-    g_trialIsStopped.store(false);
-    g_trialIsPaused.store(false);
-}
+static const libvlc_media_player_cbs media_player_callbacks = create_media_player_callbacks();
 #endif
 
 static IUnityGraphics* s_Graphics = NULL;
@@ -192,7 +202,13 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     libvlc_media_player_t * mp;
 
-    mp = libvlc_media_player_new(inst);
+    mp = libvlc_media_player_new(inst,
+#if defined(SHOW_WATERMARK)
+                                 &media_player_callbacks,
+#else
+                                 NULL,
+#endif
+                                 NULL);
 
     RenderAPI* s_CurrentAPI;
 
@@ -231,18 +247,6 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     contexts[mp] = s_CurrentAPI;
 
-#if defined(SHOW_WATERMARK)
-    {
-        libvlc_event_manager_t* em = libvlc_media_player_event_manager(mp);
-        if (em)
-        {
-            libvlc_event_attach(em, libvlc_MediaPlayerStopped, on_media_player_stopped, mp);
-            libvlc_event_attach(em, libvlc_MediaPlayerPaused, on_media_player_paused, mp);
-            libvlc_event_attach(em, libvlc_MediaPlayerPlaying, on_media_player_playing, mp);
-        }
-    }
-#endif
-
     return mp;
 err:
     if ( mp ) {
@@ -261,18 +265,6 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
 {
     if(mp == NULL)
         return;
-
-#if defined(SHOW_WATERMARK)
-    {
-        libvlc_event_manager_t* em = libvlc_media_player_event_manager(mp);
-        if (em)
-        {
-            libvlc_event_detach(em, libvlc_MediaPlayerStopped, on_media_player_stopped, mp);
-            libvlc_event_detach(em, libvlc_MediaPlayerPaused, on_media_player_paused, mp);
-            libvlc_event_detach(em, libvlc_MediaPlayerPlaying, on_media_player_playing, mp);
-        }
-    }
-#endif
 
     RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
 
@@ -530,10 +522,12 @@ static void trial_pause()
     g_trialLastTickMs.store(-1);
 }
 
+#if defined(UNITY_LINUX)
 static bool trial_is_expired()
 {
     return g_trialAccumulatedMs.load() >= TRIAL_TIME_LIMIT_MS;
 }
+#endif
 
 extern "C" bool libvlc_unity_trial_tick()
 {

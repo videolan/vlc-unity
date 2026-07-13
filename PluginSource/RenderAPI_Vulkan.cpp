@@ -277,7 +277,7 @@ bool RenderAPI_Vulkan::resize(void* opaque, const libvlc_video_render_cfg_t *cfg
         }
     }
 
-    output->opengl_format = GL_RGBA;
+    output->u.opengl_format = GL_RGBA;
     output->full_range = true;
     output->colorspace = libvlc_video_colorspace_BT709;
     output->primaries  = libvlc_video_primaries_BT709;

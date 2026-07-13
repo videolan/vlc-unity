@@ -215,7 +215,7 @@ bool RenderAPI_OpenGLEAGL::resize(void* opaque, const libvlc_video_render_cfg_t 
 
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);
 
-    output->opengl_format = GL_RGBA;
+    output->u.opengl_format = GL_RGBA;
     output->full_range = true;
     output->colorspace = libvlc_video_colorspace_BT709;
     output->primaries  = libvlc_video_primaries_BT709;

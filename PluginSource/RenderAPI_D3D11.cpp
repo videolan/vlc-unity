@@ -987,7 +987,7 @@ bool RenderAPI_D3D11::UpdateOutput(const libvlc_video_render_cfg_t *cfg, libvlc_
 
     this->Update(cfg->width, cfg->height);
 
-    out->dxgi_format = renderFormat;
+    out->u.dxgi_format = renderFormat;
     out->full_range     = true;
     out->colorspace     = libvlc_video_colorspace_BT709;
     out->primaries      = libvlc_video_primaries_BT709;
@@ -1310,7 +1310,7 @@ bool RenderAPI_D3D11::Setup(const libvlc_video_setup_device_cfg_t *cfg, libvlc_v
 
     if (out && m_d3dctxVLC)
     {
-        out->d3d11.device_context = m_d3dctxVLC;
+        out->u.d3d11.device_context = m_d3dctxVLC;
         return true;
     }
     return false;
