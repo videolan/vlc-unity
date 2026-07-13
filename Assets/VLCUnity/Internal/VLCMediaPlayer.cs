@@ -45,8 +45,8 @@ namespace LibVLCSharp
         [Tooltip("Flips the output texture vertically.")]
         public bool flipTextureY = false;
 
-        [Tooltip("Logs function calls and LibVLC logs to Unity console.")]
-        public bool logToConsole = false;
+        [Tooltip("Traces function calls to the Unity console.")]
+        public bool traceFunctionCalls = false;
 
         [Tooltip("Global configuration for LibVLC caching and networking.")]
         public VLCPlayerConfiguration Configuration;
@@ -143,9 +143,6 @@ namespace LibVLCSharp
         private void OnDestroy()
         {
             CancelPreload();
-
-            if (LibVLC != null)
-                LibVLC.Log -= OnLibVLCLog;
 
             DestroyMediaPlayer();
             DestroyTextures();
@@ -383,8 +380,13 @@ namespace LibVLCSharp
         void CreateLibVLC()
         {
             Log("VLCMediaPlayer CreateLibVLC");
-            LibVLC?.Dispose();
-            LibVLC = null;
+
+            if (LibVLC != null)
+            {
+                VLCUnityLogger.UnhookLibVLC(LibVLC);
+                LibVLC.Dispose();
+                LibVLC = null;
+            }
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
             Core.Initialize(OnLoad.LibVLCDirectory); // Load bundled Linux libvlc.
@@ -403,7 +405,7 @@ namespace LibVLCSharp
                                                                         // Setup Error Logging
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
-            LibVLC.Log += OnLibVLCLog;
+            VLCUnityLogger.HookLibVLC(LibVLC);
         }
 
         private void CreateMediaPlayer()
@@ -607,24 +609,9 @@ namespace LibVLCSharp
             return tracks;
         }
 
-        private void OnLibVLCLog(object s, LogEventArgs e)
-        {
-            // Always use try/catch in LibVLC events.
-            // LibVLC can freeze Unity if an exception goes unhandled inside an event handler.
-            try
-            {
-                if (logToConsole)
-                    Log(e.FormattedLog);
-            }
-            catch (Exception ex)
-            {
-                Log("Exception caught in libVLC.Log: \n" + ex.ToString());
-            }
-        }
-
         private void Log(object message)
         {
-            if (logToConsole)
+            if (traceFunctionCalls)
                 Debug.Log(message);
         }
         #endregion

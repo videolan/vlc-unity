@@ -23,7 +23,7 @@ namespace LibVLCSharp
         [SerializeField] private VLCPlaylistAsset playlist;
         [SerializeField] private bool playOnAwake = true;
         [SerializeField] private bool useUnityAudio = true;
-        [SerializeField] private bool logToConsole = false;
+        [SerializeField] private bool traceFunctionCalls = false;
 
         [Header("Rendering")]
         [SerializeField] private bool flipTextureX = false;
@@ -199,7 +199,7 @@ namespace LibVLCSharp
                 player.playOnAwake = false;
                 player.flipTextureX = flipTextureX;
                 player.flipTextureY = flipTextureY;
-                player.logToConsole = logToConsole;
+                player.traceFunctionCalls = traceFunctionCalls;
 
                 playerObj.SetActive(true);
 
@@ -481,7 +481,7 @@ namespace LibVLCSharp
 
         private void Log(object message)
         {
-            if (logToConsole)
+            if (traceFunctionCalls)
                 Debug.Log(message);
         }
 

@@ -32,7 +32,7 @@ namespace LibVLCSharp
 
         private SerializedProperty _libVLCArguments;
 
-        private SerializedProperty _logToConsole;
+        private SerializedProperty _traceFunctionCalls;
 
         private void OnEnable()
         {
@@ -54,7 +54,7 @@ namespace LibVLCSharp
 
             _libVLCArguments = serializedObject.FindProperty("libVLCArguments");
 
-            _logToConsole = serializedObject.FindProperty("logToConsole");
+            _traceFunctionCalls = serializedObject.FindProperty("traceFunctionCalls");
         }
 
         public override void OnInspectorGUI()
@@ -144,7 +144,7 @@ namespace LibVLCSharp
             if (_showDebug)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(_logToConsole);
+                EditorGUILayout.PropertyField(_traceFunctionCalls);
                 EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
