@@ -53,7 +53,7 @@ variables:
         name: $VLC_ANDROID_IMAGE
     script: |
         git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
-        git clone https://code.videolan.org/videolan/libvlcjni && cd libvlcjni
+        git clone --branch adapt-latest-vlc-events https://code.videolan.org/mfkl/libvlcjni && cd libvlcjni
         git clone https://code.videolan.org/videolan/vlc/ --depth=1
         cd ..
         ANDROID_HOME=/sdk/android-sdk-linux ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI} ${CONFIG_ARGS} --license l
