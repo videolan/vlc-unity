@@ -183,7 +183,9 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
 }
 
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
-libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
+libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
+                              const libvlc_media_player_cbs* callbacks,
+                              void* callbacks_opaque)
 {
     if(libvlc == NULL)
     {
@@ -202,13 +204,10 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc)
 
     libvlc_media_player_t * mp;
 
-    mp = libvlc_media_player_new(inst,
 #if defined(SHOW_WATERMARK)
-                                 &media_player_callbacks,
-#else
-                                 NULL,
+    (void)media_player_callbacks;
 #endif
-                                 NULL);
+    mp = libvlc_media_player_new(inst, callbacks, callbacks_opaque);
 
     RenderAPI* s_CurrentAPI;
 
