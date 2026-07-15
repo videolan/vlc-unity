@@ -53,7 +53,6 @@ namespace LibVLCSharp
         private int _lastLostVideo;
         private int _lastPlayedAudio;
         private int _lastLostAudio;
-        private VLCState _coreState = VLCState.Stopped;
 
         private void Awake()
         {
@@ -132,12 +131,6 @@ namespace LibVLCSharp
 
         private void OnPlayerStateChanged(VLCState state)
         {
-            if (state != VLCState.Buffering)
-                _coreState = state;
-
-            if (state == VLCState.Buffering && _coreState == VLCState.Playing)
-                return;
-
             bufferingIndicator.text = "0%";
 
             statusText.text = state.ToString().ToUpper();

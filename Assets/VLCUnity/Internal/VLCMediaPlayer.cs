@@ -20,6 +20,9 @@ namespace LibVLCSharp
     /// </summary>
     public class VLCMediaPlayer : VLCVideoProviderBase
     {
+        private const long MicrosecondsPerMillisecond = 1000;
+        private const float BufferingPercentageScale = 100f;
+
         public static LibVLC LibVLC { get; private set; }
         public MediaPlayer MediaPlayer { get; private set;  }
         public override RenderTexture OutputTexture { get; protected set; }
@@ -312,13 +315,13 @@ namespace LibVLCSharp
         public void Seek(long timeDelta)
         {
             Log("VLCMediaPlayer Seek " + timeDelta);
-            MediaPlayer.SetTime(MediaPlayer.Time + timeDelta);
+            MediaPlayer.SeekTo(TimeSpan.FromMilliseconds(Time + timeDelta));
         }
 
         public void SetTime(long time)
         {
             Log("VLCMediaPlayer SetTime " + time);
-            MediaPlayer.SetTime(time);
+            MediaPlayer.SeekTo(TimeSpan.FromMilliseconds(time));
         }
 
         public void SetVolume(int volume = 100)
@@ -330,8 +333,11 @@ namespace LibVLCSharp
 
         public int Volume => MediaPlayer != null ? MediaPlayer.Volume : 0;
         public bool IsPlaying => MediaPlayer != null && MediaPlayer.IsPlaying;
-        public long Duration => (MediaPlayer != null && MediaPlayer.Media != null) ? MediaPlayer.Media.Duration : 0;
-        public long Time => MediaPlayer != null ? MediaPlayer.Time : 0;
+        /// <summary>Gets the media duration in milliseconds.</summary>
+        public long Duration => (MediaPlayer != null && MediaPlayer.Media != null) ? FromLibVLCTime(MediaPlayer.Media.Duration) : 0;
+
+        /// <summary>Gets the current playback time in milliseconds.</summary>
+        public long Time => MediaPlayer != null ? FromLibVLCTime(MediaPlayer.Time) : 0;
 
         public List<MediaTrack> Tracks(TrackType type)
         {
@@ -497,8 +503,8 @@ namespace LibVLCSharp
 
             player.Buffering += (s, e) =>
             {
-                OnStateChange(VLCState.Buffering);
-                DispatchToMainThread(() => OnBuffering?.Invoke(e.Cache));
+                float cachePercent = ToPercentage(e.Cache);
+                DispatchToMainThread(() => OnBuffering?.Invoke(cachePercent));
             };
 
             player.Playing += (s, e) => OnStateChange(VLCState.Playing);
@@ -567,7 +573,7 @@ namespace LibVLCSharp
 
         private void OnBackgroundPlayerBuffering(object sender, MediaPlayerBufferingEventArgs e)
         {
-            float cachePercent = e.Cache;
+            float cachePercent = ToPercentage(e.Cache);
 
             DispatchToMainThread(() =>
             {
@@ -580,6 +586,10 @@ namespace LibVLCSharp
                 }
             });
         }
+
+        private static long FromLibVLCTime(long microseconds) => microseconds / MicrosecondsPerMillisecond;
+
+        private static float ToPercentage(float buffering) => buffering * BufferingPercentageScale;
 
         //Converts MediaTrackList objects to Unity-friendly generic lists. Might not be worth the trouble.
         List<MediaTrack> ConvertMediaTrackList(MediaTrackList tracklist)

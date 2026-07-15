@@ -48,7 +48,6 @@ public class VLCPlayerExampleGui : MonoBehaviour
         //VLC Event Handlers
         vlcPlayer.OnPlayerStateChanged.AddListener((state) => {
             bool isActiveState = state == VLCState.Playing ||
-                                 state == VLCState.Buffering ||
                                  state == VLCState.Opening;
 
             UpdatePlayPauseButton(isActiveState);
