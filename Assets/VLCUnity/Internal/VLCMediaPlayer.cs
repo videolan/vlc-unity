@@ -28,7 +28,7 @@ namespace LibVLCSharp
         public override RenderTexture OutputTexture { get; protected set; }
 
         [Tooltip("The URL or local file path to the media you want to play.")]
-        public string mediaPath = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi";
+        public string mediaPath = "https://archive.org/download/BigBuckBunny_328/BigBuckBunny.avi";
 
         [Tooltip("Media-specific LibVLC options (e.g., :start-time=10, :rate=1.5).")]
         public string[] mediaOptions = Array.Empty<string>();

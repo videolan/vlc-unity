@@ -9,8 +9,8 @@ public class VLCPreloadDemo : MonoBehaviour
     [SerializeField] private Button swapButton;
     [SerializeField] private Text statusText;
 
-    [SerializeField] private string video1 = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi";
-    [SerializeField] private string video2 = "https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv";
+    [SerializeField] private string video1 = "https://archive.org/download/BigBuckBunny_328/BigBuckBunny.avi";
+    [SerializeField] private string video2 = "https://archive.org/download/ElephantsDream/ed_hd.mp4";
 
     private string _currentlyPlaying;
     private string _nextToPreload;

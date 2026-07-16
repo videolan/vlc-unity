@@ -751,8 +751,8 @@ MonoBehaviour:
   preloadButton: {fileID: 852787983}
   swapButton: {fileID: 1078065325}
   statusText: {fileID: 703222681}
-  video1: https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_1080p_stereo.avi
-  video2: https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv
+  video1: https://archive.org/download/BigBuckBunny_328/BigBuckBunny.avi
+  video2: https://archive.org/download/ElephantsDream/ed_hd.mp4
 --- !u!43 &656840289
 Mesh:
   m_ObjectHideFlags: 0
