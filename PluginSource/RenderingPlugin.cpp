@@ -6,6 +6,7 @@
 #include <map>
 #include <atomic>
 #include <chrono>
+#include <mutex>
 
 #if defined(SHOW_WATERMARK)
 static std::atomic<int64_t> g_trialAccumulatedMs{0};
@@ -70,15 +71,47 @@ static void on_media_player_state_changed(void* opaque, libvlc_state_t state)
     }
 }
 
-static libvlc_media_player_cbs create_media_player_callbacks()
+static struct libvlc_media_player_cbs create_media_player_callbacks()
 {
-    libvlc_media_player_cbs callbacks = {};
+    struct libvlc_media_player_cbs callbacks = {};
     callbacks.version = 0;
     callbacks.on_state_changed = on_media_player_state_changed;
     return callbacks;
 }
 
-static const libvlc_media_player_cbs media_player_callbacks = create_media_player_callbacks();
+static const struct libvlc_media_player_cbs media_player_callbacks = create_media_player_callbacks();
+
+using MediaPlayerStateChangedCallback = void (*)(void*, libvlc_state_t);
+static MediaPlayerStateChangedCallback managed_media_player_state_changed = nullptr;
+
+static void on_media_player_state_changed_with_trial(void* opaque, libvlc_state_t state)
+{
+    on_media_player_state_changed(opaque, state);
+
+    if (managed_media_player_state_changed != nullptr)
+        managed_media_player_state_changed(opaque, state);
+}
+
+static const struct libvlc_media_player_cbs* callbacks_with_trial_state(
+    const struct libvlc_media_player_cbs* callbacks)
+{
+    if (callbacks == nullptr)
+        return &media_player_callbacks;
+
+    // LibVLCSharp provides one immutable callback table shared by its Unity
+    // media players. Copy it once so the trial state handler can run without
+    // dropping LibVLCSharp's managed event dispatch.
+    static struct libvlc_media_player_cbs combined_callbacks;
+    static std::once_flag combined_callbacks_initialized;
+
+    std::call_once(combined_callbacks_initialized, [callbacks]() {
+        combined_callbacks = *callbacks;
+        managed_media_player_state_changed = callbacks->on_state_changed;
+        combined_callbacks.on_state_changed = on_media_player_state_changed_with_trial;
+    });
+
+    return &combined_callbacks;
+}
 #endif
 
 static IUnityGraphics* s_Graphics = NULL;
@@ -184,7 +217,7 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Print(char* toPrint)
 
 extern "C" libvlc_media_player_t* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
-                              const libvlc_media_player_cbs* callbacks,
+                              const struct libvlc_media_player_cbs* callbacks,
                               void* callbacks_opaque)
 {
     if(libvlc == NULL)
@@ -204,10 +237,11 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
 
     libvlc_media_player_t * mp;
 
+    const struct libvlc_media_player_cbs* effective_callbacks = callbacks;
 #if defined(SHOW_WATERMARK)
-    (void)media_player_callbacks;
+    effective_callbacks = callbacks_with_trial_state(callbacks);
 #endif
-    mp = libvlc_media_player_new(inst, callbacks, callbacks_opaque);
+    mp = libvlc_media_player_new(inst, effective_callbacks, callbacks_opaque);
 
     RenderAPI* s_CurrentAPI;
 
