@@ -81,6 +81,7 @@ namespace LibVLCSharp
 
         private MediaPlayer _backgroundNativePlayer;
         private int _cachedVolume = 100;
+        private int _openId;
 
         private Texture2D _vlcTexture = null;
         private bool _usesDirectVulkanOutput;
@@ -191,9 +192,13 @@ namespace LibVLCSharp
         public async Task OpenAsync(string path = null, params string[] options)
         {
             PrepareForNewMedia(path);
+            int openId = _openId;
 
             var finalOptions = options?.Length > 0 ? options : mediaOptions;
             using var media = await CreateAndParseMediaAsync(mediaPath, false, finalOptions);
+            if (openId != _openId)
+                return;
+
             using var subItems = media.SubItems;
             using var selected = subItems?.FirstOrDefault();
 
@@ -292,6 +297,7 @@ namespace LibVLCSharp
             }
 
             Log("Swapping to preloaded video: " + PreloadedMediaPath);
+            _openId++;
 
             // Keep the old external texture alive until Unity has released its
             // wrapper, then retire the native renderer that owns the GL name.
@@ -586,6 +592,8 @@ namespace LibVLCSharp
 
         private void PrepareForNewMedia(string path)
         {
+            _openId++;
+
             if (!string.IsNullOrEmpty(path))
                 mediaPath = path;
 

@@ -19,8 +19,15 @@
     ],
     "autoReferenced": true,
     "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
+        "UNITY_INCLUDE_TESTS",
+        "VLC_HAS_TEST_FRAMEWORK"
     ],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework",
+            "expression": "1.0.0",
+            "define": "VLC_HAS_TEST_FRAMEWORK"
+        }
+    ],
     "noEngineReferences": false
 }

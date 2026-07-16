@@ -1,0 +1,24 @@
+{
+    "name": "VLCUnity.Demos.Timeline",
+    "rootNamespace": "",
+    "references": [
+        "GUID:330daf32eb922624abb139203ac0f545"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "VLC_HAS_TIMELINE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.timeline",
+            "expression": "1.0.0",
+            "define": "VLC_HAS_TIMELINE"
+        }
+    ],
+    "noEngineReferences": false
+}

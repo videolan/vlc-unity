@@ -2,8 +2,10 @@
   "dependencies": {
     "com.unity.postprocessing": "3.5.4",
     "com.unity.test-framework": "1.4.5",
+    "com.unity.timeline": "1.8.12",
     "com.unity.ugui": "2.0.0",
     "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.director": "1.0.0",
     "com.unity.modules.uielements": "1.0.0"
   }
 }

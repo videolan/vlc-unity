@@ -1,0 +1,25 @@
+{
+    "name": "VLCUnity.Timeline",
+    "rootNamespace": "Videolabs.VLCUnity",
+    "references": [
+        "Unity.Timeline",
+        "VLCUnity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "VLC_HAS_TIMELINE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.timeline",
+            "expression": "1.0.0",
+            "define": "VLC_HAS_TIMELINE"
+        }
+    ],
+    "noEngineReferences": false
+}

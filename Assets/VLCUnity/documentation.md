@@ -326,6 +326,16 @@ public void PlayVideo(string url)
 }
 ```
 
+## Timeline
+
+When the `com.unity.timeline` package is installed, a **VLC Timeline Track** is available in the Timeline window. Bind it to a `VLCMediaPlayer` and add VLC clips to it. In Play Mode, each clip opens its media (or the player's own `mediaPath` when the clip's path is empty) and the player follows the timeline's time, Clip In, speed and pause state. There is no Edit Mode preview.
+
+- Clip ease in/out drives the player's opacity, which only `VLCDisplayUGUI` applies (as the `RawImage` alpha). `VLCDisplayMesh` ignores it, so a crossfade between two players needs a `RawImage` with `VLCDisplayUGUI` for each.
+- Volume is not blended, because libvlc volume is shared by every player in the process on Windows.
+- Bind each `VLCMediaPlayer` to a single VLC track.
+
+See the `VLC Timeline Crossfade Demo` and `VLC Timeline Branching Demo` scenes.
+
 ## Advanced: Manual Integration
 
 The following information provides context on how the VLCMediaPlayer component works internally.
@@ -376,7 +386,8 @@ The scene uses the VLCMediaPlayer component with all configuration visible in th
 - 360 playback with keyboard navigation built-in,
 - A video with subtitles showcasing support,
 - The VLC Canvas Example provides a UI-based player with more controls,
-- 3D scene you can move around in with a movie screen and chairs in a cinema room.
+- 3D scene you can move around in with a movie screen and chairs in a cinema room,
+- Timeline crossfade and branching demos (require the Timeline package).
 
 For more API usage information, explore our [online docs](https://code.videolan.org/videolan/LibVLCSharp/-/blob/master/docs/home.md).
 
