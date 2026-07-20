@@ -22,6 +22,8 @@ This repository contains the native Unity plugin that bridges [LibVLCSharp](http
     - [Future graphics APIs](#future-graphics-APIs)
     - [Other improvements](#other-improvements)
   - [Release Notes](#release-Notes)
+  - [Logging](#logging)
+  - [Testing](#testing)
   - [Building](#building)
   - [Code of Conduct](#code-of-Conduct)
   - [Commercial Services](#commercial-services)
@@ -156,6 +158,20 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 ## Release Notes
 
 Check out the [NEWS](NEWS) file for details about each release.
+
+## Logging
+
+VLC Unity logging has separate source and output controls:
+
+- Enable **Diagnostics** on a `VLCMediaPlayer` or `VLCPlaylistController` to produce operational records from that component. The Unity Console output is enabled by default, so these records are visible immediately.
+- Create a settings asset with **Create > VideoLAN > VLC Log Settings** to opt in to the verbose engine source (the VLC engine and the native rendering plugin) and to route records to the Unity Console, a file, or a Unity event. The asset is loaded by name at runtime, so keep it called `VLCLogSettings` and place it directly inside a `Resources` folder, for example `Assets/Resources/VLCLogSettings.asset`. Without one, the defaults apply: component diagnostics go to the Unity Console and nothing else is captured.
+- Subscribe to `VLCUnityLogger.LogReceived` to receive enabled records directly on the thread that produced them.
+
+The obsolete `VLCMediaPlayer.logToConsole` property and existing serialized values migrate to `enableDiagnostics`. Component records continue to appear in the Unity Console by default. To include the more verbose LibVLC records previously associated with that option, enable **Capture Engine Logs** on the settings asset. For migrated playlist controllers, the old setting enables diagnostics on both the controller and its generated child players.
+
+## Testing
+
+See [TESTING.md](TESTING.md) for the required Unity and LibVLCSharp setup and instructions for running tests in the Editor or from the command line.
 
 ## Debugging
 
