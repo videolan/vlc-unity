@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace LibVLCSharp
 {
@@ -45,8 +46,16 @@ namespace LibVLCSharp
         [Tooltip("Flips the output texture vertically.")]
         public bool flipTextureY = false;
 
-        [Tooltip("Traces function calls to the Unity console.")]
-        public bool traceFunctionCalls = false;
+        [Tooltip("Enables operational diagnostics from this VLCMediaPlayer component. Records are sent to the outputs configured on the VLCLogSettings asset.")]
+        [FormerlySerializedAs("logToConsole")]
+        public bool enableDiagnostics = false;
+
+        [Obsolete("Use enableDiagnostics instead. This alias will be removed in a future release.")]
+        public bool logToConsole
+        {
+            get => enableDiagnostics;
+            set => enableDiagnostics = value;
+        }
 
         [Tooltip("Global configuration for LibVLC caching and networking.")]
         public VLCPlayerConfiguration Configuration;
@@ -611,8 +620,8 @@ namespace LibVLCSharp
 
         private void Log(object message)
         {
-            if (traceFunctionCalls)
-                Debug.Log(message);
+            if (enableDiagnostics)
+                VLCUnityLogger.Log($"[VLCMediaPlayer:{name}] {message}");
         }
         #endregion
     }

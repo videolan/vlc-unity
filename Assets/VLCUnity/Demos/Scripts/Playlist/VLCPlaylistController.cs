@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 
 namespace LibVLCSharp
 {
@@ -17,13 +18,24 @@ namespace LibVLCSharp
         public bool IsCrossfading;
     }
 
-    public class VLCPlaylistController : VLCVideoProviderBase
+    public class VLCPlaylistController : VLCVideoProviderBase, ISerializationCallbackReceiver
     {
         [Header("Configuration")]
         [SerializeField] private VLCPlaylistAsset playlist;
         [SerializeField] private bool playOnAwake = true;
         [SerializeField] private bool useUnityAudio = true;
-        [SerializeField] private bool traceFunctionCalls = false;
+
+        [Header("Diagnostics")]
+        [Tooltip("Enables operational diagnostics from this playlist controller. Records are sent to the globally configured logging outputs.")]
+        [SerializeField] private bool enableDiagnostics = false;
+
+        [Tooltip("Enables operational diagnostics from each child VLCMediaPlayer component.")]
+        [SerializeField] private bool enableChildPlayerDiagnostics = false;
+
+        // Before diagnostics used separate global outputs, logToConsole enabled
+        // both the playlist controller and its generated child players.
+        [FormerlySerializedAs("logToConsole")]
+        [SerializeField, HideInInspector] private bool legacyLogToConsole = false;
 
         [Header("Rendering")]
         [SerializeField] private bool flipTextureX = false;
@@ -83,8 +95,25 @@ namespace LibVLCSharp
 
         private void OnDestroy()
         {
-            StopPlaylist();
+            // Awake is not guaranteed to run for a component added to an inactive object.
+            if (_players[0] != null && _players[1] != null)
+                StopPlaylist();
+
             DestroyTextures();
+        }
+
+        void ISerializationCallbackReceiver.OnBeforeSerialize()
+        {
+        }
+
+        void ISerializationCallbackReceiver.OnAfterDeserialize()
+        {
+            if (!legacyLogToConsole)
+                return;
+
+            enableDiagnostics = true;
+            enableChildPlayerDiagnostics = true;
+            legacyLogToConsole = false;
         }
 
         public void PlayCurrent()
@@ -199,7 +228,7 @@ namespace LibVLCSharp
                 player.playOnAwake = false;
                 player.flipTextureX = flipTextureX;
                 player.flipTextureY = flipTextureY;
-                player.traceFunctionCalls = traceFunctionCalls;
+                player.enableDiagnostics = enableChildPlayerDiagnostics;
 
                 playerObj.SetActive(true);
 
@@ -481,8 +510,8 @@ namespace LibVLCSharp
 
         private void Log(object message)
         {
-            if (traceFunctionCalls)
-                Debug.Log(message);
+            if (enableDiagnostics)
+                VLCUnityLogger.Log($"[VLCPlaylistController:{name}] {message}");
         }
 
         private void BroadcastContext(VLCState state)
