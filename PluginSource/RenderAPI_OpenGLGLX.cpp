@@ -75,6 +75,7 @@ void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t *mp)
         libvlc_media_player_t* prev = m_pending_mp;
         m_pending_mp = mp;
         assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
+        (void)prev;
         DEBUG("[GLX] DMA-BUF backend not initialized, deferring setVlcContext (unity=%p ctx=%p pbuf=%lx gbm=%p initialized=%d)",
               unity_context, m_context, m_pbuffer, m_gbm_device, m_dmabuf_initialized);
         return;

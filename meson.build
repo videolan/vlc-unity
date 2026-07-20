@@ -1,6 +1,6 @@
 project('VLC-Unity', ['cpp'],
     version: '4.0.0-dev',
-    default_options: ['cpp_std=c++14'],
+    default_options: ['cpp_std=c++14', 'b_ndebug=if-release'],
     meson_version: '>=0.56.0')
 
 vlc_copyright_years = '1996-2018'

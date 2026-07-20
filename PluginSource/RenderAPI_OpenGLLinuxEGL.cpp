@@ -279,6 +279,7 @@ void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t *mp)
         libvlc_media_player_t* prev = m_pending_mp;
         m_pending_mp = mp;
         assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
+        (void)prev;
         DEBUG("[EGL-Linux] no EGL context, deferring setVlcContext");
         return;
     }

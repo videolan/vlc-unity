@@ -82,7 +82,6 @@ elif host_system == 'windows'
     plugin_sources += [ d3d11_sources ]
     vlc_unity_ldflags += [ '-static-libgcc', '-static-libstdc++', '-shared',
                            '-Wl,-pdb=' ]
-    vlc_unity_cppflags += [ '-DNDEBUG' ]
     vlc_unity_deps += [
       cc.find_library('d3d11'),
       #cc.find_library('d3d11compiler_47'),
@@ -99,7 +98,7 @@ elif host_system == 'windows'
       ]
       vlc_unity_cxxflags += [ '-O3', '-g', '-gcodeview',
         '-fdebug-prefix-map=\'/mnt/s/\'=\'s:/\'',
-        '-Wall', '-I./sdk/include/', '-DNDEBUG', '-DUWP' ]
+        '-Wall', '-I./sdk/include/', '-DUWP' ]
       # UWP support
       vlc_unity_ldflags += [ '-Wl,--nxcompat', '-Wl,--no-seh', '-Wl,--dynamicbase' ]
       vlc_unity_cppflags += [

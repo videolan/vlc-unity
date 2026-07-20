@@ -2,6 +2,10 @@
 #include "Log.h"
 #include "Unity/IUnityInterface.h"
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+
 #if defined(UNITY_WIN)
 #include <windows.h>
 #elif defined(UNITY_ANDROID)
@@ -17,10 +21,26 @@ extern "C"
 }
 
 static LogCallbackFunc g_logCallback = nullptr;
+static size_t g_activeLogCallbacks = 0;
+static std::mutex g_logCallbackMutex;
+static std::condition_variable g_logCallbackIdle;
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetLogCallback(LogCallbackFunc callback)
 {
-    g_logCallback = callback;
+    {
+        std::unique_lock<std::mutex> lock(g_logCallbackMutex);
+        g_logCallback = callback;
+
+        // Bounded: this runs on the main thread during shutdown and domain
+        // reload. A logging thread stuck in managed code must not be able to
+        // hang the editor, so give up rather than wait forever. The managed
+        // side keeps the delegate rooted for the life of the domain, so a
+        // straggler that outlives the wait still calls into valid memory.
+        if (callback == nullptr)
+            g_logCallbackIdle.wait_for(lock, std::chrono::milliseconds(250),
+                [] { return g_activeLogCallbacks == 0; });
+    }
+
     if (callback != nullptr)
     {
         DEBUG("Native logging callback registered successfully from C++ side");
@@ -32,7 +52,16 @@ void debugmsg(uint32_t hexColor, const char* fmt, ...)
     va_list args;
     va_start(args, fmt);
 
-    if (g_logCallback != nullptr)
+    LogCallbackFunc callback = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_logCallbackMutex);
+        callback = g_logCallback;
+
+        if (callback != nullptr)
+            ++g_activeLogCallbacks;
+    }
+
+    if (callback != nullptr)
     {
         va_list args_copy;
         va_copy(args_copy, args);
@@ -45,9 +74,17 @@ void debugmsg(uint32_t hexColor, const char* fmt, ...)
             if (buffer != NULL)
             {
                 vsnprintf(buffer, size, fmt, args);
-                g_logCallback(buffer, hexColor);
+                callback(buffer, hexColor);
                 free(buffer);
             }
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(g_logCallbackMutex);
+            --g_activeLogCallbacks;
+
+            if (g_activeLogCallbacks == 0)
+                g_logCallbackIdle.notify_all();
         }
     }
     else
@@ -58,7 +95,7 @@ void debugmsg(uint32_t hexColor, const char* fmt, ...)
     __android_log_vprint(ANDROID_LOG_INFO, "VLCUnity", fmt, args);
 #else
     vfprintf(stderr, fmt, args);
-    vfprintf(stderr, "\n", args);
+    fputc('\n', stderr);
 #endif
     }
 
@@ -68,29 +105,40 @@ void debugmsg(uint32_t hexColor, const char* fmt, ...)
 #if defined(UNITY_WIN)
 void windows_print(const char* fmt, va_list args)
 {
-    int msgsize = _vsnprintf(NULL, 0, fmt, args);
+    va_list size_args;
+    va_copy(size_args, args);
+    int msgsize = vsnprintf(NULL, 0, fmt, size_args);
+    va_end(size_args);
+
+    if (msgsize < 0)
+        return;
+
     char* buff = (char*)malloc(msgsize + 1);
-    _vsnprintf(buff, msgsize + 1, fmt, args);
+    if (buff == NULL)
+        return;
+
+    va_list format_args;
+    va_copy(format_args, args);
+    vsnprintf(buff, msgsize + 1, fmt, format_args);
+    va_end(format_args);
     buff[msgsize] = '\0';
 
     int len = MultiByteToWideChar (CP_UTF8, 0, buff, -1, NULL, 0);
     if (len == 0)
+    {
+        free(buff);
         return;
+    }
 
     wchar_t *out = (wchar_t *)malloc (len * sizeof (wchar_t));
 
     if (out)
     {
         MultiByteToWideChar (CP_UTF8, 0, buff, -1, out, len);
-    }
-    if(out != NULL)
-    {
         OutputDebugStringW(out);
         free(out);
     }
-    if(buff != NULL)
-    {
-        free(buff);
-    }
+
+    free(buff);
 }
 #endif

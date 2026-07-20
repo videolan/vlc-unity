@@ -285,6 +285,7 @@ RenderAPICoreVideoBuffer RenderAPI_OpenGLCGL::initBuffer(unsigned width, unsigne
     GLenum target = CVOpenGLTextureGetTarget(buffer.texture);
     GLuint name = CVOpenGLTextureGetName(buffer.texture);
     assert(target == GL_TEXTURE_RECTANGLE);
+    (void)target;
     buffer.texture_name = name;
 
     cvret = CVMetalTextureCacheCreateTextureFromImage(

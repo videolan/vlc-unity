@@ -404,7 +404,15 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnit
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginUnload()
 {
-  s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
+    SetLogCallback(nullptr);
+
+    if (s_Graphics != nullptr)
+    {
+        s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
+        s_Graphics = nullptr;
+    }
+
+    s_UnityInterfaces = nullptr;
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
@@ -456,18 +464,20 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
+    (void)eventID;
+
 #if !defined(_WIN32)
-    DEBUG("[VLC-Unity] OnRenderEvent called with eventID=%d, thread=%ld\n", eventID, (long)pthread_self());
+    DEBUG_VERBOSE("[VLC-Unity] OnRenderEvent called with eventID=%d, thread=%ld\n", eventID, (long)pthread_self());
 #else
-    DEBUG("[VLC-Unity] OnRenderEvent called with eventID=%d\n", eventID);
+    DEBUG_VERBOSE("[VLC-Unity] OnRenderEvent called with eventID=%d\n", eventID);
 #endif
-    DEBUG("[VLC-Unity]   s_DeviceType=%s\n", GetRendererName(s_DeviceType));
-    DEBUG("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
+    DEBUG_VERBOSE("[VLC-Unity]   s_DeviceType=%s\n", GetRendererName(s_DeviceType));
+    DEBUG_VERBOSE("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
 
 #if defined(UNITY_ANDROID) || defined(UNITY_LINUX)
     if(EarlyRenderAPI)
     {
-        DEBUG("[VLC-Unity]   Calling EarlyRenderAPI->retrieveOpenGLContext()\n");
+        DEBUG_VERBOSE("[VLC-Unity]   Calling EarlyRenderAPI->retrieveOpenGLContext()\n");
         EarlyRenderAPI->retrieveOpenGLContext();
     }
 #endif
@@ -519,21 +529,22 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
     for(it = contexts.begin(); it != contexts.end(); it++)
     {
         RenderAPI* currentAPI = it->second;
-        DEBUG("[VLC-Unity]   Processing context: mp=%p, api=%p\n", it->first, currentAPI);
+        (void)currentAPI;
+        DEBUG_VERBOSE("[VLC-Unity]   Processing context: mp=%p, api=%p\n", it->first, currentAPI);
 
 #if defined(SUPPORT_VULKAN)
         if(currentAPI && s_DeviceType == kUnityGfxRendererVulkan) {
-            DEBUG("[VLC-Unity]   Calling onRenderEvent for Vulkan API\n");
+            DEBUG_VERBOSE("[VLC-Unity]   Calling onRenderEvent for Vulkan API\n");
             // Cast to Vulkan API and call onRenderEvent
             RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(currentAPI);
             vulkanAPI->onRenderEvent();
         } else
 #endif
         {
-            DEBUG("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%s\n", currentAPI, GetRendererName(s_DeviceType));
+            DEBUG_VERBOSE("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%s\n", currentAPI, GetRendererName(s_DeviceType));
         }
     }
-    DEBUG("[VLC-Unity] OnRenderEvent complete\n");
+    DEBUG_VERBOSE("[VLC-Unity] OnRenderEvent complete\n");
 #endif
 }
 
@@ -617,6 +628,6 @@ libvlc_unity_is_trial()
 
 extern "C" UnityRenderingEvent UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetRenderEventFunc()
 {
-    DEBUG("[VLC-Unity] GetRenderEventFunc called, returning %p\n", (void*)OnRenderEvent);
+    DEBUG_VERBOSE("[VLC-Unity] GetRenderEventFunc called, returning %p\n", (void*)OnRenderEvent);
     return OnRenderEvent;
 }

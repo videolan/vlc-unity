@@ -4,9 +4,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-// DEBUG - always enabled, use for errors, warnings, and important state changes
 #include "Unity/IUnityInterface.h"
 
+// DEBUG - always enabled, use for errors, warnings, and important state changes
 #define DEBUG(fmt, ...) debugmsg( 0xD2D2D2FF, "[VLC-Unity] " fmt, ## __VA_ARGS__ )
 
 // DEBUG_VERBOSE - disabled in release builds (NDEBUG), use for per-frame/high-frequency logs
