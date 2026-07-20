@@ -32,7 +32,7 @@ namespace LibVLCSharp
 
         private SerializedProperty _libVLCArguments;
 
-        private SerializedProperty _traceFunctionCalls;
+        private SerializedProperty _enableDiagnostics;
 
         private void OnEnable()
         {
@@ -54,7 +54,7 @@ namespace LibVLCSharp
 
             _libVLCArguments = serializedObject.FindProperty("libVLCArguments");
 
-            _traceFunctionCalls = serializedObject.FindProperty("traceFunctionCalls");
+            _enableDiagnostics = serializedObject.FindProperty(nameof(VLCMediaPlayer.enableDiagnostics));
         }
 
         public override void OnInspectorGUI()
@@ -144,7 +144,7 @@ namespace LibVLCSharp
             if (_showDebug)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(_traceFunctionCalls);
+                EditorGUILayout.PropertyField(_enableDiagnostics);
                 EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
