@@ -2,25 +2,24 @@
     "name": "VLCUnity.Tests",
     "rootNamespace": "Videolabs.VLCUnity.Tests",
     "references": [
-        "GUID:330daf32eb922624abb139203ac0f545",
-        "GUID:27619889b8ba8c24980f49ee34dbb44a"
+        "VLCUnity",
+        "VLCUnity.Demos",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": [
-        "UNITY_INCLUDE_TESTS",
-        "VLC_HAS_TEST_FRAMEWORK"
+        "UNITY_INCLUDE_TESTS"
     ],
-    "versionDefines": [
-        {
-            "name": "com.unity.test-framework",
-            "expression": "1.0.0",
-            "define": "VLC_HAS_TEST_FRAMEWORK"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }
