@@ -33,6 +33,7 @@ namespace LibVLCSharp
         private SerializedProperty _libVLCArguments;
 
         private SerializedProperty _enableDiagnostics;
+        private SerializedProperty _enableLibVLCDebugLogs;
 
         private void OnEnable()
         {
@@ -55,6 +56,7 @@ namespace LibVLCSharp
             _libVLCArguments = serializedObject.FindProperty("libVLCArguments");
 
             _enableDiagnostics = serializedObject.FindProperty(nameof(VLCMediaPlayer.enableDiagnostics));
+            _enableLibVLCDebugLogs = serializedObject.FindProperty(nameof(VLCMediaPlayer.enableLibVLCDebugLogs));
         }
 
         public override void OnInspectorGUI()
@@ -145,6 +147,26 @@ namespace LibVLCSharp
             {
                 EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(_enableDiagnostics);
+                EditorGUILayout.PropertyField(
+                    _enableLibVLCDebugLogs,
+                    new GUIContent(
+                        "Enable LibVLC Engine Debug Logs",
+                        "Routes verbose logs from the shared LibVLC instance to the configured VLC logging outputs. The first VLCMediaPlayer to initialize LibVLC determines the setting."));
+
+                if (_enableLibVLCDebugLogs.boolValue)
+                {
+                    EditorGUILayout.HelpBox(
+                        "LibVLC is shared by all VLCMediaPlayer components. The first player to initialize it controls debug logging. Logs appear in the Unity Console by default. Restart Play Mode after changing this option.",
+                        MessageType.Info);
+                }
+
+                EditorGUILayout.Space(3f);
+                if (GUILayout.Button("Configure Logging"))
+                    VLCLogSettingsWindow.ShowWindow();
+
+                EditorGUILayout.HelpBox(
+                    "Global logging settings control the Unity Console, file and Unity event outputs, plus native rendering-plugin diagnostics.",
+                    MessageType.None);
                 EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();

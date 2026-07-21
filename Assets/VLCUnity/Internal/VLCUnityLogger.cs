@@ -101,7 +101,7 @@ namespace LibVLCSharp
             EnableAndRefreshNativeLogCallback();
 
             // VLCMediaPlayer.LibVLC is retained when domain reload is disabled.
-            HookLibVLC(VLCMediaPlayer.LibVLC);
+            HookLibVLC(VLCMediaPlayer.LibVLC, VLCMediaPlayer.LibVLCEngineDebugLogsEnabled);
         }
 
         internal static void OnQuit()
@@ -121,9 +121,9 @@ namespace LibVLCSharp
             _settings = null;
         }
 
-        internal static void HookLibVLC(LibVLC libVLC)
+        internal static void HookLibVLC(LibVLC libVLC, bool componentEngineLogsEnabled = false)
         {
-            if (libVLC == null || !_captureEngineLogs)
+            if (libVLC == null || !ShouldCaptureLibVLCLogs(componentEngineLogsEnabled))
                 return;
 
             lock (_libVLCHookLock)
@@ -297,8 +297,8 @@ namespace LibVLCSharp
 
             // Engine capture covers both sources, so a live toggle has to move
             // the LibVLC subscription as well as the native callback.
-            if (_captureEngineLogs)
-                HookLibVLC(VLCMediaPlayer.LibVLC);
+            if (ShouldCaptureLibVLCLogs(VLCMediaPlayer.LibVLCEngineDebugLogsEnabled))
+                HookLibVLC(VLCMediaPlayer.LibVLC, VLCMediaPlayer.LibVLCEngineDebugLogsEnabled);
             else
                 UnhookAllLibVLCInstances();
 
@@ -401,6 +401,11 @@ namespace LibVLCSharp
 
             lock (_eventLock)
                 return _logReceived != null;
+        }
+
+        internal static bool ShouldCaptureLibVLCLogs(bool componentEngineLogsEnabled)
+        {
+            return _captureEngineLogs || componentEngineLogsEnabled;
         }
 
         internal static void InitializeFileLoggingForTests(

@@ -383,6 +383,33 @@ namespace LibVLCSharp.Tests
         }
 
         [Test]
+        public void LibVLCEngineDebugLogsDefaultToDisabled()
+        {
+            var playerObject = new GameObject("LibVLC debug logging defaults");
+            playerObject.SetActive(false);
+            var player = playerObject.AddComponent<VLCMediaPlayer>();
+
+            try
+            {
+                Assert.That(player.enableLibVLCDebugLogs, Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(playerObject);
+            }
+        }
+
+        [Test]
+        public void ComponentEngineDebugLogsEnableLibVLCCapture()
+        {
+            _settings.captureEngineLogs = false;
+            VLCUnityLogger.InitializeFileLoggingForTests(_settings);
+
+            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(false), Is.False);
+            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(true), Is.True);
+        }
+
+        [Test]
         public void ShutdownClearsLogReceivedSubscribers()
         {
             int receivedCount = 0;

@@ -25,6 +25,7 @@ namespace LibVLCSharp
         private const float BufferingPercentageScale = 100f;
 
         public static LibVLC LibVLC { get; private set; }
+        internal static bool LibVLCEngineDebugLogsEnabled { get; private set; }
         public MediaPlayer MediaPlayer { get; private set;  }
         public override RenderTexture OutputTexture { get; protected set; }
 
@@ -49,6 +50,9 @@ namespace LibVLCSharp
         [Tooltip("Enables operational diagnostics from this VLCMediaPlayer component. Records are sent to the outputs configured on the VLCLogSettings asset.")]
         [FormerlySerializedAs("logToConsole")]
         public bool enableDiagnostics = false;
+
+        [Tooltip("Enables verbose LibVLC engine debug logs when this component initializes the shared LibVLC instance. The first VLCMediaPlayer to initialize LibVLC determines this global setting. Restart Play Mode after changing it.")]
+        public bool enableLibVLCDebugLogs = false;
 
         [Obsolete("Use enableDiagnostics instead. This alias will be removed in a future release.")]
         public bool logToConsole
@@ -410,11 +414,12 @@ namespace LibVLCSharp
 
             args.AddRange(libVLCArguments?.Where(arg => !string.IsNullOrWhiteSpace(arg)) ?? Array.Empty<string>());
 
-            LibVLC = new LibVLC(enableDebugLogs: true, args.ToArray()); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
+            LibVLCEngineDebugLogsEnabled = enableLibVLCDebugLogs;
+            LibVLC = new LibVLC(enableDebugLogs: false, args.ToArray()); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
                                                                         // Setup Error Logging
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
-            VLCUnityLogger.HookLibVLC(LibVLC);
+            VLCUnityLogger.HookLibVLC(LibVLC, LibVLCEngineDebugLogsEnabled);
         }
 
         private void CreateMediaPlayer()

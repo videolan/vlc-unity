@@ -7,11 +7,10 @@ namespace LibVLCSharp
 
     public enum LogRotationInterval { Hourly, Daily, Monthly }
 
-    [CreateAssetMenu(fileName = VLCLogSettings.ResourceName, menuName = "VideoLAN/VLC Log Settings")]
     public class VLCLogSettings : ScriptableObject
     {
-        // Loaded by name at runtime, so the asset has to keep this file name and
-        // sit directly inside a Resources folder. VLCLogSettingsEditor warns when it does not.
+        // The editor's Configure Logging button creates and manages the correctly
+        // named Resources asset. Runtime code only needs its name.
         internal const string ResourceName = nameof(VLCLogSettings);
 
         [Tooltip("Captures logs from the VLC engine and the native rendering plugin. Verbose: enable it while diagnosing a problem.")]

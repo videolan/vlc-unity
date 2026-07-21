@@ -14,7 +14,7 @@ namespace LibVLCSharp
 
             EditorGUILayout.LabelField("Sources", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Component diagnostics are enabled on each VLCMediaPlayer or VLCPlaylistController. Enable the engine source below when deeper logs are needed.",
+                "Component diagnostics are enabled on each VLCMediaPlayer or VLCPlaylistController. Capture Engine Logs globally adds verbose LibVLC and native rendering-plugin records.",
                 MessageType.Info);
 
             var engineLogsProp = serializedObject.FindProperty(nameof(VLCLogSettings.captureEngineLogs));
@@ -91,9 +91,12 @@ namespace LibVLCSharp
                 return;
 
             EditorGUILayout.HelpBox(
-                $"These settings are ignored at runtime. The asset must be named {VLCLogSettings.ResourceName} and live directly inside a Resources folder, "
-                + $"for example Assets/Resources/{VLCLogSettings.ResourceName}.asset.",
+                "This is not the active VLC logging settings asset. Use Configure Logging in a VLCMediaPlayer Inspector to open the asset used at runtime.",
                 MessageType.Error);
+
+            if (GUILayout.Button("Open Active Logging Settings"))
+                VLCLogSettingsWindow.ShowWindow();
+
             EditorGUILayout.Space();
         }
     }
