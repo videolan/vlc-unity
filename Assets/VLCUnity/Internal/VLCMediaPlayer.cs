@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace LibVLCSharp
 {
@@ -25,7 +24,6 @@ namespace LibVLCSharp
         private const float BufferingPercentageScale = 100f;
 
         public static LibVLC LibVLC { get; private set; }
-        internal static bool LibVLCEngineDebugLogsEnabled { get; private set; }
         public MediaPlayer MediaPlayer { get; private set;  }
         public override RenderTexture OutputTexture { get; protected set; }
 
@@ -47,19 +45,8 @@ namespace LibVLCSharp
         [Tooltip("Flips the output texture vertically.")]
         public bool flipTextureY = false;
 
-        [Tooltip("Enables operational diagnostics from this VLCMediaPlayer component. Records are sent to the outputs configured on the VLCLogSettings asset.")]
-        [FormerlySerializedAs("logToConsole")]
-        public bool enableDiagnostics = false;
-
-        [Tooltip("Enables verbose LibVLC engine debug logs when this component initializes the shared LibVLC instance. The first VLCMediaPlayer to initialize LibVLC determines this global setting. Restart Play Mode after changing it.")]
-        public bool enableLibVLCDebugLogs = false;
-
-        [Obsolete("Use enableDiagnostics instead. This alias will be removed in a future release.")]
-        public bool logToConsole
-        {
-            get => enableDiagnostics;
-            set => enableDiagnostics = value;
-        }
+        [Tooltip("Logs high-level activity from this VLCMediaPlayer component. Global sources and outputs are configured separately.")]
+        public bool logPlayerActivity = false;
 
         [Tooltip("Global configuration for LibVLC caching and networking.")]
         public VLCPlayerConfiguration Configuration;
@@ -351,13 +338,11 @@ namespace LibVLCSharp
 
         public List<MediaTrack> Tracks(TrackType type)
         {
-            Log("VLCMediaPlayer Tracks " + type);
             return ConvertMediaTrackList(MediaPlayer?.Tracks(type));
         }
 
         public MediaTrack SelectedTrack(TrackType type)
         {
-            Log("VLCMediaPlayer SelectedTrack " + type);
             return MediaPlayer?.SelectedTrack(type);
         }
 
@@ -375,8 +360,6 @@ namespace LibVLCSharp
 
         public VideoOrientation? GetVideoOrientation()
         {
-            Log("VLCMediaPlayer GetVideoOrientation");
-
             var tracks = MediaPlayer?.Tracks(TrackType.Video);
 
             if (tracks == null || tracks.Count == 0)
@@ -392,8 +375,6 @@ namespace LibVLCSharp
         //Create a new static LibVLC instance and dispose of the old one. You should only ever have one LibVLC instance.
         void CreateLibVLC()
         {
-            Log("VLCMediaPlayer CreateLibVLC");
-
             if (LibVLC != null)
             {
                 VLCUnityLogger.UnhookLibVLC(LibVLC);
@@ -414,17 +395,15 @@ namespace LibVLCSharp
 
             args.AddRange(libVLCArguments?.Where(arg => !string.IsNullOrWhiteSpace(arg)) ?? Array.Empty<string>());
 
-            LibVLCEngineDebugLogsEnabled = enableLibVLCDebugLogs;
             LibVLC = new LibVLC(enableDebugLogs: false, args.ToArray()); // You can customize LibVLC with advanced CLI options here https://wiki.videolan.org/VLC_command-line_help/
                                                                         // Setup Error Logging
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
-            VLCUnityLogger.HookLibVLC(LibVLC, LibVLCEngineDebugLogsEnabled);
+            VLCUnityLogger.HookLibVLC(LibVLC);
         }
 
         private void CreateMediaPlayer()
         {
-            Log("VLCMediaPlayer CreateMediaPlayer");
             if (MediaPlayer != null)
                 DestroyMediaPlayer();
 
@@ -438,7 +417,6 @@ namespace LibVLCSharp
 
         private void DestroyMediaPlayer()
         {
-            Log("VLCMediaPlayer DestroyMediaPlayer");
             MediaPlayer?.Stop();
             MediaPlayer?.Dispose();
             MediaPlayer = null;
@@ -471,8 +449,6 @@ namespace LibVLCSharp
             if (px == 0 || py == 0)
                 return;
 
-            Log($"VLCMediaPlayer ResizeOutputTextures: {px}x{py}");
-
             DestroyTextures();
 
             // We have to do this to avoid stretching it.
@@ -492,8 +468,6 @@ namespace LibVLCSharp
 
         private void DestroyTextures()
         {
-            Log($"VLCMediaPlayer DestroyTextures");
-
             if (OutputTexture != null)
             {
                 if (RenderTexture.active == OutputTexture)
@@ -610,8 +584,6 @@ namespace LibVLCSharp
         //Converts MediaTrackList objects to Unity-friendly generic lists. Might not be worth the trouble.
         List<MediaTrack> ConvertMediaTrackList(MediaTrackList tracklist)
         {
-            Log($"VLCMediaPlayer ConvertMediaTrackList");
-
             if (tracklist == null)
                 return new List<MediaTrack>();
 
@@ -625,7 +597,7 @@ namespace LibVLCSharp
 
         private void Log(object message)
         {
-            if (enableDiagnostics)
+            if (logPlayerActivity)
                 VLCUnityLogger.Log($"[VLCMediaPlayer:{name}] {message}");
         }
         #endregion

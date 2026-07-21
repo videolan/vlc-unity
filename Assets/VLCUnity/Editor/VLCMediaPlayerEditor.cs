@@ -32,8 +32,7 @@ namespace LibVLCSharp
 
         private SerializedProperty _libVLCArguments;
 
-        private SerializedProperty _enableDiagnostics;
-        private SerializedProperty _enableLibVLCDebugLogs;
+        private SerializedProperty _logPlayerActivity;
 
         private void OnEnable()
         {
@@ -55,8 +54,7 @@ namespace LibVLCSharp
 
             _libVLCArguments = serializedObject.FindProperty("libVLCArguments");
 
-            _enableDiagnostics = serializedObject.FindProperty(nameof(VLCMediaPlayer.enableDiagnostics));
-            _enableLibVLCDebugLogs = serializedObject.FindProperty(nameof(VLCMediaPlayer.enableLibVLCDebugLogs));
+            _logPlayerActivity = serializedObject.FindProperty(nameof(VLCMediaPlayer.logPlayerActivity));
         }
 
         public override void OnInspectorGUI()
@@ -83,6 +81,25 @@ namespace LibVLCSharp
                 EditorGUILayout.PropertyField(_playOnAwake);
                 EditorGUI.indentLevel--;
             }
+            GUILayout.Space(2);
+
+            _showDebug = EditorGUILayout.BeginFoldoutHeaderGroup(_showDebug, "Debug and Logging");
+            if (_showDebug)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(_logPlayerActivity, new GUIContent("Log Player Activity"));
+                EditorGUILayout.HelpBox(
+                    "This per-player option logs user-visible playback and media activity from this component.",
+                    MessageType.None);
+
+                EditorGUILayout.Space(3f);
+                DrawGlobalLoggingSummary();
+
+                if (GUILayout.Button("Configure Global Logging"))
+                    VLCLogSettingsWindow.ShowWindow();
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
             GUILayout.Space(2);
 
             _showAudio = EditorGUILayout.BeginFoldoutHeaderGroup(_showAudio, "Audio Settings");
@@ -142,36 +159,49 @@ namespace LibVLCSharp
             }
             GUILayout.Space(2);
 
-            _showDebug = EditorGUILayout.BeginFoldoutHeaderGroup(_showDebug, "Debug");
-            if (_showDebug)
-            {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(_enableDiagnostics);
-                EditorGUILayout.PropertyField(
-                    _enableLibVLCDebugLogs,
-                    new GUIContent(
-                        "Enable LibVLC Engine Debug Logs",
-                        "Routes verbose logs from the shared LibVLC instance to the configured VLC logging outputs. The first VLCMediaPlayer to initialize LibVLC determines the setting."));
-
-                if (_enableLibVLCDebugLogs.boolValue)
-                {
-                    EditorGUILayout.HelpBox(
-                        "LibVLC is shared by all VLCMediaPlayer components. The first player to initialize it controls debug logging. Logs appear in the Unity Console by default. Restart Play Mode after changing this option.",
-                        MessageType.Info);
-                }
-
-                EditorGUILayout.Space(3f);
-                if (GUILayout.Button("Configure Logging"))
-                    VLCLogSettingsWindow.ShowWindow();
-
-                EditorGUILayout.HelpBox(
-                    "Global logging settings control the Unity Console, file and Unity event outputs, plus native rendering-plugin diagnostics.",
-                    MessageType.None);
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndFoldoutHeaderGroup();
-
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private static void DrawGlobalLoggingSummary()
+        {
+            var settings = Resources.Load<VLCLogSettings>(VLCLogSettings.ResourceName);
+
+            if (settings == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Global sources: none\nGlobal outputs: Unity Console (default)\nThese settings apply to every VLC player.",
+                    MessageType.None);
+                return;
+            }
+
+            string sources;
+            if (settings.includeLibVLCEngineLogs && settings.includeNativeRenderingLogs)
+                sources = "LibVLC Engine, VLC Unity Rendering";
+            else if (settings.includeLibVLCEngineLogs)
+                sources = "LibVLC Engine";
+            else if (settings.includeNativeRenderingLogs)
+                sources = "VLC Unity Rendering";
+            else
+                sources = "none";
+
+            string outputs = string.Empty;
+            if (settings.writeToUnityConsole)
+                outputs = "Unity Console";
+            if (settings.writeToFile)
+                outputs = AppendSummaryItem(outputs, "File");
+            if (settings.onLogReceived != null && settings.onLogReceived.GetPersistentEventCount() > 0)
+                outputs = AppendSummaryItem(outputs, "Unity Event");
+            if (string.IsNullOrEmpty(outputs))
+                outputs = "none";
+
+            EditorGUILayout.HelpBox(
+                $"Global sources: {sources}\nGlobal outputs: {outputs}\nThese settings apply to every VLC player.",
+                MessageType.None);
+        }
+
+        private static string AppendSummaryItem(string current, string item)
+        {
+            return string.IsNullOrEmpty(current) ? item : $"{current}, {item}";
         }
     }
 }

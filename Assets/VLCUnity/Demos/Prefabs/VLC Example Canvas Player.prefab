@@ -2769,7 +2769,7 @@ MonoBehaviour:
   targetAudioSource: {fileID: 0}
   flipTextureX: 0
   flipTextureY: 0
-  logToConsole: 0
+  logPlayerActivity: 0
   libVLCArguments: []
   OnPlayerStateChanged:
     m_PersistentCalls:

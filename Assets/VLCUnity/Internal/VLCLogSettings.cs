@@ -9,12 +9,15 @@ namespace LibVLCSharp
 
     public class VLCLogSettings : ScriptableObject
     {
-        // The editor's Configure Logging button creates and manages the correctly
+        // The editor's Configure Global Logging button creates and manages the correctly
         // named Resources asset. Runtime code only needs its name.
         internal const string ResourceName = nameof(VLCLogSettings);
 
-        [Tooltip("Captures logs from the VLC engine and the native rendering plugin. Verbose: enable it while diagnosing a problem.")]
-        public bool captureEngineLogs = false;
+        [Tooltip("Includes verbose codec, demuxer, network, and playback-engine records from the shared LibVLC instance.")]
+        public bool includeLibVLCEngineLogs = false;
+
+        [Tooltip("Includes records from VLC Unity's native rendering integration, such as graphics backend initialization and texture handling.")]
+        public bool includeNativeRenderingLogs = false;
 
         [Tooltip("Writes every received diagnostic record to the Unity Console. This global output does not enable diagnostics on individual components.")]
         public bool writeToUnityConsole = true;

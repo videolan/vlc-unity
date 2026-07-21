@@ -1,12 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.TestTools;
 
 namespace LibVLCSharp.Tests
@@ -136,6 +134,32 @@ namespace LibVLCSharp.Tests
         }
 
         [Test]
+        public void RelativeLogPathResolvesUnderPersistentDataPath()
+        {
+            string configuredPath = Path.Combine("diagnostics", "vlc_log.txt");
+            string expectedPath = Path.GetFullPath(Path.Combine(Application.persistentDataPath, configuredPath));
+
+            Assert.That(VLCUnityLogger.ResolveBaseLogFilePath(configuredPath), Is.EqualTo(expectedPath));
+        }
+
+        [TestCase(LogRotationInterval.Hourly, "test_log_2026-07-22_14.txt")]
+        [TestCase(LogRotationInterval.Daily, "test_log_2026-07-22.txt")]
+        [TestCase(LogRotationInterval.Monthly, "test_log_2026-07.txt")]
+        public void ResolvedCurrentPathShowsTimeBasedFileName(
+            LogRotationInterval interval,
+            string expectedFileName)
+        {
+            _settings.rotationMode = LogRotationMode.TimeInterval;
+            _settings.rotationInterval = interval;
+
+            string resolvedPath = VLCUnityLogger.ResolveCurrentLogFilePath(
+                _settings,
+                new DateTime(2026, 7, 22, 14, 30, 0));
+
+            Assert.That(resolvedPath, Is.EqualTo(Path.GetFullPath(Path.Combine(_testDirectory, expectedFileName))));
+        }
+
+        [Test]
         public void ReinitializationFlushesThePreviousWriter()
         {
             VLCUnityLogger.InitializeFileLoggingForTests(_settings);
@@ -249,7 +273,7 @@ namespace LibVLCSharp.Tests
         public void RemovingLastSubscriberUnregistersNativeCallback()
         {
             _settings.writeToFile = false;
-            _settings.captureEngineLogs = true;
+            _settings.includeNativeRenderingLogs = true;
             Action<string> handler = _ => { };
             bool subscribed = false;
             bool registrationObserved = false;
@@ -332,7 +356,8 @@ namespace LibVLCSharp.Tests
             {
                 Assert.That(defaultSettings.writeToUnityConsole, Is.True);
                 Assert.That(defaultSettings.writeToFile, Is.False);
-                Assert.That(defaultSettings.captureEngineLogs, Is.False);
+                Assert.That(defaultSettings.includeLibVLCEngineLogs, Is.False);
+                Assert.That(defaultSettings.includeNativeRenderingLogs, Is.False);
             }
             finally
             {
@@ -341,11 +366,11 @@ namespace LibVLCSharp.Tests
         }
 
         [Test]
-        public void NativeLogsRequireAnEnabledSourceAndOutput()
+        public void NativeRenderingLogsRequireAnEnabledSourceAndOutput()
         {
             _settings.writeToFile = false;
             _settings.writeToUnityConsole = false;
-            _settings.captureEngineLogs = true;
+            _settings.includeNativeRenderingLogs = true;
 
             VLCUnityLogger.InitializeFileLoggingForTests(_settings);
             Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.False);
@@ -354,27 +379,21 @@ namespace LibVLCSharp.Tests
             VLCUnityLogger.InitializeFileLoggingForTests(_settings);
             Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.True);
 
-            _settings.captureEngineLogs = false;
+            _settings.includeNativeRenderingLogs = false;
             VLCUnityLogger.InitializeFileLoggingForTests(_settings);
             Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.False);
         }
 
         [Test]
-        public void LegacyLogToConsoleAliasMirrorsEnableDiagnostics()
+        public void PlayerActivityLoggingDefaultsToDisabled()
         {
-            var playerObject = new GameObject("Legacy logging compatibility");
+            var playerObject = new GameObject("Player activity logging defaults");
             playerObject.SetActive(false);
             var player = playerObject.AddComponent<VLCMediaPlayer>();
 
             try
             {
-#pragma warning disable CS0618
-                player.logToConsole = true;
-                Assert.That(player.enableDiagnostics, Is.True);
-
-                player.enableDiagnostics = false;
-                Assert.That(player.logToConsole, Is.False);
-#pragma warning restore CS0618
+                Assert.That(player.logPlayerActivity, Is.False);
             }
             finally
             {
@@ -383,30 +402,27 @@ namespace LibVLCSharp.Tests
         }
 
         [Test]
-        public void LibVLCEngineDebugLogsDefaultToDisabled()
+        public void GlobalLogSourcesCanBeEnabledIndependently()
         {
-            var playerObject = new GameObject("LibVLC debug logging defaults");
-            playerObject.SetActive(false);
-            var player = playerObject.AddComponent<VLCMediaPlayer>();
-
-            try
-            {
-                Assert.That(player.enableLibVLCDebugLogs, Is.False);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(playerObject);
-            }
-        }
-
-        [Test]
-        public void ComponentEngineDebugLogsEnableLibVLCCapture()
-        {
-            _settings.captureEngineLogs = false;
+            _settings.includeLibVLCEngineLogs = false;
+            _settings.includeNativeRenderingLogs = false;
             VLCUnityLogger.InitializeFileLoggingForTests(_settings);
 
-            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(false), Is.False);
-            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(true), Is.True);
+            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(), Is.False);
+            Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.False);
+
+            _settings.includeLibVLCEngineLogs = true;
+            VLCUnityLogger.InitializeFileLoggingForTests(_settings);
+
+            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(), Is.True);
+            Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.False);
+
+            _settings.includeLibVLCEngineLogs = false;
+            _settings.includeNativeRenderingLogs = true;
+            VLCUnityLogger.InitializeFileLoggingForTests(_settings);
+
+            Assert.That(VLCUnityLogger.ShouldCaptureLibVLCLogs(), Is.False);
+            Assert.That(VLCUnityLogger.ShouldCaptureNativeLogs(), Is.True);
         }
 
         [Test]
@@ -426,41 +442,6 @@ namespace LibVLCSharp.Tests
             finally
             {
                 VLCUnityLogger.LogReceived -= handler;
-            }
-        }
-
-        [Test]
-        public void LegacyPlaylistLoggingEnablesControllerAndChildDiagnostics()
-        {
-            var playlistObject = new GameObject("Legacy playlist logging compatibility");
-            playlistObject.SetActive(false);
-            var controller = playlistObject.AddComponent<VLCPlaylistController>();
-
-            try
-            {
-                var controllerType = typeof(VLCPlaylistController);
-
-                FieldInfo legacyField = controllerType.GetField("legacyLogToConsole", BindingFlags.Instance | BindingFlags.NonPublic);
-                FieldInfo diagnosticsField = controllerType.GetField("enableDiagnostics", BindingFlags.Instance | BindingFlags.NonPublic);
-                FieldInfo childDiagnosticsField = controllerType.GetField("enableChildPlayerDiagnostics", BindingFlags.Instance | BindingFlags.NonPublic);
-
-                Assert.That(legacyField, Is.Not.Null);
-                Assert.That(diagnosticsField, Is.Not.Null);
-                Assert.That(childDiagnosticsField, Is.Not.Null);
-
-                var formerName = legacyField.GetCustomAttribute<FormerlySerializedAsAttribute>();
-                Assert.That(formerName?.oldName, Is.EqualTo("logToConsole"));
-
-                legacyField.SetValue(controller, true);
-                ((ISerializationCallbackReceiver)controller).OnAfterDeserialize();
-
-                Assert.That(diagnosticsField.GetValue(controller), Is.True);
-                Assert.That(childDiagnosticsField.GetValue(controller), Is.True);
-                Assert.That(legacyField.GetValue(controller), Is.False);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(playlistObject);
             }
         }
 

@@ -163,11 +163,11 @@ Check out the [NEWS](NEWS) file for details about each release.
 
 VLC Unity logging has separate source and output controls:
 
-- Enable **Diagnostics** on a `VLCMediaPlayer` or `VLCPlaylistController` to produce operational records from that component. The Unity Console output is enabled by default, so these records are visible immediately.
-- Enable **LibVLC Engine Debug Logs** on the `VLCMediaPlayer` component to send verbose LibVLC records to the configured logging outputs. They appear in the Unity Console by default. LibVLC is shared, so the first player to initialize it controls that option for the Play session. Click **Configure Logging** in the player Inspector to capture the native rendering plugin too or route records to a file or Unity event. VLC Unity creates and manages the required settings asset automatically.
+- Enable **Log Player Activity** on a `VLCMediaPlayer`, or the corresponding activity options on a `VLCPlaylistController`, to produce concise high-level records from those components. The Unity Console output is enabled by default, so these records are visible immediately.
+- Click **Configure Global Logging** in the player Inspector to independently include verbose **LibVLC Engine Logs** or **VLC Unity Rendering Logs**, and to route all enabled sources to the Unity Console, a file, or a Unity event. VLC Unity creates and manages the required settings asset automatically, displays the resolved log file path, and can reveal or open the current log from the settings window.
 - Subscribe to `VLCUnityLogger.LogReceived` to receive enabled records directly on the thread that produced them.
 
-The obsolete `VLCMediaPlayer.logToConsole` property and existing serialized values migrate to `enableDiagnostics`. Component records continue to appear in the Unity Console by default. To include the more verbose LibVLC records previously associated with that option, enable **LibVLC Engine Debug Logs** on the player. For migrated playlist controllers, the old setting enables diagnostics on both the controller and its generated child players.
+The sources are independent: player activity does not enable low-level engine records, and low-level engine sources do not enable player activity. Enable both when collecting a complete troubleshooting log.
 
 ## Testing
 

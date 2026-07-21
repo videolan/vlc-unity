@@ -12,11 +12,12 @@ namespace LibVLCSharp
 
         private VLCLogSettings _settings;
         private Editor _settingsEditor;
+        private Vector2 _scrollPosition;
 
         public static void ShowWindow()
         {
             var window = GetWindow<VLCLogSettingsWindow>("VLC Logging");
-            window.minSize = new Vector2(360f, 420f);
+            window.minSize = new Vector2(480f, 460f);
             window.Show();
             window.Focus();
         }
@@ -50,7 +51,9 @@ namespace LibVLCSharp
             }
 
             Editor.CreateCachedEditor(_settings, typeof(VLCLogSettingsEditor), ref _settingsEditor);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             _settingsEditor.OnInspectorGUI();
+            EditorGUILayout.EndScrollView();
         }
 
         private static VLCLogSettings FindOrCreateSettings()

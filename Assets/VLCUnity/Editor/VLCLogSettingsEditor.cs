@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,20 +14,26 @@ namespace LibVLCSharp
 
             WarnIfUnloadable();
 
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = Mathf.Clamp(
+                EditorGUIUtility.currentViewWidth * 0.55f,
+                190f,
+                240f);
+
             EditorGUILayout.LabelField("Sources", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Component diagnostics are enabled on each VLCMediaPlayer or VLCPlaylistController. Capture Engine Logs globally adds verbose LibVLC and native rendering-plugin records.",
+                "Player and playlist activity is enabled on each component. The global sources below are independent: LibVLC covers media, networking and playback; VLC Unity Rendering covers the native graphics and texture integration.",
                 MessageType.Info);
 
-            var engineLogsProp = serializedObject.FindProperty(nameof(VLCLogSettings.captureEngineLogs));
-            EditorGUILayout.PropertyField(engineLogsProp);
+            var libVLCEngineLogsProp = serializedObject.FindProperty(nameof(VLCLogSettings.includeLibVLCEngineLogs));
+            EditorGUILayout.PropertyField(
+                libVLCEngineLogsProp,
+                new GUIContent("LibVLC Engine Logs", libVLCEngineLogsProp.tooltip));
 
-            if (engineLogsProp.boolValue)
-            {
-                EditorGUILayout.HelpBox(
-                    "The VLC engine is very chatty, so this produces a lot of records. Enable it while diagnosing a problem, not in shipped builds.",
-                    MessageType.Warning);
-            }
+            var nativeRenderingLogsProp = serializedObject.FindProperty(nameof(VLCLogSettings.includeNativeRenderingLogs));
+            EditorGUILayout.PropertyField(
+                nativeRenderingLogsProp,
+                new GUIContent("VLC Unity Rendering Logs", nativeRenderingLogsProp.tooltip));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Outputs", EditorStyles.boldLabel);
@@ -70,6 +78,74 @@ namespace LibVLCSharp
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(VLCLogSettings.onLogReceived)));
 
             serializedObject.ApplyModifiedProperties();
+            EditorGUIUtility.labelWidth = previousLabelWidth;
+
+            if (fileLoggingProp.boolValue)
+                DrawLogFileLocation((VLCLogSettings)target);
+        }
+
+        private static void DrawLogFileLocation(VLCLogSettings settings)
+        {
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField("Current Log File", EditorStyles.boldLabel);
+
+            string resolvedPath;
+            try
+            {
+                resolvedPath = VLCUnityLogger.ResolveCurrentLogFilePath(settings, DateTime.Now);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException ||
+                exception is IOException ||
+                exception is NotSupportedException)
+            {
+                EditorGUILayout.HelpBox(
+                    $"The configured log path is invalid: {exception.Message}",
+                    MessageType.Error);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(resolvedPath))
+            {
+                EditorGUILayout.HelpBox("Enter a log file path to see its resolved location.", MessageType.Info);
+                return;
+            }
+
+            EditorGUILayout.SelectableLabel(
+                resolvedPath,
+                EditorStyles.textField,
+                GUILayout.Height(EditorGUIUtility.singleLineHeight));
+
+            string directory = Path.GetDirectoryName(resolvedPath);
+            bool directoryExists = !string.IsNullOrEmpty(directory) && Directory.Exists(directory);
+            bool fileExists = File.Exists(resolvedPath);
+
+            EditorGUILayout.BeginHorizontal();
+            using (new EditorGUI.DisabledScope(!directoryExists))
+            {
+                if (GUILayout.Button("Open Log Folder"))
+                    EditorUtility.RevealInFinder(directory);
+            }
+
+            using (new EditorGUI.DisabledScope(!fileExists))
+            {
+                if (GUILayout.Button("Open Current Log File"))
+                    EditorUtility.OpenWithDefaultApp(resolvedPath);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (!directoryExists)
+            {
+                EditorGUILayout.HelpBox(
+                    "The folder will be created when file logging initializes in Play Mode.",
+                    MessageType.None);
+            }
+            else if (!fileExists)
+            {
+                EditorGUILayout.HelpBox(
+                    "The current log file will appear after VLC emits its first enabled record.",
+                    MessageType.None);
+            }
         }
 
         // The runtime loads these settings by name through Resources.Load, so an
@@ -91,7 +167,7 @@ namespace LibVLCSharp
                 return;
 
             EditorGUILayout.HelpBox(
-                "This is not the active VLC logging settings asset. Use Configure Logging in a VLCMediaPlayer Inspector to open the asset used at runtime.",
+                "This is not the active VLC logging settings asset. Use Configure Global Logging in a VLCMediaPlayer Inspector to open the asset used at runtime.",
                 MessageType.Error);
 
             if (GUILayout.Button("Open Active Logging Settings"))

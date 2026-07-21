@@ -621,7 +621,7 @@ MonoBehaviour:
   playlist: {fileID: 11400000, guid: 576b3a5afa7ae7b43b2e7d597882f7e1, type: 2}
   playOnAwake: 1
   useUnityAudio: 1
-  logToConsole: 0
+  logPlaylistActivity: 0
   flipTextureX: 1
   flipTextureY: 1
   crossfadeShader: {fileID: 4800000, guid: e178064d5252b9c46a028dcb70328516, type: 3}

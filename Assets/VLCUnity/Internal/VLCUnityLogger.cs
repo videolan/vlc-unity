@@ -65,7 +65,8 @@ namespace LibVLCSharp
         private static FileLogWriter _fileWriter;
         private static SynchronizationContext _mainThreadContext;
         private static UnityEvent<string> _unityLogReceivedEvent;
-        private static bool _captureEngineLogs;
+        private static bool _includeLibVLCEngineLogs;
+        private static bool _includeNativeRenderingLogs;
         private static bool _writeToUnityConsole;
         private static bool _nativeCallbackRegistered;
         private static bool _nativeCallbackRefreshEnabled;
@@ -101,7 +102,7 @@ namespace LibVLCSharp
             EnableAndRefreshNativeLogCallback();
 
             // VLCMediaPlayer.LibVLC is retained when domain reload is disabled.
-            HookLibVLC(VLCMediaPlayer.LibVLC, VLCMediaPlayer.LibVLCEngineDebugLogsEnabled);
+            HookLibVLC(VLCMediaPlayer.LibVLC);
         }
 
         internal static void OnQuit()
@@ -116,14 +117,15 @@ namespace LibVLCSharp
             StopFileWriter();
             _mainThreadContext = null;
             _unityLogReceivedEvent = null;
-            _captureEngineLogs = false;
+            _includeLibVLCEngineLogs = false;
+            _includeNativeRenderingLogs = false;
             _writeToUnityConsole = false;
             _settings = null;
         }
 
-        internal static void HookLibVLC(LibVLC libVLC, bool componentEngineLogsEnabled = false)
+        internal static void HookLibVLC(LibVLC libVLC)
         {
-            if (libVLC == null || !ShouldCaptureLibVLCLogs(componentEngineLogsEnabled))
+            if (libVLC == null || !ShouldCaptureLibVLCLogs())
                 return;
 
             lock (_libVLCHookLock)
@@ -247,7 +249,8 @@ namespace LibVLCSharp
 
         private static void ApplySettings(VLCLogSettings settings)
         {
-            _captureEngineLogs = settings != null && settings.captureEngineLogs;
+            _includeLibVLCEngineLogs = settings != null && settings.includeLibVLCEngineLogs;
+            _includeNativeRenderingLogs = settings != null && settings.includeNativeRenderingLogs;
             _writeToUnityConsole = settings != null && settings.writeToUnityConsole;
             _unityLogReceivedEvent = settings?.onLogReceived;
 
@@ -258,9 +261,7 @@ namespace LibVLCSharp
 
             try
             {
-                string filePath = settings.logFilePath;
-                if (!Path.IsPathRooted(filePath))
-                    filePath = Path.Combine(Application.persistentDataPath, filePath);
+                string filePath = ResolveBaseLogFilePath(settings.logFilePath);
 
                 var writer = new FileLogWriter(
                     filePath,
@@ -295,10 +296,9 @@ namespace LibVLCSharp
 
             ApplySettings(settings);
 
-            // Engine capture covers both sources, so a live toggle has to move
-            // the LibVLC subscription as well as the native callback.
-            if (ShouldCaptureLibVLCLogs(VLCMediaPlayer.LibVLCEngineDebugLogsEnabled))
-                HookLibVLC(VLCMediaPlayer.LibVLC, VLCMediaPlayer.LibVLCEngineDebugLogsEnabled);
+            // Apply changes to the two independent low-level log sources immediately.
+            if (ShouldCaptureLibVLCLogs())
+                HookLibVLC(VLCMediaPlayer.LibVLC);
             else
                 UnhookAllLibVLCInstances();
 
@@ -389,7 +389,7 @@ namespace LibVLCSharp
 
         internal static bool ShouldCaptureNativeLogs()
         {
-            if (!_captureEngineLogs)
+            if (!_includeNativeRenderingLogs)
                 return false;
 
             bool hasFileOutput;
@@ -403,9 +403,9 @@ namespace LibVLCSharp
                 return _logReceived != null;
         }
 
-        internal static bool ShouldCaptureLibVLCLogs(bool componentEngineLogsEnabled)
+        internal static bool ShouldCaptureLibVLCLogs()
         {
-            return _captureEngineLogs || componentEngineLogsEnabled;
+            return _includeLibVLCEngineLogs;
         }
 
         internal static void InitializeFileLoggingForTests(
@@ -420,9 +420,48 @@ namespace LibVLCSharp
         internal static void ShutdownFileLoggingForTests()
         {
             StopFileWriter();
-            _captureEngineLogs = false;
+            _includeLibVLCEngineLogs = false;
+            _includeNativeRenderingLogs = false;
             _writeToUnityConsole = false;
             _unityLogReceivedEvent = null;
+        }
+
+        internal static string ResolveBaseLogFilePath(string configuredPath)
+        {
+            if (string.IsNullOrWhiteSpace(configuredPath))
+                return null;
+
+            string filePath = configuredPath;
+            if (!Path.IsPathRooted(filePath))
+                filePath = Path.Combine(Application.persistentDataPath, filePath);
+
+            return Path.GetFullPath(filePath);
+        }
+
+        internal static string ResolveCurrentLogFilePath(VLCLogSettings settings, DateTime timestamp)
+        {
+            if (settings == null)
+                return null;
+
+            string baseFilePath = ResolveBaseLogFilePath(settings.logFilePath);
+            if (baseFilePath == null || settings.rotationMode != LogRotationMode.TimeInterval)
+                return baseFilePath;
+
+            string directory = Path.GetDirectoryName(baseFilePath);
+            string fileName = Path.GetFileNameWithoutExtension(baseFilePath);
+            string extension = Path.GetExtension(baseFilePath);
+            string timeSuffix = timestamp.ToString(GetRotationTimeFormat(settings.rotationInterval));
+            return Path.Combine(directory, $"{fileName}_{timeSuffix}{extension}");
+        }
+
+        private static string GetRotationTimeFormat(LogRotationInterval rotationInterval)
+        {
+            return rotationInterval switch
+            {
+                LogRotationInterval.Hourly => "yyyy-MM-dd_HH",
+                LogRotationInterval.Monthly => "yyyy-MM",
+                _ => "yyyy-MM-dd"
+            };
         }
 
         private sealed class FileLogWriter : IDisposable
@@ -460,12 +499,7 @@ namespace LibVLCSharp
                 _rotationMode = rotationMode;
                 _maxFileSizeBytes = maxFileSizeMegabytes * 1024L * 1024L;
                 _maxRetainedFiles = maxRetainedFiles;
-                _timeFormat = rotationInterval switch
-                {
-                    LogRotationInterval.Hourly => "yyyy-MM-dd_HH",
-                    LogRotationInterval.Monthly => "yyyy-MM",
-                    _ => "yyyy-MM-dd"
-                };
+                _timeFormat = GetRotationTimeFormat(rotationInterval);
 
                 Directory.CreateDirectory(_directory);
                 InitializePreviousSessionFile();

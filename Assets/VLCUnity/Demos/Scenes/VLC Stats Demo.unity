@@ -441,7 +441,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4177636116619390680, guid: f0c7360e3bd822949ac713631924504a,
         type: 3}
-      propertyPath: logToConsole
+      propertyPath: logPlayerActivity
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4177636116619390680, guid: f0c7360e3bd822949ac713631924504a,
