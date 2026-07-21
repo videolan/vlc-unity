@@ -82,14 +82,15 @@ static struct libvlc_media_player_cbs create_media_player_callbacks()
 static const struct libvlc_media_player_cbs media_player_callbacks = create_media_player_callbacks();
 
 using MediaPlayerStateChangedCallback = void (*)(void*, libvlc_state_t);
-static MediaPlayerStateChangedCallback managed_media_player_state_changed = nullptr;
+static std::atomic<MediaPlayerStateChangedCallback> managed_media_player_state_changed{nullptr};
 
 static void on_media_player_state_changed_with_trial(void* opaque, libvlc_state_t state)
 {
     on_media_player_state_changed(opaque, state);
 
-    if (managed_media_player_state_changed != nullptr)
-        managed_media_player_state_changed(opaque, state);
+    auto managed_state_changed = managed_media_player_state_changed.load(std::memory_order_acquire);
+    if (managed_state_changed != nullptr)
+        managed_state_changed(opaque, state);
 }
 
 static const struct libvlc_media_player_cbs* callbacks_with_trial_state(
@@ -98,17 +99,19 @@ static const struct libvlc_media_player_cbs* callbacks_with_trial_state(
     if (callbacks == nullptr)
         return &media_player_callbacks;
 
-    // LibVLCSharp provides one immutable callback table shared by its Unity
-    // media players. Copy it once so the trial state handler can run without
-    // dropping LibVLCSharp's managed event dispatch.
     static struct libvlc_media_player_cbs combined_callbacks;
-    static std::once_flag combined_callbacks_initialized;
+    static const struct libvlc_media_player_cbs* source_callbacks = nullptr;
+    static std::mutex callbacks_mutex;
 
-    std::call_once(combined_callbacks_initialized, [callbacks]() {
+    std::lock_guard<std::mutex> lock(callbacks_mutex);
+    if (source_callbacks != callbacks ||
+        managed_media_player_state_changed.load(std::memory_order_relaxed) != callbacks->on_state_changed)
+    {
         combined_callbacks = *callbacks;
-        managed_media_player_state_changed = callbacks->on_state_changed;
+        managed_media_player_state_changed.store(callbacks->on_state_changed, std::memory_order_release);
         combined_callbacks.on_state_changed = on_media_player_state_changed_with_trial;
-    });
+        source_callbacks = callbacks;
+    }
 
     return &combined_callbacks;
 }
