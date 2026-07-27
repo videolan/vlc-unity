@@ -72,7 +72,7 @@ And more.
 - Linux:
   - Minimum OS version: Ubuntu 22.04 LTS (or equivalent).
   - ABI supported: x86_64.
-  - Graphics API: OpenGL (GLX on X11, EGL on XWayland)
+  - Graphics API: OpenGL (GLX on X11 and XWayland; experimental EGL on native Wayland)
   - Note: Requires LibVLC 4 libraries bundled with the plugin (distro packages typically have VLC 3).
 
 ## Installation
@@ -108,12 +108,16 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 ### Linux Notes
 
-- **Graphics**: OpenGL only (Vulkan planned for a future release). Uses GLX on X11, EGL on XWayland. Select OpenGL in Unity Player Settings.
+- **Graphics**: OpenGL only (Vulkan planned for a future release). Uses GLX on X11 and XWayland so Unity and VLC can share textures directly. Experimental native Wayland uses EGL. Select OpenGL in Unity Player Settings.
 - **Dependencies**: The plugin bundles LibVLC 4. System-installed VLC (typically v3 on most distros) is not used.
 - **Tested on**: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS.
-- **Wayland**: Native Wayland support is planned for a future release. Currently works via XWayland.
-- **DRI3 required**: DMA-BUF texture sharing needs the DRI3 X11 extension. Verify with `xdpyinfo -queryExtensions | grep DRI`. If missing, update XWayland or switch to a native Xorg session.
+- **Wayland**: XWayland is supported through GLX. Native Wayland through EGL is experimental and intended for validation rather than production use.
+- **DRI3 for DMA-BUF fallback**: Direct GLX context sharing does not need the plugin's DMA-BUF path. If the sharing probe fails, the DMA-BUF fallback needs the DRI3 X11 extension. Verify with `xdpyinfo -queryExtensions | grep DRI`. If missing, update XWayland or switch to a native Xorg session.
 - **Hardware GPU required**: `glxinfo | grep renderer` must show your real GPU, not `llvmpipe`. Software rendering does not support `GL_EXT_memory_object_fd`.
+- **Hybrid GPU selection**: The GLX backend first verifies direct context sharing. If it must use DMA-BUF instead, it probes every `/dev/dri/renderD*` node and selects the first one whose buffers can be imported by the active OpenGL device.
+- **Device override**: Set `VLC_UNITY_DRM_DEVICE=/dev/dri/renderD129` (or a stable `/dev/dri/by-path/*-render` symlink) to test a specific GPU. An override is exclusive and fails rather than silently selecting another device.
+- **Backend override**: Set `VLC_UNITY_LINUX_OPENGL_BACKEND=glx` or `egl` to force an interop backend. GLX is the normal choice whenever `DISPLAY` is available, including XWayland.
+- **DMA-BUF diagnostic**: Set `VLC_UNITY_GLX_FORCE_DMABUF=1` to bypass a working GLX shared context and exercise render-node probing. This is intended for testing rather than normal playback.
 
 ## Support
 

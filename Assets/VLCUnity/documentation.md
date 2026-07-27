@@ -124,7 +124,7 @@ For the Unity Linux target, we support:
 
 VLC for Unity requires Ubuntu 22.04 LTS or equivalent (glibc 2.35+).
 
-**Graphics API**: OpenGL only (Vulkan support planned for a future release). Uses GLX on X11 and EGL on XWayland. Select OpenGL in Unity Player Settings.
+**Graphics API**: OpenGL only (Vulkan support planned for a future release). Uses GLX on X11 and XWayland, with experimental EGL support on native Wayland. Select OpenGL in Unity Player Settings.
 
 /!\ The plugin bundles LibVLC 4. System-installed VLC packages (typically VLC 3 on most Linux distributions) are not used.
 
@@ -134,7 +134,10 @@ VLC for Unity requires Ubuntu 22.04 LTS or equivalent (glibc 2.35+).
 
 ### Linux Troubleshooting
 
-DMA-BUF texture sharing requires the **DRI3** X11 extension and a hardware GPU driver. If DRI3 is missing or your system falls back to software rendering (llvmpipe), video will not display.
+The preferred GLX path shares textures directly with Unity. If that sharing
+probe fails, the DMA-BUF fallback requires the **DRI3** X11 extension and a
+hardware GPU driver. A missing DRI3 extension or software rendering (llvmpipe)
+prevents that fallback from displaying video.
 
 **Check DRI3 availability:**
 ```
@@ -147,6 +150,36 @@ You should see `DRI3` in the output.
 glxinfo | grep "OpenGL renderer"
 ```
 You should see your hardware GPU (e.g. `Mesa Intel(R) Iris(R) Xe Graphics`), not `llvmpipe`.
+
+**Hybrid GPU systems:**
+
+The GLX backend verifies direct OpenGL context sharing before playback. If it
+must fall back to DMA-BUF, it probes the available `/dev/dri/renderD*` devices
+and keeps the first device whose buffers can be imported by the active OpenGL
+context. Logs contain the probe result and selected render node.
+
+To force a render node while diagnosing device selection:
+```
+VLC_UNITY_GLX_FORCE_DMABUF=1 \
+VLC_UNITY_DRM_DEVICE=/dev/dri/renderD129 \
+./YourGame.x86_64 -force-glcore
+```
+A stable `/dev/dri/by-path/*-render` symlink may be used instead. The override
+is exclusive: if that device is incompatible, initialization fails rather than
+silently using another GPU.
+
+`VLC_UNITY_GLX_FORCE_DMABUF=1` bypasses a working shared GLX context so the
+DMA-BUF device-selection fallback can be tested. Do not enable it for normal
+playback.
+
+To force the Linux OpenGL interop backend:
+```
+VLC_UNITY_LINUX_OPENGL_BACKEND=glx ./YourGame.x86_64 -force-glcore
+VLC_UNITY_LINUX_OPENGL_BACKEND=egl ./YourGame.x86_64 -force-glcore
+```
+GLX is selected automatically whenever `DISPLAY` is present, including in an
+XWayland session. EGL is currently intended for experimental native Wayland
+testing.
 
 **Common causes of DRI3/GPU issues:**
 - **Outdated XWayland**: older XWayland versions may not expose DRI3, causing glamor to fall back to software rendering. Update your XWayland package.
