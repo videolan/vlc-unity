@@ -108,20 +108,15 @@ elif host_system == 'windows'
     endif
 elif host_system == 'linux'
     gl_dep = dependency('gl', required: true)
+    egl_dep = dependency('egl', required: true)
     x11_dep = dependency('x11', required: true)
     gbm_dep = dependency('gbm', required: true)
     libdrm_dep = dependency('libdrm', required: true)
-    vlc_unity_deps += [ gl_dep, x11_dep ]
+    vlc_unity_deps += [ gl_dep, egl_dep, x11_dep ]
     vlc_unity_cppflags += [ '-DUNITY_LINUX=1' ]
     vlc_unity_install_rpath = '$ORIGIN'
-    plugin_sources += [ opengl_sources_base, glx_sources ]
+    plugin_sources += [ opengl_sources_base, glx_sources, egl_sources, linux_egl_sources ]
     vlc_unity_deps += [ gbm_dep, libdrm_dep ]
-    egl_dep = dependency('egl', required: false)
-    if egl_dep.found()
-        vlc_unity_deps += [ egl_dep ]
-        vlc_unity_cppflags += [ '-DSUPPORT_EGL=1' ]
-        plugin_sources += [ egl_sources, linux_egl_sources ]
-    endif
 elif host_system == 'android'
     if get_option('static_android')
         vlc_unity_ldflags += [ '-static-libstdc++' ]

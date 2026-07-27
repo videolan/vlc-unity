@@ -25,7 +25,6 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
         extern RenderAPI* CreateRenderAPI_Android(UnityGfxRenderer apiType);
 		return CreateRenderAPI_Android(apiType);
 #elif defined(UNITY_LINUX)
-#if defined(SUPPORT_EGL)
         {
             const char* session_type = getenv("XDG_SESSION_TYPE");
             const char* wayland_display = getenv("WAYLAND_DISPLAY");
@@ -34,7 +33,6 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
                 return CreateRenderAPI_OpenGLLinuxEGL(apiType);
             }
         }
-#endif
         extern RenderAPI* CreateRenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
         return CreateRenderAPI_OpenGLGLX(apiType);
 #endif
