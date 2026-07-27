@@ -188,3 +188,15 @@ vlc_unity_plugin = library(
     cpp_args: vlc_unity_cppflags + vlc_unity_cxxflags,
     objcpp_args: vlc_unity_cppflags + vlc_unity_cxxflags
 )
+
+if host_system == 'linux'
+    linux_graphics_interop_tests = executable(
+        'linux-graphics-interop-tests',
+        files(
+            'LinuxGraphicsInterop.cpp',
+            'tests/LinuxGraphicsInteropTests.cpp',
+        ),
+        include_directories: plugin_include_dirs,
+    )
+    test('linux-graphics-interop', linux_graphics_interop_tests)
+endif

@@ -579,6 +579,7 @@ libvlc-linux-x86_64:
         - cd ../..
         - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} --buildtype release
         - ninja -C build_linux_${ARCH}
+        - meson test -C build_linux_${ARCH} --print-errorlogs
         - rm -rf "build_linux_${ARCH}/install-root"
         - meson install -C build_linux_${ARCH} --destdir "$(pwd)/build_linux_${ARCH}/install-root"
         - strip --strip-unneeded "build_linux_${ARCH}/install-root/usr/local/lib/${TRIPLET}/libVLCUnityPlugin.so"
