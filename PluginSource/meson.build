@@ -42,6 +42,11 @@ linux_egl_sources = files(
     'RenderAPI_OpenGLLinuxEGL.h',
 )
 
+linux_graphics_interop_sources = files(
+    'LinuxGraphicsInterop.cpp',
+    'LinuxGraphicsInterop.h',
+)
+
 vulkan_sources = files(
     'RenderAPI_Vulkan.cpp',
     'RenderAPI_Vulkan.h',
@@ -115,7 +120,13 @@ elif host_system == 'linux'
     vlc_unity_deps += [ gl_dep, egl_dep, x11_dep ]
     vlc_unity_cppflags += [ '-DUNITY_LINUX=1' ]
     vlc_unity_install_rpath = '$ORIGIN'
-    plugin_sources += [ opengl_sources_base, glx_sources, egl_sources, linux_egl_sources ]
+    plugin_sources += [
+        opengl_sources_base,
+        linux_graphics_interop_sources,
+        glx_sources,
+        egl_sources,
+        linux_egl_sources,
+    ]
     vlc_unity_deps += [ gbm_dep, libdrm_dep ]
 elif host_system == 'android'
     if get_option('static_android')

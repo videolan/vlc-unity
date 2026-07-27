@@ -1,6 +1,8 @@
 #include "RenderAPI_OpenGLLinuxDMABuf.h"
 #include "Log.h"
 #include <cstring>
+#include <fcntl.h>
+#include <gbm.h>
 #include <unistd.h>
 
 #ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
@@ -55,6 +57,46 @@ bool allFound(const bool* found, size_t count)
 }
 
 } // namespace
+
+LinuxGBMDevice::~LinuxGBMDevice()
+{
+    reset();
+}
+
+bool LinuxGBMDevice::open(const char* logPrefix, const std::string& path)
+{
+    reset();
+
+    m_fd = ::open(path.c_str(), O_RDWR | O_CLOEXEC);
+    if (m_fd < 0) {
+        DEBUG("[%s] could not open DRM render node %s", logPrefix, path.c_str());
+        return false;
+    }
+
+    m_device = gbm_create_device(m_fd);
+    if (!m_device) {
+        DEBUG("[%s] gbm_create_device failed for %s", logPrefix, path.c_str());
+        reset();
+        return false;
+    }
+
+    const char* backend = gbm_device_get_backend_name(m_device);
+    DEBUG("[%s] DRM render node %s uses GBM backend %s",
+          logPrefix, path.c_str(), backend ? backend : "?");
+    return true;
+}
+
+void LinuxGBMDevice::reset()
+{
+    if (m_device) {
+        gbm_device_destroy(m_device);
+        m_device = nullptr;
+    }
+    if (m_fd >= 0) {
+        close(m_fd);
+        m_fd = -1;
+    }
+}
 
 bool LinuxGLHasExtensions(const char* logPrefix,
                           LinuxGLProcLoader loadProc,

@@ -8,9 +8,7 @@
 #include <X11/Xlib.h>
 #include <mutex>
 #include <gbm.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <xf86drm.h>
+#include <string>
 
 class RenderAPI_OpenGLGLX : public RenderAPI_OpenGLBase
 {
@@ -25,7 +23,11 @@ public:
     virtual void ensureCurrentContext() override;
     virtual bool makeCurrent(bool current) override;
     virtual void performRenderThreadWork() override;
-    bool isInitialized() const override { return m_dmabuf_initialized && m_context != nullptr && m_pbuffer != None && m_gbm_device != nullptr; }
+    bool isInitialized() const override {
+        const bool contextReady = m_context != nullptr && m_pbuffer != None;
+        const bool dmabufReady = m_dmabuf_initialized && static_cast<bool>(m_gbm);
+        return contextReady && (m_shared_context || dmabufReady);
+    }
 
     static void* get_proc_address(void* /*data*/, const char* procname);
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
@@ -37,6 +39,7 @@ protected:
     libvlc_media_player_t* m_pending_mp = nullptr;
     static GLXContext unity_context;
     static Display* unity_display;
+    bool m_shared_context = false;
 
     // DMA-BUF buffer descriptor (one per triple-buffer slot)
     struct DMABufBuffer {
@@ -56,8 +59,7 @@ protected:
     static constexpr size_t kDMABufSlots = 3;
     bool m_dmabuf_initialized = false;
     bool m_unity_textures_imported = false;
-    struct gbm_device* m_gbm_device = nullptr;
-    int m_drm_fd = -1;
+    LinuxGBMDevice m_gbm;
     DMABufBuffer m_dmabuf_buffers[kDMABufSlots];
     unsigned m_dmabuf_width = 0;
     unsigned m_dmabuf_height = 0;
@@ -84,6 +86,8 @@ protected:
 
     // DMA-BUF helpers
     bool initDMABuf();
+    bool tryDMABufDevice(const std::string& path);
+    bool verifySharedContext();
     void releaseDMABufResources();
 
     void shutdownInternal();
@@ -99,6 +103,7 @@ protected:
     static bool dmabuf_resize(void* opaque, const libvlc_video_render_cfg_t* cfg,
                               libvlc_video_output_cfg_t* output);
     static void dmabuf_swap(void* opaque);
+    static void shared_swap(void* opaque);
 };
 
 #endif /* RENDER_API_OPENGL_GLX_H */

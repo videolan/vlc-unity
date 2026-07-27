@@ -1,10 +1,11 @@
 #include "RenderAPI_OpenGLLinuxEGL.h"
+#include "LinuxGraphicsInterop.h"
 #include "Log.h"
 #include "TrialWatermark.h"
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
-#include <dirent.h>
-#include <sys/stat.h>
+#include <unistd.h>
 
 #ifndef EGL_PLATFORM_GBM_KHR
 #define EGL_PLATFORM_GBM_KHR 0x31D7
@@ -120,19 +121,21 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
                 eglGetProcAddress("eglGetPlatformDisplayEXT"));
         if (eglGetPlatformDisplayEXT_) {
             m_display = eglGetPlatformDisplayEXT_(EGL_PLATFORM_GBM_KHR,
-                                                   m_gbm_device, nullptr);
+                                                   m_gbm.get(), nullptr);
         }
         if (m_display == EGL_NO_DISPLAY) {
-            m_display = eglGetDisplay(reinterpret_cast<EGLNativeDisplayType>(m_gbm_device));
+            m_display = eglGetDisplay(reinterpret_cast<EGLNativeDisplayType>(m_gbm.get()));
         }
         if (m_display == EGL_NO_DISPLAY) {
             DEBUG("[EGL-Linux] eglGetDisplay failed: 0x%x", eglGetError());
+            releaseResources();
             return;
         }
 
         if (!eglInitialize(m_display, nullptr, nullptr)) {
             DEBUG("[EGL-Linux] eglInitialize failed: 0x%x", eglGetError());
             m_display = EGL_NO_DISPLAY;
+            releaseResources();
             return;
         }
 
@@ -150,6 +153,7 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
         // Bind desktop OpenGL API (not GLES)
         if (!eglBindAPI(EGL_OPENGL_API)) {
             DEBUG("[EGL-Linux] eglBindAPI(EGL_OPENGL_API) failed: 0x%x", eglGetError());
+            releaseResources();
             return;
         }
         DEBUG("[EGL-Linux] eglBindAPI(EGL_OPENGL_API) succeeded");
@@ -206,6 +210,7 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
                 }
             }
             DEBUG("[EGL-Linux] eglChooseConfig failed, cannot create EGL context");
+            releaseResources();
             return;
         }
 
@@ -231,6 +236,7 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
 
         if (m_context == EGL_NO_CONTEXT) {
             DEBUG("[EGL-Linux] all eglCreateContext attempts failed: 0x%x", eglGetError());
+            releaseResources();
             return;
         }
 
@@ -248,14 +254,13 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, 
         if (!loadMemoryObjectExtensions()) {
             DEBUG("[EGL-Linux] GL_EXT_memory_object_fd not available — cannot share textures");
             makeCurrent(false);
-            eglDestroyContext(m_display, m_context);
-            m_context = EGL_NO_CONTEXT;
+            releaseResources();
             return;
         }
         makeCurrent(false);
 
         DEBUG("[EGL-Linux] init success: display=%p surface=%p context=%p gbm=%p",
-              m_display, m_surface, m_context, m_gbm_device);
+              m_display, m_surface, m_context, m_gbm.get());
         libvlc_media_player_t* pending = m_pending_mp;
         m_pending_mp = nullptr;
         if (pending)
@@ -311,40 +316,29 @@ void RenderAPI_OpenGLLinuxEGL::unsetVlcContext(libvlc_media_player_t *mp)
 
 bool RenderAPI_OpenGLLinuxEGL::initDRMAndGBM()
 {
-    DIR* dir = opendir("/dev/dri");
-    if (!dir) {
-        DEBUG("[EGL-Linux] cannot open /dev/dri");
+    const char* deviceOverride = getenv("VLC_UNITY_DRM_DEVICE");
+    const std::vector<std::string> candidates =
+        LinuxBuildDrmDeviceCandidates("/dev/dri", deviceOverride);
+    if (candidates.empty())
+        DEBUG("[EGL-Linux] no DRM render nodes found");
+
+    const std::string selected = LinuxSelectCompatibleDrmDevice(
+        candidates,
+        [this](const std::string& path) {
+            DEBUG("[EGL-Linux] probing DRM render node %s", path.c_str());
+            return m_gbm.open("EGL-Linux", path);
+        });
+
+    if (selected.empty()) {
+        if (deviceOverride && deviceOverride[0] != '\0')
+            DEBUG("[EGL-Linux] forced DRM device %s could not create a GBM device",
+                  deviceOverride);
+        else
+            DEBUG("[EGL-Linux] no DRM render node could create a GBM device");
         return false;
     }
 
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        if (strncmp(entry->d_name, "renderD", 7) == 0) {
-            char path[280];
-            snprintf(path, sizeof(path), "/dev/dri/%.255s", entry->d_name);
-            m_drm_fd = open(path, O_RDWR | O_CLOEXEC);
-            if (m_drm_fd >= 0) {
-                DEBUG("[EGL-Linux] opened DRM render node %s (fd=%d)", path, m_drm_fd);
-                break;
-            }
-        }
-    }
-    closedir(dir);
-
-    if (m_drm_fd < 0) {
-        DEBUG("[EGL-Linux] no DRM render node found");
-        return false;
-    }
-
-    m_gbm_device = gbm_create_device(m_drm_fd);
-    if (!m_gbm_device) {
-        DEBUG("[EGL-Linux] gbm_create_device failed");
-        close(m_drm_fd);
-        m_drm_fd = -1;
-        return false;
-    }
-
-    DEBUG("[EGL-Linux] GBM device created");
+    DEBUG("[EGL-Linux] selected DRM render node %s", selected.c_str());
     return true;
 }
 
@@ -382,7 +376,7 @@ bool RenderAPI_OpenGLLinuxEGL::loadMemoryObjectExtensions()
 
 bool RenderAPI_OpenGLLinuxEGL::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h)
 {
-    buf.bo = gbm_bo_create(m_gbm_device, w, h, GBM_FORMAT_ABGR8888,
+    buf.bo = gbm_bo_create(m_gbm.get(), w, h, GBM_FORMAT_ABGR8888,
                            GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR);
     if (!buf.bo) {
         DEBUG("[EGL-Linux] gbm_bo_create failed %ux%u", w, h);
@@ -557,8 +551,7 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
         eglTerminate(m_display);
         m_display = EGL_NO_DISPLAY;
     }
-    if (m_gbm_device) { gbm_device_destroy(m_gbm_device); m_gbm_device = nullptr; }
-    if (m_drm_fd >= 0) { close(m_drm_fd); m_drm_fd = -1; }
+    m_gbm.reset();
 
     glCreateMemoryObjectsEXT = nullptr;
     glTexStorageMem2DEXT = nullptr;

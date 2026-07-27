@@ -6,9 +6,6 @@
 #include <GL/glx.h>
 #include <mutex>
 #include <gbm.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <xf86drm.h>
 
 class RenderAPI_OpenGLLinuxEGL : public RenderAPI_OpenEGL
 {
@@ -28,8 +25,7 @@ public:
 
 private:
     // DRM/GBM state
-    int m_drm_fd = -1;
-    struct gbm_device* m_gbm_device = nullptr;
+    LinuxGBMDevice m_gbm;
     libvlc_media_player_t* m_pending_mp = nullptr;
 
     // Unity context flag — static so it's shared across instances
