@@ -618,7 +618,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ef65a94acfb75647aa43c726385570b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCMediaPlayer
-  mediaPath: https://archive.org/download/BigBuckBunny_328/BigBuckBunny.avi
+  mediaPath: https://streams.videolan.org/misc/unity-samples/BigBuckBunny.avi
   playOnAwake: 1
   useUnityAudio: 0
   targetAudioSource: {fileID: 0}
