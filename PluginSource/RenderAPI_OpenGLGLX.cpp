@@ -16,6 +16,7 @@
 
 GLXContext RenderAPI_OpenGLGLX::unity_context = nullptr;
 Display* RenderAPI_OpenGLGLX::unity_display = nullptr;
+GLuint RenderAPI_OpenGLGLX::unity_probe_texture = 0;
 
 namespace {
 
@@ -170,17 +171,44 @@ void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t *mp)
 
 void RenderAPI_OpenGLGLX::retrieveOpenGLContext()
 {
-    if (unity_context != nullptr)
+    if (unity_context != nullptr && unity_probe_texture != 0)
         return;
 
-    unity_context = glXGetCurrentContext();
-    if (unity_context == nullptr) {
+    GLXContext currentContext = glXGetCurrentContext();
+    if (currentContext == nullptr) {
         DEBUG("[GLX] glXGetCurrentContext failed");
         return;
     }
 
-    unity_display = glXGetCurrentDisplay();
-    DEBUG("[GLX] retrieved Unity OpenGL context %p display %p", unity_context, unity_display);
+    if (unity_context == nullptr) {
+        unity_context = currentContext;
+        unity_display = glXGetCurrentDisplay();
+        DEBUG("[GLX] retrieved Unity OpenGL context %p display %p vendor=%s renderer=%s version=%s",
+              unity_context, unity_display,
+              glGetString(GL_VENDOR) ? reinterpret_cast<const char*>(glGetString(GL_VENDOR)) : "?",
+              glGetString(GL_RENDERER) ? reinterpret_cast<const char*>(glGetString(GL_RENDERER)) : "?",
+              glGetString(GL_VERSION) ? reinterpret_cast<const char*>(glGetString(GL_VERSION)) : "?");
+    }
+
+    // Create the sharing probe while Unity's context is current. Media-player
+    // creation can then verify this texture from its candidate shared context
+    // even though it normally runs on Unity's main thread without a GL context.
+    GLint previousBinding = 0;
+    clearGlErrors();
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousBinding);
+    glGenTextures(1, &unity_probe_texture);
+    glBindTexture(GL_TEXTURE_2D, unity_probe_texture);
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousBinding));
+    glFinish();
+    const GLenum probeError = glGetError();
+    if (probeError != GL_NO_ERROR || unity_probe_texture == 0) {
+        DEBUG("[GLX] failed to create Unity texture sharing probe, error=0x%x", probeError);
+        if (unity_probe_texture != 0)
+            glDeleteTextures(1, &unity_probe_texture);
+        unity_probe_texture = 0;
+        return;
+    }
+    DEBUG("[GLX] created Unity texture sharing probe %u", unity_probe_texture);
 }
 
 void RenderAPI_OpenGLGLX::ensureCurrentContext()
@@ -395,6 +423,13 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnit
 
     } else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[GLX] kUnityGfxDeviceEventShutdown");
+        if (unity_probe_texture != 0) {
+            if (glXGetCurrentContext() == unity_context)
+                glDeleteTextures(1, &unity_probe_texture);
+            unity_probe_texture = 0;
+        }
+        unity_context = nullptr;
+        unity_display = nullptr;
         shutdownInternal();
     }
 }
@@ -422,14 +457,15 @@ RenderAPI_OpenGLGLX::~RenderAPI_OpenGLGLX()
 
 bool RenderAPI_OpenGLGLX::verifySharedContext()
 {
+    if (unity_probe_texture == 0) {
+        DEBUG("[GLX] Unity texture sharing probe is unavailable");
+        return false;
+    }
+
     GLXContext previousContext = glXGetCurrentContext();
+    Display* previousDisplay = glXGetCurrentDisplay();
     GLXDrawable previousDraw = glXGetCurrentDrawable();
     GLXDrawable previousRead = glXGetCurrentReadDrawable();
-
-    DEBUG("[GLX] Unity context vendor=%s renderer=%s version=%s",
-          glGetString(GL_VENDOR) ? reinterpret_cast<const char*>(glGetString(GL_VENDOR)) : "?",
-          glGetString(GL_RENDERER) ? reinterpret_cast<const char*>(glGetString(GL_RENDERER)) : "?",
-          glGetString(GL_VERSION) ? reinterpret_cast<const char*>(glGetString(GL_VERSION)) : "?");
 
     if (!makeCurrent(true)) {
         DEBUG("[GLX] could not make the candidate shared context current");
@@ -441,30 +477,17 @@ bool RenderAPI_OpenGLGLX::verifySharedContext()
           glGetString(GL_RENDERER) ? reinterpret_cast<const char*>(glGetString(GL_RENDERER)) : "?",
           glGetString(GL_VERSION) ? reinterpret_cast<const char*>(glGetString(GL_VERSION)) : "?");
 
-    GLuint texture = 0;
     clearGlErrors();
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 2, 2, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, nullptr);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFinish();
-    const GLenum createError = glGetError();
+    const bool visible = glIsTexture(unity_probe_texture) == GL_TRUE;
+    const GLenum probeError = glGetError();
 
-    const Bool restored = glXMakeContextCurrent(
-        m_display, previousDraw, previousRead, previousContext);
-    const bool visible = restored && createError == GL_NO_ERROR &&
-                         texture != 0 && glIsTexture(texture) == GL_TRUE;
+    const Bool restored = previousContext != nullptr && previousDisplay != nullptr
+        ? glXMakeContextCurrent(previousDisplay, previousDraw, previousRead, previousContext)
+        : glXMakeContextCurrent(m_display, None, None, nullptr);
 
-    if (texture != 0) {
-        if (makeCurrent(true))
-            glDeleteTextures(1, &texture);
-        glXMakeContextCurrent(m_display, previousDraw, previousRead, previousContext);
-    }
-
-    DEBUG("[GLX] shared texture visibility probe: restored=%d texture=%u error=0x%x visible=%d",
-          restored, texture, createError, visible);
-    return visible;
+    DEBUG("[GLX] shared texture visibility probe: restored=%d unity_texture=%u error=0x%x visible=%d",
+          restored, unity_probe_texture, probeError, visible);
+    return restored && probeError == GL_NO_ERROR && visible;
 }
 
 void RenderAPI_OpenGLGLX::performRenderThreadWork()

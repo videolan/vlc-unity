@@ -39,6 +39,7 @@ protected:
     libvlc_media_player_t* m_pending_mp = nullptr;
     static GLXContext unity_context;
     static Display* unity_display;
+    static GLuint unity_probe_texture;
     bool m_shared_context = false;
 
     // DMA-BUF buffer descriptor (one per triple-buffer slot)
