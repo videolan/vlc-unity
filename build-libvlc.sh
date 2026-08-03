@@ -73,7 +73,7 @@ if [ -f "$src" ]; then
     cp "$src" "contrib/${TRIPLET}/lib/pkgconfig/x11.pc"
     sed -i '/^Requires:/d' "contrib/${TRIPLET}/lib/pkgconfig/x11.pc"
 fi
-for pc in gl egl glesv2 libunwind libunwind-generic lcms2 \
+for pc in gl egl glesv2 libunwind libunwind-generic lcms2 libpulse \
           x11-xcb xau xdmcp xcb xext xfixes xrender xrandr; do
     src="/usr/lib/${TRIPLET}/pkgconfig/${pc}.pc"
     [ -f "$src" ] || src="/usr/share/pkgconfig/${pc}.pc"
@@ -146,6 +146,7 @@ fi
   --disable-avahi \
   --disable-mtp \
   --disable-notify \
+  --enable-pulse \
   --disable-sout
 
 # Build and install
