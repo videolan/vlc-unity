@@ -19,10 +19,12 @@ variables:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_PROJECT_PATH == "videolan/vlc-unity"'
       changes:
         - "PluginSource/**/*"
+        - "build-libvlc.sh"
         - ".gitlab-ci.yml"
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - "PluginSource/**/*"
+        - "build-libvlc.sh"
         - ".gitlab-ci.yml"
   interruptible: yes
 
