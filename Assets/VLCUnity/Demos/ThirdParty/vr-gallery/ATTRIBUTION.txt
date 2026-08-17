@@ -1,0 +1,11 @@
+-------------------------------------------------------------------------------
+3D Model Attributions
+-------------------------------------------------------------------------------
+The 3D environment in this sample uses the following models, licensed under 
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+License details: https://creativecommons.org/licenses/by/4.0/
+
+1. "VR Gallery"
+   Source: https://sketchfab.com/3d-models/vr-gallery-1e087aa25dc742e680accb15249bd6be
+   Author: Maxim Mavrichev
+-------------------------------------------------------------------------------

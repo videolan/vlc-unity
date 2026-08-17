@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+3D Model Attributions
+-------------------------------------------------------------------------------
+The 3D environment in this sample uses the following models, licensed under 
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+License details: https://creativecommons.org/licenses/by/4.0/
+
+1. "Game Ready | Free Livingroom TV"
+   Source: https://sketchfab.com/3d-models/game-ready-free-livingroom-tv-0b9d4cb9525d4ccb8608f374b76f33db
+   Author: Saritasa
+   Note: 3D Artist: Arthur Glushko
+-------------------------------------------------------------------------------

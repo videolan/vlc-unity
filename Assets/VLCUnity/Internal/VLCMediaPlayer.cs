@@ -84,6 +84,9 @@ namespace LibVLCSharp
 
         private readonly ConcurrentQueue<Action> _mainThreadActions = new();
 
+        [Tooltip("Invoked when the texture receives new data.")]
+        public event Action OnFrameGenerated;
+
         #region unity
         private void Awake()
         {
@@ -136,6 +139,7 @@ namespace LibVLCSharp
                 {
                     var flip = new Vector2(flipTextureX ? -1 : 1, flipTextureY ? -1 : 1);
                     Graphics.Blit(_vlcTexture, OutputTexture, flip, Vector2.zero); // If you wanted to do post processing outside of VLC you could use a shader here.
+                    OnFrameGenerated?.Invoke();
                 }
             }
         }

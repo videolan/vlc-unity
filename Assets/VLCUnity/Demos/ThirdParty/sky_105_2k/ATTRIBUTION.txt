@@ -1,0 +1,11 @@
+-------------------------------------------------------------------------------
+Skybox Attributions
+-------------------------------------------------------------------------------
+The 3D environment in this sample uses the following skyboxes, licensed under 
+a Royalty Free License.
+License details: Free to use for all Commercial and Non-Commercial purposes.
+
+1. "Skybox 105"
+   Source: https://freestylized.com/skybox/sky_105/
+   Author: FreeStylized
+-------------------------------------------------------------------------------
