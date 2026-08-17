@@ -45,7 +45,7 @@ namespace LibVLCSharp
 
             VLCMediaPlayer mediaPlayer = go.GetComponent<VLCMediaPlayer>();
             VLCDisplayUGUI display = go.GetComponent<VLCDisplayUGUI>();
-            display.mediaPlayer = mediaPlayer;
+            display.MediaPlayer = mediaPlayer;
 
             go.GetComponent<RawImage>().raycastTarget = false;
 
