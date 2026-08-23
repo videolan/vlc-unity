@@ -175,7 +175,9 @@ public:
     ReadWriteTexture* m_textureForUnity = nullptr;
     bool                    m_useNTHandle = true;  // Try modern path first, set false if unavailable
 private:
-    std::vector<uint8_t> m_swPixelBuffer;
+	std::vector<uint8_t> m_swPixelBuffers[2];
+    int m_swWriteIndex = 0;
+    int m_swReadIndex = 1;
     CRITICAL_SECTION m_swLock;
     bool m_hasNewSwFrame = false;
 
@@ -332,41 +334,60 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
 
     if (IsWine())
     {
-        DEBUG("[D3D11] Wine/Proton detected. Using software buffer with DXVK UpdateSubresource upload.\n");
-
-        unsigned initialWidth = m_width > 0 ? m_width : 1920;
-        unsigned initialHeight = m_height > 0 ? m_height : 1080;
-
-        m_swPixelBuffer.resize(initialWidth * initialHeight * 4, 0);
+        DEBUG("[D3D11] Wine/Proton detected. Setting up dynamic double-buffered software pipeline.\n");
 
         libvlc_video_set_callbacks(
             mp,
-            [](void *opaque, void **planes) -> void * {
-              RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11 *>(opaque);
-              EnterCriticalSection(&me->m_swLock);
-
-              size_t requiredSize = me->m_width * me->m_height * 4;
-              if (me->m_swPixelBuffer.size() < requiredSize &&
-                  requiredSize > 0) {
-                me->m_swPixelBuffer.resize(requiredSize, 0);
-              }
-              *planes = me->m_swPixelBuffer.empty()
-                            ? nullptr
-                            : me->m_swPixelBuffer.data();
-              return nullptr;
+            // Lock callback: Point LibVLC to current write buffer
+            [](void *opaque, void **planes) -> void* {
+                RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+                EnterCriticalSection(&me->m_swLock);
+                size_t reqSize = me->m_width * me->m_height * 4;
+                if (me->m_swPixelBuffers[me->m_swWriteIndex].size() < reqSize && reqSize > 0) {
+                    me->m_swPixelBuffers[me->m_swWriteIndex].resize(reqSize, 0);
+                }
+                *planes = me->m_swPixelBuffers[me->m_swWriteIndex].empty() ? nullptr : me->m_swPixelBuffers[me->m_swWriteIndex].data();
+                LeaveCriticalSection(&me->m_swLock);
+                return nullptr;
             },
+            // Unlock callback: Flag new frame and swap write target
             [](void *opaque, void *picture, void *const *planes) {
-              (void)picture;
-              (void)planes;
-              RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11 *>(opaque);
-              me->m_hasNewSwFrame = true;
-              LeaveCriticalSection(&me->m_swLock);
+                (void)picture; (void)planes;
+                RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(opaque);
+                EnterCriticalSection(&me->m_swLock);
+                me->m_hasNewSwFrame = true;
+                me->m_swWriteIndex = 1 - me->m_swWriteIndex;
+                LeaveCriticalSection(&me->m_swLock);
             },
             nullptr,
             this
-            );
+        );
 
-        libvlc_video_set_format(mp, "RGBA", initialWidth, initialHeight, initialWidth * 4);
+        // Dynamic Format Callback: Corrects stride and resolution on live stream connect
+        libvlc_video_set_format_callbacks(
+            mp,
+            [](void **opaque, char *chroma, unsigned *width, unsigned *height, unsigned *pitches, unsigned *lines) -> unsigned {
+                RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11*>(*opaque);
+
+                memcpy(chroma, "RGBA", 4);
+
+                *pitches = (*width) * 4;
+                *lines = *height;
+
+                EnterCriticalSection(&me->m_swLock);
+                me->m_width = *width;
+                me->m_height = *height;
+
+                size_t requiredBytes = (*width) * (*height) * 4;
+                me->m_swPixelBuffers[0].resize(requiredBytes, 0);
+                me->m_swPixelBuffers[1].resize(requiredBytes, 0);
+                LeaveCriticalSection(&me->m_swLock);
+
+                return 1;
+            },
+            nullptr
+        );
+
         return;
     }
 
@@ -1597,23 +1618,35 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
 
     if (IsWine())
     {
-        if (m_width != width || m_height != height)
+        uint8_t* uploadData = nullptr;
+        unsigned currentWidth = 0;
+        unsigned currentHeight = 0;
+
+        EnterCriticalSection(&m_swLock);
+        if (m_hasNewSwFrame)
         {
-            this->Update(width, height);
+            m_swReadIndex = 1 - m_swWriteIndex;
+            uploadData = m_swPixelBuffers[m_swReadIndex].data();
+            currentWidth = m_width;
+            currentHeight = m_height;
+            m_hasNewSwFrame = false;
+        }
+        LeaveCriticalSection(&m_swLock);
+
+        if (currentWidth > 0 && currentHeight > 0 && (m_width != width || m_height != height))
+        {
+            this->Update(currentWidth, currentHeight);
         }
 
-        if (m_hasNewSwFrame && m_d3dctxVLC && read_write[0])
+        if (uploadData && m_d3dctxVLC && read_write[0] && currentWidth > 0)
         {
-            EnterCriticalSection(&m_swLock);
             ID3D11Texture2D* tex2D = read_write[0]->GetTexture2D();
-            if (tex2D && !m_swPixelBuffer.empty())
+            if (tex2D)
             {
-                m_d3dctxVLC->UpdateSubresource(tex2D, 0, NULL, m_swPixelBuffer.data(), m_width * 4, 0);
+                m_d3dctxVLC->UpdateSubresource(tex2D, 0, NULL, uploadData, currentWidth * 4, 0);
                 m_textureForUnity = read_write[0].get();
                 m_updated = true;
             }
-            m_hasNewSwFrame = false;
-            LeaveCriticalSection(&m_swLock);
         }
     }
 
