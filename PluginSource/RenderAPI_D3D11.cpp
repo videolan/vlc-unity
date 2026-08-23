@@ -33,6 +33,16 @@
 #include <random>
 #include <thread>
 
+typedef const char* (CDECL *PFN_wine_get_version)(void);
+
+static bool IsWine()
+{
+    HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+    if (!hNtdll) return false;
+    PFN_wine_get_version pfn = (PFN_wine_get_version)GetProcAddress(hNtdll, "wine_get_version");
+    return pfn != nullptr;
+}
+
 #if defined(SHOW_WATERMARK)
 static int64_t getCurrentTimeMs()
 {
@@ -103,6 +113,8 @@ public:
 #endif // SHOW_WATERMARK
                 );
     void *GetUnityTexture();
+    ID3D11Texture2D *GetTexture2D() const { return m_textureUnity11; }
+
     void SetUsage(BufferUsage state = BufferUsage::Free)
     {
         m_usage.store(state, std::memory_order_release);
@@ -163,6 +175,10 @@ public:
     ReadWriteTexture* m_textureForUnity = nullptr;
     bool                    m_useNTHandle = true;  // Try modern path first, set false if unavailable
 private:
+    std::vector<uint8_t> m_swPixelBuffer;
+    CRITICAL_SECTION m_swLock;
+    bool m_hasNewSwFrame = false;
+
     void CreateResources();
     void ReleaseResources();
     void Update(UINT width, UINT height);
@@ -284,6 +300,7 @@ RenderAPI_D3D11::RenderAPI_D3D11(UnityGfxRenderer apiType)
     InitializeCriticalSection(&m_sizeLock);
     ZeroMemory(&m_outputLock, sizeof(CRITICAL_SECTION));
     InitializeCriticalSection(&m_outputLock);
+    InitializeCriticalSection(&m_swLock);
 
     read_write[0].reset(new ReadWriteTexture());
     read_write[1].reset(new ReadWriteTexture());
@@ -298,6 +315,7 @@ RenderAPI_D3D11::~RenderAPI_D3D11()
 {
     DeleteCriticalSection(&m_sizeLock);
     DeleteCriticalSection(&m_outputLock);
+    DeleteCriticalSection(&m_swLock);
 }
 
 void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
@@ -307,6 +325,46 @@ void RenderAPI_D3D11::setVlcContext(libvlc_media_player_t *mp)
     m_mp = mp;
 
     CreateResources();
+
+    if (IsWine())
+    {
+        DEBUG("[D3D11] Wine/Proton detected. Using software buffer with DXVK UpdateSubresource upload.\n");
+
+        unsigned initialWidth = m_width > 0 ? m_width : 1920;
+        unsigned initialHeight = m_height > 0 ? m_height : 1080;
+
+        m_swPixelBuffer.resize(initialWidth * initialHeight * 4, 0);
+
+        libvlc_video_set_callbacks(
+            mp,
+            [](void *opaque, void **planes) -> void * {
+              RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11 *>(opaque);
+              EnterCriticalSection(&me->m_swLock);
+
+              size_t requiredSize = me->m_width * me->m_height * 4;
+              if (me->m_swPixelBuffer.size() < requiredSize &&
+                  requiredSize > 0) {
+                me->m_swPixelBuffer.resize(requiredSize, 0);
+              }
+              *planes = me->m_swPixelBuffer.empty()
+                            ? nullptr
+                            : me->m_swPixelBuffer.data();
+              return nullptr;
+            },
+            [](void *opaque, void *picture, void *const *planes) {
+              (void)picture;
+              (void)planes;
+              RenderAPI_D3D11 *me = reinterpret_cast<RenderAPI_D3D11 *>(opaque);
+              me->m_hasNewSwFrame = true;
+              LeaveCriticalSection(&me->m_swLock);
+            },
+            nullptr,
+            this
+            );
+
+        libvlc_video_set_format(mp, "RGBA", initialWidth, initialHeight, initialWidth * 4);
+        return;
+    }
 
     libvlc_video_set_output_callbacks(mp, libvlc_video_engine_d3d11,
                                       Setup_cb, Cleanup_cb, Report_cb, UpdateOutput_cb,
@@ -524,9 +582,15 @@ bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT ren
     texDesc.Format = renderFormat;
     texDesc.Height = height;
     texDesc.Width = width;
-    texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-    if (useNTHandle) {
-        texDesc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+
+    bool isWineEnv = IsWine();
+    if (!isWineEnv) {
+        texDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+        if (useNTHandle) {
+            texDesc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+        }
+    } else {
+        texDesc.MiscFlags = 0;
     }
 
     HRESULT hr;
@@ -551,7 +615,11 @@ bool ReadWriteTexture::Update11(unsigned width, unsigned height, DXGI_FORMAT ren
     bool sharedHandleAcquired = false;
     m_isNTHandle = false;
 
-    if (useNTHandle) {
+    if (isWineEnv) {
+        sharedHandleAcquired = true;
+        m_sharedHandle = nullptr;
+    }
+    else if (useNTHandle) {
         // Modern path: DXGI 1.2 - IDXGIResource1::CreateSharedHandle
         IDXGIResource1* sharedResource = NULL;
         hr = m_textureUnity11->QueryInterface(__uuidof(IDXGIResource1), (void**)&sharedResource);
@@ -718,26 +786,40 @@ void ReadWriteTexture::Update(unsigned width, unsigned height, IUnknown *m_d3dev
     ID3D11Texture2D* textureVLC = nullptr;
     if (m_d3deviceVLC)
     {
-        if (m_isNTHandle) {
-            // Modern path: D3D11.1 - ID3D11Device1::OpenSharedResource1
-            ID3D11Device1* d3d11VLC1 = nullptr;
-            hr = m_d3deviceVLC->QueryInterface(__uuidof(ID3D11Device1), (void**)&d3d11VLC1);
-            if (SUCCEEDED(hr) && d3d11VLC1) {
-                hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle,
+        ID3D11Device* d3d11UnityDevice = nullptr;
+        m_d3deviceUnity->QueryInterface(__uuidof(ID3D11Device), (void**)&d3d11UnityDevice);
+
+        if (d3d11UnityDevice && d3d11UnityDevice == m_d3deviceVLC)
+        {
+            textureVLC = m_textureUnity11;
+            if (textureVLC) textureVLC->AddRef();
+            d3d11UnityDevice->Release();
+        }
+        else
+        {
+            if (d3d11UnityDevice) d3d11UnityDevice->Release();
+
+            if (m_isNTHandle) {
+                // Modern path: D3D11.1 - ID3D11Device1::OpenSharedResource1
+                ID3D11Device1* d3d11VLC1 = nullptr;
+                hr = m_d3deviceVLC->QueryInterface(__uuidof(ID3D11Device1), (void**)&d3d11VLC1);
+                if (SUCCEEDED(hr) && d3d11VLC1) {
+                    hr = d3d11VLC1->OpenSharedResource1(m_sharedHandle,
+                        __uuidof(ID3D11Texture2D), (void**)&textureVLC);
+                    if (FAILED(hr)) {
+                        DEBUG("OpenSharedResource1 FAILED: 0x%lx\n", hr);
+                        textureVLC = nullptr;
+                    }
+                    d3d11VLC1->Release();
+                }
+            } else {
+                // Legacy path: D3D11.0 - ID3D11Device::OpenSharedResource
+                hr = m_d3deviceVLC->OpenSharedResource(m_sharedHandle,
                     __uuidof(ID3D11Texture2D), (void**)&textureVLC);
                 if (FAILED(hr)) {
                     DEBUG("OpenSharedResource1 FAILED: 0x%lx\n", hr);
                     textureVLC = nullptr;
                 }
-                d3d11VLC1->Release();
-            }
-        } else {
-            // Legacy path: D3D11.0 - ID3D11Device::OpenSharedResource
-            hr = m_d3deviceVLC->OpenSharedResource(m_sharedHandle,
-                __uuidof(ID3D11Texture2D), (void**)&textureVLC);
-            if (FAILED(hr)) {
-                DEBUG("OpenSharedResource FAILED: 0x%lx\n", hr);
-                textureVLC = nullptr;
             }
         }
     }
@@ -825,6 +907,26 @@ void RenderAPI_D3D11::CreateResources()
     {
         DEBUG("Could not retrieve unity d3device %p, aborting... \n", m_d3deviceUnity);
         return;
+    }
+
+    if (IsWine())
+    {
+        DEBUG("[D3D11] Wine/Proton detected! Using Unity's D3D11 device directly.\n");
+        ID3D11Device* unityDevice = nullptr;
+        HRESULT hrWine = m_d3deviceUnity->QueryInterface(__uuidof(ID3D11Device), (void**)&unityDevice);
+        if (SUCCEEDED(hrWine) && unityDevice)
+        {
+            m_d3deviceVLC = unityDevice;
+            m_d3deviceVLC->GetImmediateContext(&m_d3dctxVLC);
+
+            ID3D10Multithread *pMultithread = nullptr;
+            if (SUCCEEDED(m_d3dctxVLC->QueryInterface(&pMultithread))) {
+                pMultithread->SetMultithreadProtected(TRUE);
+                pMultithread->Release();
+            }
+            DEBUG("Exiting CreateResources (Wine single-device mode).\n");
+            return;
+        }
     }
 
     HRESULT hr;
@@ -1436,6 +1538,7 @@ bool RenderAPI_D3D11::MakeCurrent(bool enter)
 
     if (enter)
     {
+        EnterCriticalSection(&m_outputLock);
         ReadWriteTexture* target = AcquireWritableTexture();
         if (!target)
         {
@@ -1443,7 +1546,6 @@ bool RenderAPI_D3D11::MakeCurrent(bool enter)
             return false;
         }
 
-        EnterCriticalSection(&m_outputLock);
         current_texture = target;
         if (current_texture->m_textureRenderTarget)
         {
@@ -1459,7 +1561,7 @@ bool RenderAPI_D3D11::SelectPlane(size_t plane, void *output)
 {
     (void)output;
     if (plane != 0 || m_d3dctxVLC == NULL) // we only support one packed RGBA plane
-        return false;
+      return false;
 
     if (current_texture && current_texture->m_textureRenderTarget)
     {
@@ -1522,6 +1624,28 @@ void* RenderAPI_D3D11::getVideoFrame(unsigned width, unsigned height, bool* out_
     bool local_updated_status = false;
 
     EnterCriticalSection(&m_outputLock);
+
+    if (IsWine())
+    {
+        if (m_width != width || m_height != height)
+        {
+            this->Update(width, height);
+        }
+
+        if (m_hasNewSwFrame && m_d3dctxVLC && read_write[0])
+        {
+            EnterCriticalSection(&m_swLock);
+            ID3D11Texture2D* tex2D = read_write[0]->GetTexture2D();
+            if (tex2D && !m_swPixelBuffer.empty())
+            {
+                m_d3dctxVLC->UpdateSubresource(tex2D, 0, NULL, m_swPixelBuffer.data(), m_width * 4, 0);
+                m_textureForUnity = read_write[0].get();
+                m_updated = true;
+            }
+            m_hasNewSwFrame = false;
+            LeaveCriticalSection(&m_swLock);
+        }
+    }
 
     if (m_textureForUnity) {
         result = m_textureForUnity->GetUnityTexture();
