@@ -21,11 +21,10 @@ public:
 
     void attach(LinuxDMABufProducer* producer) { m_attachedProducer = producer; }
 
-    void beginShutdown() { m_shutdownRequested.store(true); }
-    bool canDestroy() const { return m_published.load() == 0; }
+    void beginShutdown();
     void prepareImportsForPluginUnload();
 
-    void release(bool haveUnityContext, bool abandonWithDevice = false);
+    void abandonImports();
     void refresh();
     void* videoFrame(bool* outUpdated);
 
@@ -49,7 +48,9 @@ private:
     };
 
     bool importSlotToUnity(size_t index);
-    void releaseLocked(bool haveUnityContext, bool abandonWithDevice);
+    void destroyImportsLocked(
+        std::array<UnityImport, LinuxDMABufProducer::SlotCount>& imports);
+    void abandonCurrentImportsLocked();
 
     const char* m_logPrefix;
     ILinuxDMABufProducerContext& m_producerContext;
@@ -59,5 +60,4 @@ private:
     std::mutex m_mutex;
     std::atomic<bool> m_imported { false };
     std::atomic<bool> m_shutdownRequested { false };
-    std::atomic<unsigned> m_published { 0 };
 };

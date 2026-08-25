@@ -13,6 +13,13 @@ LinuxOpenGLUnityImportManager::LinuxOpenGLUnityImportManager(
 {
 }
 
+void LinuxOpenGLUnityImportManager::beginShutdown()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_shutdownRequested.store(true, std::memory_order_release);
+    abandonCurrentImportsLocked();
+}
+
 bool LinuxOpenGLUnityImportManager::onProducerSetup()
 {
     return LinuxDMABufWatermarkSetup(m_producerContext, m_watermark);
@@ -73,46 +80,34 @@ bool LinuxOpenGLUnityImportManager::importSlotToUnity(size_t index)
     return true;
 }
 
-void LinuxOpenGLUnityImportManager::releaseLocked(
-    bool haveUnityContext, bool abandonWithDevice)
+void LinuxOpenGLUnityImportManager::destroyImportsLocked(
+    std::array<UnityImport, LinuxDMABufProducer::SlotCount>& imports)
 {
-    if (!m_attachedProducer || !haveUnityContext) {
-        if (abandonWithDevice) {
-            // These names belong to Unity's GL context. If that context is no
-            // longer current during its shutdown event, context teardown owns
-            // their destruction and the CPU-side names must be forgotten.
-            for (UnityImport& imported : m_imports)
-                imported = {};
-            m_published.store(0);
-            m_imported.store(false);
-        }
-        return;
-    }
-    for (UnityImport& imported : m_imports) {
-        if (imported.texture)
+    for (UnityImport& imported : imports) {
+        if (m_attachedProducer && imported.texture)
             m_attachedProducer->rawDeleteTextures()(1, &imported.texture);
-        if (imported.memoryObject)
+        if (m_attachedProducer && imported.memoryObject)
             m_attachedProducer->deleteMemoryObjects()(1, &imported.memoryObject);
         imported = {};
     }
-    m_published.store(0);
+}
+
+void LinuxOpenGLUnityImportManager::abandonCurrentImportsLocked()
+{
+    for (UnityImport& imported : m_imports)
+        imported = {};
     m_imported.store(false);
 }
 
-void LinuxOpenGLUnityImportManager::release(
-    bool haveUnityContext, bool abandonWithDevice)
+void LinuxOpenGLUnityImportManager::abandonImports()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    releaseLocked(haveUnityContext, abandonWithDevice);
+    abandonCurrentImportsLocked();
 }
 
 void LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload()
 {
     beginShutdown();
-    // If Unity's context is current, delete the imported names now. Otherwise
-    // plugin unload is the terminal lifecycle event: forget CPU-side names and
-    // delegate their storage to Unity's context teardown.
-    release(hasRenderThreadContext(), true);
 }
 
 void LinuxOpenGLUnityImportManager::refresh()
@@ -120,21 +115,21 @@ void LinuxOpenGLUnityImportManager::refresh()
     std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
     if (!lock.owns_lock() || !hasRenderThreadContext())
         return;
-    if (m_shutdownRequested.load()) {
-        releaseLocked(true, false);
+    if (m_shutdownRequested.load(std::memory_order_acquire))
         return;
-    }
+
     if (!m_attachedProducer || m_attachedProducer->width() == 0 || m_imported.load())
         return;
-    releaseLocked(true, false);
+
+    abandonCurrentImportsLocked();
     for (size_t i = 0; i < LinuxDMABufProducer::SlotCount; ++i) {
         if (!importSlotToUnity(i)) {
-            releaseLocked(true, false);
+            destroyImportsLocked(m_imports);
+            m_imported.store(false);
             return;
         }
     }
     m_imported.store(true);
-    m_published.store(LinuxDMABufProducer::SlotCount);
 }
 
 void* LinuxOpenGLUnityImportManager::videoFrame(bool* outUpdated)

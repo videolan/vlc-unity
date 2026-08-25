@@ -59,7 +59,6 @@ namespace LibVLCSharp
         internal static void QueueRendererCleanup()
         {
             OnLoad.RequestRendererCleanup();
-            QueueRendererCleanupEvent();
         }
 
         internal static void QueueRendererCleanupEvent()

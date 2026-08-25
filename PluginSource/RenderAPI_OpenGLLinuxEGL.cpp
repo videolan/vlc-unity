@@ -161,7 +161,7 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(
         if (m_mp && m_pendingPlayer != m_mp && m_producer)
             m_producer->unsetVlcContext(m_mp);
         m_pendingPlayer = m_mp;
-        releaseResources(true);
+        releaseResources();
     }
 }
 
@@ -207,11 +207,9 @@ void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(
     return videoFrame(outUpdated);
 }
 
-void RenderAPI_OpenGLLinuxEGL::releaseResources(bool deviceShutdown)
+void RenderAPI_OpenGLLinuxEGL::releaseResources()
 {
-    const bool unityCurrent = glXGetCurrentContext() != nullptr ||
-                              eglGetCurrentContext() != EGL_NO_CONTEXT;
-    release(unityCurrent, deviceShutdown);
+    abandonImports();
     if (m_producer) {
         m_producer->release();
         m_producer.reset();

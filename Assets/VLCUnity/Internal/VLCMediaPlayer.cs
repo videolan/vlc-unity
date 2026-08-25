@@ -161,8 +161,15 @@ namespace LibVLCSharp
         {
             CancelPreload();
 
-            DestroyMediaPlayer();
+#if UNITY_EDITOR
+            // Exiting Play Mode owns all runtime-created Unity objects. Calling
+            // Destroy here defers their destruction into the next Editor frame,
+            // where it can overlap the next Play Mode texture generation.
+            DestroyTextures(!VLCEditorPlayModeLifecycle.IsExitingPlayMode);
+#else
             DestroyTextures();
+#endif
+            DestroyMediaPlayer();
         }
         #endregion
 
@@ -283,6 +290,9 @@ namespace LibVLCSharp
 
             Log("Swapping to preloaded video: " + PreloadedMediaPath);
 
+            // Keep the old external texture alive until Unity has released its
+            // wrapper, then retire the native renderer that owns the GL name.
+            DestroyTextures();
             DestroyMediaPlayer();
 
             MediaPlayer = _backgroundNativePlayer;
@@ -302,7 +312,6 @@ namespace LibVLCSharp
             _preloadedOptions = Array.Empty<string>();
             CurrentPreloadState = PreloadState.None;
 
-            DestroyTextures();
             MediaPlayer.SetVolume(_cachedVolume);
 
             MediaPlayer.Play();
@@ -521,20 +530,30 @@ namespace LibVLCSharp
             }
         }
 
-        private void DestroyTextures()
+        private void DestroyTextures(bool destroyUnityObjects = true)
         {
+            // Remove the texture from UGUI/mesh consumers before scheduling
+            // either Unity or plugin-owned graphics resources for retirement.
+            // This is especially important while the Editor is leaving Play
+            // Mode: its final GUI repaint can otherwise retain the old native
+            // texture pointer after OnDestroy has run.
+            if (OutputTexture != null || _vlcTexture != null)
+                OnTextureResized?.Invoke(null);
+
             if (OutputTexture != null)
             {
                 if (RenderTexture.active == OutputTexture)
                     RenderTexture.active = null;
-                OutputTexture.Release();
-                DestroyImmediate(OutputTexture);
+
+                if (destroyUnityObjects)
+                    Destroy(OutputTexture);
                 OutputTexture = null;
             }
 
             if (_vlcTexture != null)
             {
-                DestroyImmediate(_vlcTexture);
+                if (destroyUnityObjects)
+                    Destroy(_vlcTexture);
                 _vlcTexture = null;
             }
             _usesDirectVulkanOutput = false;
@@ -666,4 +685,31 @@ namespace LibVLCSharp
         }
         #endregion
     }
+
+#if UNITY_EDITOR
+    [UnityEditor.InitializeOnLoad]
+    static class VLCEditorPlayModeLifecycle
+    {
+        internal static bool IsExitingPlayMode { get; private set; }
+
+        static VLCEditorPlayModeLifecycle()
+        {
+            UnityEditor.EditorApplication.playModeStateChanged += OnStateChanged;
+        }
+
+        static void OnStateChanged(UnityEditor.PlayModeStateChange state)
+        {
+            switch (state)
+            {
+                case UnityEditor.PlayModeStateChange.ExitingPlayMode:
+                    IsExitingPlayMode = true;
+                    break;
+                case UnityEditor.PlayModeStateChange.EnteredEditMode:
+                case UnityEditor.PlayModeStateChange.EnteredPlayMode:
+                    IsExitingPlayMode = false;
+                    break;
+            }
+        }
+    }
+#endif
 }

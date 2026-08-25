@@ -49,6 +49,7 @@ namespace LibVLCSharp
         static void OnBeforeSceneLoadRuntimeMethod()
         {
             OnQuit();
+            _rendererCleanupPending = TextureHelper.HasRetiredRenderers();
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             var libDir = LibVLCDirectory;
             var pluginPath = libDir + "/vlc/plugins";
@@ -59,6 +60,17 @@ namespace LibVLCSharp
             SetColorSpace(PlayerColorSpace);
 #if UNITY_ANDROID || UNITY_IOS || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+#endif
+#if UNITY_EDITOR_LINUX
+            // A Play Mode domain can end before another onBeforeRender call.
+            // Queue enough ordered render-thread passes at the start of the
+            // next domain to retire the previous generation before playback
+            // begins importing replacement OpenGL textures.
+            if (_rendererCleanupPending)
+            {
+                for (int pass = 0; pass < 3; ++pass)
+                    TextureHelper.QueueRendererCleanupEvent();
+            }
 #endif
             Application.onBeforeRender += PumpRendererCleanup;
             Application.quitting += OnQuit;
@@ -87,7 +99,6 @@ namespace LibVLCSharp
         {
             Application.onBeforeRender -= PumpRendererCleanup;
             Application.quitting -= OnQuit;
-            _rendererCleanupPending = false;
         }
 
         static UnityColorSpace PlayerColorSpace => QualitySettings.activeColorSpace == 0 ? UnityColorSpace.Gamma : UnityColorSpace.Linear;

@@ -29,7 +29,7 @@ public:
     {
         LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload();
     }
-    bool canDestroy() const override { return LinuxOpenGLUnityImportManager::canDestroy(); }
+    bool canDestroy() const override { return false; }
 
     static void* get_proc_address_desktop(void* data, const char* name);
 
@@ -43,7 +43,7 @@ private:
     bool hasRenderThreadContext() const override;
 
     bool initializeDrmAndContext();
-    void releaseResources(bool deviceShutdown = false);
+    void releaseResources();
 
     LinuxGBMDevice m_gbm;
     std::unique_ptr<LinuxDMABufProducer> m_producer;

@@ -352,7 +352,7 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(
         s_unityProbeTexture = 0;
         s_unityContext = nullptr;
         s_unityDisplay = nullptr;
-        shutdownInternal(true);
+        shutdownInternal();
     }
 }
 
@@ -457,7 +457,7 @@ void* RenderAPI_OpenGLGLX::getVideoFrame(
     return videoFrame(outUpdated);
 }
 
-void RenderAPI_OpenGLGLX::shutdownInternal(bool deviceShutdown)
+void RenderAPI_OpenGLGLX::shutdownInternal()
 {
     const bool unityCurrent = s_unityContext &&
                               glXGetCurrentContext() == s_unityContext;
@@ -476,7 +476,7 @@ void RenderAPI_OpenGLGLX::shutdownInternal(bool deviceShutdown)
             }
         }
     }
-    release(unityCurrent, deviceShutdown);
+    abandonImports();
     if (m_producer) {
         m_producer->release();
         m_producer.reset();

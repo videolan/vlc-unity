@@ -36,7 +36,7 @@ public:
     {
         LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload();
     }
-    bool canDestroy() const override { return LinuxOpenGLUnityImportManager::canDestroy(); }
+    bool canDestroy() const override { return false; }
 
     static void* get_proc_address(void*, const char* name);
     bool producerMakeCurrent(bool current) override { return makeCurrent(current); }
@@ -52,7 +52,7 @@ private:
     bool verifySharedContext();
     bool initializeDMABuf();
     bool tryDMABufDevice(const std::string& path);
-    void shutdownInternal(bool deviceShutdown = false);
+    void shutdownInternal();
     void prepareFrameForPublication() override;
     void releaseFrameSynchronization() override;
     void waitForSharedFrame();
