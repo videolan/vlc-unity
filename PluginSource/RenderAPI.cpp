@@ -52,8 +52,13 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
 #if defined(SUPPORT_VULKAN)
     if (apiType == kUnityGfxRendererVulkan)
     {
+#if defined(UNITY_ANDROID)
         extern RenderAPI* CreateRenderAPI_Vulkan(UnityGfxRenderer apiType);
         return CreateRenderAPI_Vulkan(apiType);
+#elif defined(UNITY_LINUX)
+        extern RenderAPI* CreateRenderAPI_VulkanLinux(UnityGfxRenderer apiType);
+        return CreateRenderAPI_VulkanLinux(apiType);
+#endif
     }
 #endif
 
