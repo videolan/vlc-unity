@@ -4,6 +4,9 @@
 #include "RenderAPI.h"
 #include "RenderAPI_OpenGLEGL.h"
 #include "PlatformBase.h"
+#include "AndroidVulkanFrameSource.h"
+#include "UnitySubmissionStrategy.h"
+#include "VulkanUnityCopyCore.h"
 
 #if defined(SHOW_WATERMARK)
 #  include "RenderAPI_OpenGLWatermark.h"
@@ -26,6 +29,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Unity/IUnityGraphicsVulkan.h"
+#include <atomic>
 #include <mutex>
 
 // ============================================================
@@ -61,16 +65,22 @@ struct RenderAPIHardwareBuffer
     // OpenGL ES side (for VLC rendering)
     GLuint gl_texture = 0;
     GLuint fbo = 0;
+    EGLSyncKHR producer_sync = EGL_NO_SYNC_KHR;
 
-    // Vulkan external image (imported from AHardwareBuffer)
-    VkImage vk_image_external = VK_NULL_HANDLE;
-    VkDeviceMemory vk_memory_external = VK_NULL_HANDLE;
+    RenderAPIHardwareBuffer() = default;
+    RenderAPIHardwareBuffer(const RenderAPIHardwareBuffer&) = delete;
+    RenderAPIHardwareBuffer& operator=(const RenderAPIHardwareBuffer&) = delete;
+    RenderAPIHardwareBuffer(RenderAPIHardwareBuffer&&) = delete;
+    RenderAPIHardwareBuffer& operator=(RenderAPIHardwareBuffer&&) = delete;
 
-    ~RenderAPIHardwareBuffer();
-
-    RenderAPIHardwareBuffer& operator=(RenderAPIHardwareBuffer &&other);
-    RenderAPIHardwareBuffer(){}
-    RenderAPIHardwareBuffer(RenderAPIHardwareBuffer &&other);
+    void clearHandles()
+    {
+        a_hardware_buffer = nullptr;
+        egl_image = EGL_NO_IMAGE_KHR;
+        gl_texture = 0;
+        fbo = 0;
+        producer_sync = EGL_NO_SYNC_KHR;
+    }
 };
 
 class RenderAPI_Vulkan : public RenderAPI_OpenEGL
@@ -80,47 +90,41 @@ public:
     ~RenderAPI_Vulkan() override;
 
     void setVlcContext(libvlc_media_player_t *mp) override;
+    void unsetVlcContext(libvlc_media_player_t *mp) override;
     void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
     void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
 
     // Vulkan-specific: Set Unity-created texture to update via AccessTexture
-    bool setUnityTexture(void* unityTexturePtr);
-
-    // Called from Unity render thread to perform texture copy
-    void onRenderEvent();
+    bool setUnityTexture(void* unityTexturePtr) override;
+    void performRenderThreadWork() override;
+    void beginShutdown() override;
+    void prepareForPluginUnload() override;
+    bool canDestroy() const override;
+    bool isInitialized() const override { return m_initialized.load(); }
 
     static bool setup(void **opaque, const libvlc_video_setup_device_cfg_t *cfg, libvlc_video_setup_device_info_t *out);
     static void cleanup(void* opaque);
     static bool resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output);
     static void swap(void* opaque);
 
-    // Validation layer support
-    static void InitializeValidationLayers(IUnityInterfaces* interfaces);
-
 private:
     jobject createWindowSurface();
     void destroyWindowSurface(jobject);
     jobject m_awindow = nullptr;
+    libvlc_media_player_t* m_pendingPlayer = nullptr;
 
 private:
-    void releaseHardwareBufferResources();
-    RenderAPIHardwareBuffer createHardwareBuffer(unsigned width, unsigned height);
-    bool createVulkanTexture(RenderAPIHardwareBuffer& buffer, unsigned width, unsigned height);
-    bool copyToUnityTexture(const RenderAPIHardwareBuffer& buffer);
+    void releaseHardwareBufferResourcesLocked(bool deleteGlObjects = true);
+    void createHardwareBuffer(size_t index, unsigned width, unsigned height,
+                              RenderAPIHardwareBuffer& buffer);
+    void shutdownRenderer(bool abandonDeviceObjects = false);
 
     // Vulkan state from Unity
-    UnityVulkanInstance m_vk_instance;
-    IUnityGraphicsVulkan* m_vk_graphics = nullptr;
-
-    // Unity-created texture pointer (for Vulkan AccessTexture approach)
-    void* m_unity_texture_ptr = nullptr;
-
-    // Track if Vulkan image layout has been initialized
-    bool m_vulkan_image_layout_initialized = false;
-
-    // Pending copy state (for render thread)
-    size_t m_pending_copy_buffer_idx = 0;
-    bool m_has_pending_copy = false;
+    UnityVulkanInstance m_vkInstance;
+    IUnityGraphicsVulkan* m_vkGraphics = nullptr;
+    AndroidVulkanFrameSource m_frameSource;
+    UnitySubmissionStrategy m_submission;
+    VulkanUnityCopyCore m_copyCore;
 
     // Triple buffering
     RenderAPIHardwareBuffer buffers[3];
@@ -137,12 +141,18 @@ private:
     PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID = nullptr;
     PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
     PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = nullptr;
+    PFNEGLCREATESYNCKHRPROC eglCreateSyncKHR = nullptr;
+    PFNEGLCLIENTWAITSYNCKHRPROC eglClientWaitSyncKHR = nullptr;
+    PFNEGLDESTROYSYNCKHRPROC eglDestroySyncKHR = nullptr;
     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
 
-    // Vulkan extension function pointers for AHardwareBuffer
-    PFN_vkGetAndroidHardwareBufferPropertiesANDROID vkGetAndroidHardwareBufferPropertiesANDROID = nullptr;
+    std::atomic<bool> m_stopping { false };
+    std::atomic<bool> m_producerSyncFailed { false };
+    std::atomic<bool> m_initialized { false };
 
 #if VULKAN_ENABLE_VALIDATION
+    void initializeValidationMessenger();
+    void shutdownValidationMessenger();
     // Validation layer support
     static VkDebugUtilsMessengerEXT s_debug_messenger;
     static PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
