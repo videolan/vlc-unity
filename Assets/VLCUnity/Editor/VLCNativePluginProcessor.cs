@@ -1,6 +1,7 @@
 #if UNITY_2018_1_OR_NEWER
 #define UNITY_SUPPORTS_BUILD_REPORT
 #endif
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
