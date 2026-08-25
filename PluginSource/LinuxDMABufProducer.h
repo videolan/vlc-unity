@@ -3,6 +3,8 @@
 #include "LinuxGBMDevice.h"
 #include "RenderAPI_OpenGLLinuxDMABuf.h"
 
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -22,6 +24,7 @@ struct LinuxDMABufSlot
     uint64_t size = 0;
     unsigned width = 0;
     unsigned height = 0;
+    EGLImageKHR eglImage = EGL_NO_IMAGE_KHR;
     GLuint memoryObject = 0;
     GLuint texture = 0;
     GLuint framebuffer = 0;
@@ -33,6 +36,7 @@ public:
     virtual ~ILinuxDMABufProducerContext() = default;
     virtual bool producerMakeCurrent(bool current) = 0;
     virtual void* producerLoadProc(const char* name) = 0;
+    virtual EGLDisplay producerEGLDisplay() const { return EGL_NO_DISPLAY; }
 };
 
 class ILinuxDMABufProducerObserver
@@ -111,6 +115,9 @@ private:
 
     bool resize(const libvlc_video_render_cfg_t*, libvlc_video_output_cfg_t*);
     void swap();
+    bool initializeEGLImageImport();
+    bool validateEGLImageFormatSupport();
+    bool importEGLImage(LinuxDMABufSlot& slot);
     bool createSlot(size_t index, unsigned width, unsigned height);
     bool destroySlots(bool haveCurrentContext);
 
@@ -130,6 +137,12 @@ private:
     bool m_updated = false;
     bool m_initialized = false;
 
+    EGLDisplay m_eglDisplay = EGL_NO_DISPLAY;
+    PFNEGLCREATEIMAGEKHRPROC m_eglCreateImageKHR = nullptr;
+    PFNEGLDESTROYIMAGEKHRPROC m_eglDestroyImageKHR = nullptr;
+    PFNEGLQUERYDMABUFFORMATSEXTPROC m_eglQueryDmaBufFormatsEXT = nullptr;
+    PFNEGLQUERYDMABUFMODIFIERSEXTPROC m_eglQueryDmaBufModifiersEXT = nullptr;
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC m_glEGLImageTargetTexture2DOES = nullptr;
     PFNGLCREATEMEMORYOBJECTSEXTPROC m_createMemoryObjects = nullptr;
     PFNGLTEXSTORAGEMEM2DEXTPROC m_textureStorageMemory = nullptr;
     PFNGLIMPORTMEMORYFDEXTPROC m_importMemoryFd = nullptr;

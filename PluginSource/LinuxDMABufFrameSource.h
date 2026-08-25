@@ -46,6 +46,7 @@ public:
 
     bool producerMakeCurrent(bool current) override;
     void* producerLoadProc(const char* name) override;
+    EGLDisplay producerEGLDisplay() const override { return m_display; }
     bool onProducerSetup() override;
     void onProducerCleanup() override;
     bool onBeforeProducerSwap(GLuint framebuffer,

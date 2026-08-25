@@ -1,15 +1,35 @@
 #include "LinuxDMABufProducer.h"
 #include "Log.h"
 
+#include <algorithm>
+#include <cstring>
 #include <drm_fourcc.h>
 #include <gbm.h>
 #include <unistd.h>
+#include <vector>
 
 namespace {
 
 void* loadProducerProc(const char* name, void* opaque)
 {
     return static_cast<ILinuxDMABufProducerContext*>(opaque)->producerLoadProc(name);
+}
+
+bool extensionListContains(const char* extensions, const char* name)
+{
+    if (!extensions || !name)
+        return false;
+    const size_t length = strlen(name);
+    const char* current = extensions;
+    while ((current = strstr(current, name)) != nullptr) {
+        const bool startsAtBoundary = current == extensions || current[-1] == ' ';
+        const char next = current[length];
+        const bool endsAtBoundary = next == '\0' || next == ' ';
+        if (startsAtBoundary && endsAtBoundary)
+            return true;
+        current += length;
+    }
+    return false;
 }
 
 } // namespace
@@ -35,20 +55,187 @@ bool LinuxDMABufProducer::initialize()
 {
     if (!m_gbm || !m_context.producerMakeCurrent(true))
         return false;
-    static const char* requiredExtensions[] = {
-        "GL_EXT_memory_object", "GL_EXT_memory_object_fd"
-    };
-    const bool extensions = LinuxGLHasExtensions(
-        m_logPrefix, loadProducerProc, &m_context, requiredExtensions,
-        sizeof(requiredExtensions) / sizeof(requiredExtensions[0]));
-    const bool functions = extensions && LinuxGLLoadMemoryObjectFunctions(
-        m_logPrefix, loadProducerProc, &m_context,
-        m_createMemoryObjects, m_textureStorageMemory, m_importMemoryFd,
-        m_deleteMemoryObjects, m_memoryObjectParameter, m_rawGenTextures,
-        m_rawBindTexture, m_rawTextureParameter, m_rawDeleteTextures);
+    bool functions = false;
+    if (m_vulkanSlots) {
+        functions = initializeEGLImageImport();
+    } else {
+        static const char* requiredExtensions[] = {
+            "GL_EXT_memory_object", "GL_EXT_memory_object_fd"
+        };
+        const bool extensions = LinuxGLHasExtensions(
+            m_logPrefix, loadProducerProc, &m_context, requiredExtensions,
+            sizeof(requiredExtensions) / sizeof(requiredExtensions[0]));
+        functions = extensions && LinuxGLLoadMemoryObjectFunctions(
+            m_logPrefix, loadProducerProc, &m_context,
+            m_createMemoryObjects, m_textureStorageMemory, m_importMemoryFd,
+            m_deleteMemoryObjects, m_memoryObjectParameter, m_rawGenTextures,
+            m_rawBindTexture, m_rawTextureParameter, m_rawDeleteTextures);
+    }
     m_context.producerMakeCurrent(false);
     m_initialized = functions;
     return functions;
+}
+
+bool LinuxDMABufProducer::initializeEGLImageImport()
+{
+    m_eglDisplay = m_context.producerEGLDisplay();
+    if (m_eglDisplay == EGL_NO_DISPLAY) {
+        DEBUG("[%s] EGL display is unavailable for explicit DMA-BUF import",
+              m_logPrefix);
+        return false;
+    }
+
+    const char* eglExtensions = eglQueryString(m_eglDisplay, EGL_EXTENSIONS);
+    static const char* requiredEGLExtensions[] = {
+        "EGL_KHR_image_base",
+        "EGL_EXT_image_dma_buf_import",
+        "EGL_EXT_image_dma_buf_import_modifiers",
+    };
+    for (const char* extension : requiredEGLExtensions) {
+        if (!extensionListContains(eglExtensions, extension)) {
+            DEBUG("[%s] missing EGL extension %s", m_logPrefix, extension);
+            return false;
+        }
+    }
+
+    static const char* requiredGLExtensions[] = { "GL_OES_EGL_image" };
+    if (!LinuxGLHasExtensions(
+            m_logPrefix, loadProducerProc, &m_context, requiredGLExtensions,
+            sizeof(requiredGLExtensions) / sizeof(requiredGLExtensions[0]))) {
+        return false;
+    }
+
+    m_eglCreateImageKHR = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(
+        m_context.producerLoadProc("eglCreateImageKHR"));
+    m_eglDestroyImageKHR = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(
+        m_context.producerLoadProc("eglDestroyImageKHR"));
+    m_eglQueryDmaBufFormatsEXT =
+        reinterpret_cast<PFNEGLQUERYDMABUFFORMATSEXTPROC>(
+            m_context.producerLoadProc("eglQueryDmaBufFormatsEXT"));
+    m_eglQueryDmaBufModifiersEXT =
+        reinterpret_cast<PFNEGLQUERYDMABUFMODIFIERSEXTPROC>(
+            m_context.producerLoadProc("eglQueryDmaBufModifiersEXT"));
+    m_glEGLImageTargetTexture2DOES =
+        reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(
+            m_context.producerLoadProc("glEGLImageTargetTexture2DOES"));
+    if (!m_eglCreateImageKHR || !m_eglDestroyImageKHR ||
+        !m_eglQueryDmaBufFormatsEXT || !m_eglQueryDmaBufModifiersEXT ||
+        !m_glEGLImageTargetTexture2DOES) {
+        DEBUG("[%s] required EGL DMA-BUF image functions are unavailable",
+              m_logPrefix);
+        return false;
+    }
+
+    if (!validateEGLImageFormatSupport())
+        return false;
+
+    DEBUG("[%s] explicit EGLImage DMA-BUF import initialized", m_logPrefix);
+    return true;
+}
+
+bool LinuxDMABufProducer::validateEGLImageFormatSupport()
+{
+    EGLint formatCount = 0;
+    if (!m_eglQueryDmaBufFormatsEXT(
+            m_eglDisplay, 0, nullptr, &formatCount) ||
+        formatCount <= 0) {
+        DEBUG("[%s] EGL DMA-BUF format query failed", m_logPrefix);
+        return false;
+    }
+
+    std::vector<EGLint> formats(static_cast<size_t>(formatCount));
+    EGLint returnedFormatCount = formatCount;
+    if (!m_eglQueryDmaBufFormatsEXT(
+            m_eglDisplay, formatCount, formats.data(),
+            &returnedFormatCount)) {
+        DEBUG("[%s] EGL DMA-BUF format enumeration failed", m_logPrefix);
+        return false;
+    }
+    const EGLint format = static_cast<EGLint>(DRM_FORMAT_ABGR8888);
+    const size_t validFormatCount = static_cast<size_t>(
+        std::max(0, std::min(formatCount, returnedFormatCount)));
+    if (std::find(
+            formats.begin(), formats.begin() + validFormatCount, format) ==
+        formats.begin() + validFormatCount) {
+        DEBUG("[%s] EGL does not support DRM_FORMAT_ABGR8888 DMA-BUF import",
+              m_logPrefix);
+        return false;
+    }
+
+    EGLint modifierCount = 0;
+    if (!m_eglQueryDmaBufModifiersEXT(
+            m_eglDisplay, format, 0, nullptr, nullptr, &modifierCount) ||
+        modifierCount <= 0) {
+        DEBUG("[%s] EGL DMA-BUF modifier query failed for DRM_FORMAT_ABGR8888",
+              m_logPrefix);
+        return false;
+    }
+
+    std::vector<EGLuint64KHR> modifiers(static_cast<size_t>(modifierCount));
+    std::vector<EGLBoolean> externalOnly(static_cast<size_t>(modifierCount));
+    EGLint returnedModifierCount = modifierCount;
+    if (!m_eglQueryDmaBufModifiersEXT(
+            m_eglDisplay, format, modifierCount, modifiers.data(),
+            externalOnly.data(), &returnedModifierCount)) {
+        DEBUG("[%s] EGL DMA-BUF modifier enumeration failed", m_logPrefix);
+        return false;
+    }
+
+    const size_t validModifierCount = static_cast<size_t>(
+        std::max(0, std::min(modifierCount, returnedModifierCount)));
+    for (size_t i = 0; i < validModifierCount; ++i) {
+        if (modifiers[i] == DRM_FORMAT_MOD_LINEAR &&
+            externalOnly[i] == EGL_FALSE) {
+            return true;
+        }
+    }
+
+    DEBUG("[%s] EGL cannot import linear DRM_FORMAT_ABGR8888 as GL_TEXTURE_2D",
+          m_logPrefix);
+    return false;
+}
+
+bool LinuxDMABufProducer::importEGLImage(LinuxDMABufSlot& buffer)
+{
+    const EGLint attributes[] = {
+        EGL_WIDTH, static_cast<EGLint>(buffer.width),
+        EGL_HEIGHT, static_cast<EGLint>(buffer.height),
+        EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(buffer.format),
+        EGL_DMA_BUF_PLANE0_FD_EXT, static_cast<EGLint>(buffer.fd),
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT, static_cast<EGLint>(buffer.offset),
+        EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(buffer.stride),
+        EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
+        static_cast<EGLint>(static_cast<uint32_t>(buffer.modifier)),
+        EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
+        static_cast<EGLint>(static_cast<uint32_t>(buffer.modifier >> 32)),
+        EGL_NONE
+    };
+    buffer.eglImage = m_eglCreateImageKHR(
+        m_eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr,
+        attributes);
+    if (buffer.eglImage == EGL_NO_IMAGE_KHR) {
+        DEBUG("[%s] EGLImage DMA-BUF import failed: EGL error=0x%x",
+              m_logPrefix, eglGetError());
+        return false;
+    }
+
+    clearGlErrors();
+    m_glEGLImageTargetTexture2DOES(
+        GL_TEXTURE_2D, reinterpret_cast<GLeglImageOES>(buffer.eglImage));
+    const GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        DEBUG("[%s] EGLImage texture binding failed: GL error=0x%x",
+              m_logPrefix, error);
+        m_eglDestroyImageKHR(m_eglDisplay, buffer.eglImage);
+        buffer.eglImage = EGL_NO_IMAGE_KHR;
+        return false;
+    }
+
+    DEBUG("[%s] EGLImage imported for VLC: tex=%u format=0x%x modifier=0x%lx offset=%u stride=%u",
+          m_logPrefix, buffer.texture, buffer.format,
+          static_cast<unsigned long>(buffer.modifier), buffer.offset,
+          buffer.stride);
+    return true;
 }
 
 bool LinuxDMABufProducer::probe(unsigned probeWidth, unsigned probeHeight)
@@ -248,11 +435,14 @@ bool LinuxDMABufProducer::createSlot(
 
     glGenTextures(1, &buffer.texture);
     glBindTexture(GL_TEXTURE_2D, buffer.texture);
-    if (!LinuxGLImportMemoryFd(
-            m_logPrefix, m_createMemoryObjects, m_importMemoryFd,
-            m_deleteMemoryObjects, m_memoryObjectParameter,
-            m_textureStorageMemory, buffer.memoryObject, buffer.texture,
-            buffer.fd, buffer.size, bufferWidth, bufferHeight, "VLC")) {
+    const bool imported = m_vulkanSlots
+        ? importEGLImage(buffer)
+        : LinuxGLImportMemoryFd(
+              m_logPrefix, m_createMemoryObjects, m_importMemoryFd,
+              m_deleteMemoryObjects, m_memoryObjectParameter,
+              m_textureStorageMemory, buffer.memoryObject, buffer.texture,
+              buffer.fd, buffer.size, bufferWidth, bufferHeight, "VLC");
+    if (!imported) {
         return false;
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -337,6 +527,11 @@ bool LinuxDMABufProducer::destroySlots(bool haveCurrentContext)
                 glDeleteFramebuffers(1, &buffer.framebuffer);
             if (buffer.texture)
                 glDeleteTextures(1, &buffer.texture);
+            if (buffer.eglImage != EGL_NO_IMAGE_KHR &&
+                m_eglDestroyImageKHR && m_eglDisplay != EGL_NO_DISPLAY) {
+                m_eglDestroyImageKHR(m_eglDisplay, buffer.eglImage);
+                buffer.eglImage = EGL_NO_IMAGE_KHR;
+            }
             if (buffer.memoryObject && m_deleteMemoryObjects)
                 m_deleteMemoryObjects(1, &buffer.memoryObject);
         }
