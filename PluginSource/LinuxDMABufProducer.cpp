@@ -108,12 +108,16 @@ void LinuxDMABufProducer::cleanupCallback(void* opaque)
     if (producer->m_observer)
         producer->m_observer->onProducerCleanup();
     const bool current = producer->m_context.producerMakeCurrent(true);
+    if (!current) {
+        DEBUG("[%s] deferring slot cleanup because the producer context is not current",
+              producer->m_logPrefix);
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(producer->m_mutex);
-        (void)producer->destroySlots(current);
+        (void)producer->destroySlots(true);
     }
-    if (current)
-        producer->m_context.producerMakeCurrent(false);
+    producer->m_context.producerMakeCurrent(false);
 }
 
 bool LinuxDMABufProducer::resizeCallback(
