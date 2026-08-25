@@ -47,9 +47,14 @@ fallback without requiring Unity or a GPU:
 
 ```bash
 meson setup build-linux-tests
-meson compile -C build-linux-tests linux-graphics-interop-tests
-meson test -C build-linux-tests linux-graphics-interop --print-errorlogs
+meson compile -C build-linux-tests
+meson test -C build-linux-tests --print-errorlogs
 ```
+
+The Linux suite includes `linux-graphics-interop`, `linux-vulkan-identity`, and
+`unique-fd`, and — when Vulkan development headers are available —
+`vulkan-core`, `vulkan-requirements`, `owned-queue-submission`, and
+`unity-submission-strategy`.
 
 The full Meson configuration still requires the normal LibVLC development
 dependency. CI should run this test on both x86_64 and arm64 Linux builders when
@@ -59,10 +64,12 @@ assumptions.
 ## Linux GPU integration matrix
 
 Headless unit tests cannot validate driver-owned GLX/EGL sharing or external
-memory imports. Before publishing a Linux package, run
-`VLCMinimalPlayback` in both the Editor and a standalone player and confirm
-that the log reports either a successful shared-context probe or a compatible
-DMA-BUF device.
+memory imports. Before publishing a Linux package, run `VLCMinimalPlayback`
+with OpenGLCore and Vulkan in the Linux Editor, a standalone player, and an
+Embedded Linux player. Restart the Editor after importing or updating the
+preloaded plugin before running its Vulkan case. Confirm that OpenGL reports a
+successful shared-context or compatible DMA-BUF path and Vulkan reports active
+initialization interception plus a compatible DMA-BUF device.
 
 Cover these configurations when hardware is available:
 
@@ -73,6 +80,18 @@ Cover these configurations when hardware is available:
 | Xorg or XWayland | Integrated + NVIDIA PRIME | GLX shared context on Unity's selected GPU |
 | Forced DMA-BUF test | Multiple render nodes | Reject incompatible nodes and select the matching node |
 | Native Wayland experimental | Single GPU | EGL plus DMA-BUF |
+| Linux Editor after restart | Single Mesa GPU | Vulkan interception and DMA-BUF copy |
+| Standalone Linux | Single Mesa GPU | Vulkan interception and DMA-BUF copy |
+| Embedded Linux | Supported GBM/Vulkan GPU | Vulkan interception and DMA-BUF copy |
+
+For performance captures, do not pass Unity `-nographics`: that disables the
+path being measured. A machine may be physically headless if it exposes a real
+GPU and uses Xvfb, a compositor, or a supported surfaceless setup. Pin the GPU
+and driver baseline and record main/render-thread p50/p95 time, GPU copy and
+total frame time, queue submissions, dropped frames, and FD/native-memory
+counts for one, two, and four players at 1080p and 4K. Software
+llvmpipe/lavapipe is useful for functional smoke coverage, not representative
+timing.
 
 For a forced-device run:
 
