@@ -53,6 +53,9 @@ private:
     bool initializeDMABuf();
     bool tryDMABufDevice(const std::string& path);
     void shutdownInternal(bool deviceShutdown = false);
+    void prepareFrameForPublication() override;
+    void releaseFrameSynchronization() override;
+    void waitForSharedFrame();
     static bool staticMakeCurrent(void* data, bool current);
     static void sharedSwap(void* opaque);
 
@@ -63,6 +66,8 @@ private:
     libvlc_media_player_t* m_pendingPlayer = nullptr;
     bool m_contextCreationReportedSharing = false;
     bool m_sharedContext = false;
+    std::mutex m_sharedFrameMutex;
+    GLsync m_sharedFrameFence = nullptr;
     LinuxGBMDevice m_gbm;
     std::unique_ptr<LinuxDMABufProducer> m_producer;
 

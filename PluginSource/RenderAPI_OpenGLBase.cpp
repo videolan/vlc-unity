@@ -46,6 +46,7 @@ bool RenderAPI_OpenGLBase::setup(void **opaque,
 
 void RenderAPI_OpenGLBase::releaseFrameBufferResources()
 {
+    releaseFrameSynchronization();
     glDeleteTextures(3, tex);
     glDeleteFramebuffers(3, fbo);
     for (int i = 0; i < 3; ++i) {
@@ -143,6 +144,7 @@ void RenderAPI_OpenGLBase::swap(void* opaque)
     that->watermark.draw(that->fbo[that->idx_render], that->width, that->height);
 #endif
 
+    that->prepareFrameForPublication();
     that->updated = true;
     std::swap(that->idx_swap, that->idx_render);
     glBindFramebuffer(GL_FRAMEBUFFER, that->fbo[that->idx_render]);

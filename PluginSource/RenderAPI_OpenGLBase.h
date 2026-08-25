@@ -69,6 +69,9 @@ private:
     bool updated = false;
 
 protected:
+    virtual void prepareFrameForPublication() {}
+    virtual void releaseFrameSynchronization() {}
+
 #if defined(SHOW_WATERMARK)
     OpenGLWatermark watermark;
 #endif

@@ -394,8 +394,44 @@ void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t* mp)
 void RenderAPI_OpenGLGLX::sharedSwap(void* opaque)
 {
     RenderAPI_OpenGLBase::swap(opaque);
+}
+
+void RenderAPI_OpenGLGLX::prepareFrameForPublication()
+{
+    GLsync next = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (!next) {
+        glFinish();
+        return;
+    }
+
     glFlush();
-    glFinish();
+    std::lock_guard<std::mutex> lock(m_sharedFrameMutex);
+    if (m_sharedFrameFence)
+        glDeleteSync(m_sharedFrameFence);
+    m_sharedFrameFence = next;
+}
+
+void RenderAPI_OpenGLGLX::releaseFrameSynchronization()
+{
+    std::lock_guard<std::mutex> lock(m_sharedFrameMutex);
+    if (m_sharedFrameFence)
+        glDeleteSync(m_sharedFrameFence);
+    m_sharedFrameFence = nullptr;
+}
+
+void RenderAPI_OpenGLGLX::waitForSharedFrame()
+{
+    GLsync fence = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(m_sharedFrameMutex);
+        fence = m_sharedFrameFence;
+        m_sharedFrameFence = nullptr;
+    }
+    if (!fence)
+        return;
+
+    glWaitSync(fence, 0, GL_TIMEOUT_IGNORED);
+    glDeleteSync(fence);
 }
 
 bool RenderAPI_OpenGLGLX::hasRenderThreadContext() const
@@ -405,8 +441,11 @@ bool RenderAPI_OpenGLGLX::hasRenderThreadContext() const
 
 void RenderAPI_OpenGLGLX::performRenderThreadWork()
 {
-    if (m_sharedContext)
+    if (m_sharedContext) {
+        if (hasRenderThreadContext())
+            waitForSharedFrame();
         return;
+    }
     refresh();
 }
 
@@ -422,6 +461,21 @@ void RenderAPI_OpenGLGLX::shutdownInternal(bool deviceShutdown)
 {
     const bool unityCurrent = s_unityContext &&
                               glXGetCurrentContext() == s_unityContext;
+    const GLXContext previousContext = glXGetCurrentContext();
+    const GLXDrawable previousDraw = glXGetCurrentDrawable();
+    const GLXDrawable previousRead = glXGetCurrentReadDrawable();
+    if (m_sharedContext &&
+        (unityCurrent || previousContext == m_context || makeCurrent(true))) {
+        releaseFrameSynchronization();
+        if (previousContext != m_context) {
+            if (previousContext) {
+                glXMakeContextCurrent(
+                    m_display, previousDraw, previousRead, previousContext);
+            } else {
+                glXMakeContextCurrent(m_display, None, None, nullptr);
+            }
+        }
+    }
     release(unityCurrent, deviceShutdown);
     if (m_producer) {
         m_producer->release();
