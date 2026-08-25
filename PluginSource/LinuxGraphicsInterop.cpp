@@ -4,6 +4,9 @@
 #include <cctype>
 #include <cstring>
 #include <dirent.h>
+#include <sstream>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 namespace {
 
@@ -158,4 +161,142 @@ std::string LinuxSelectCompatibleDrmDevice(
             return candidate;
     }
     return {};
+}
+
+bool LinuxInspectDrmRenderNode(const std::string& path,
+                               LinuxDrmRenderNode& node,
+                               std::string& diagnostic)
+{
+    struct stat metadata = {};
+    if (stat(path.c_str(), &metadata) != 0) {
+        diagnostic = "stat failed for " + path;
+        return false;
+    }
+    if (!S_ISCHR(metadata.st_mode)) {
+        diagnostic = path + " is not a character device";
+        return false;
+    }
+    node.path = path;
+    node.deviceMajor = static_cast<uint32_t>(major(metadata.st_rdev));
+    node.deviceMinor = static_cast<uint32_t>(minor(metadata.st_rdev));
+    diagnostic.clear();
+    return true;
+}
+
+LinuxDrmMatchResult LinuxMatchDrmRenderNode(
+    const std::vector<LinuxDrmRenderNode>& candidates,
+    uint32_t expectedMajor,
+    uint32_t expectedMinor)
+{
+    LinuxDrmMatchResult result;
+    result.inspectedNodes = candidates;
+    if (candidates.empty()) {
+        result.error = LinuxDrmMatchError::NoCandidates;
+        result.diagnostic = "no valid DRM render-node candidates";
+        return result;
+    }
+
+    const LinuxDrmRenderNode* match = nullptr;
+    for (const LinuxDrmRenderNode& candidate : candidates) {
+        if (candidate.deviceMajor != expectedMajor ||
+            candidate.deviceMinor != expectedMinor) {
+            continue;
+        }
+        if (match) {
+            result.error = LinuxDrmMatchError::DuplicateExactMatch;
+            std::ostringstream message;
+            message << "multiple DRM nodes resolve to " << expectedMajor << ':'
+                    << expectedMinor << ": " << match->path << ", "
+                    << candidate.path;
+            result.diagnostic = message.str();
+            return result;
+        }
+        match = &candidate;
+    }
+
+    if (!match) {
+        result.error = LinuxDrmMatchError::NoExactMatch;
+        std::ostringstream message;
+        message << "no DRM render node exactly matches " << expectedMajor
+                << ':' << expectedMinor << "; inspected";
+        for (const LinuxDrmRenderNode& candidate : candidates) {
+            message << ' ' << candidate.path << '=' << candidate.deviceMajor
+                    << ':' << candidate.deviceMinor;
+        }
+        result.diagnostic = message.str();
+        return result;
+    }
+
+    result.error = LinuxDrmMatchError::ExactMatch;
+    result.path = match->path;
+    return result;
+}
+
+LinuxDrmMatchResult LinuxResolveVulkanDrmRenderNode(
+    const std::string& driDirectory,
+    const char* overridePath,
+    bool hasRenderIdentity,
+    uint32_t expectedMajor,
+    uint32_t expectedMinor)
+{
+    LinuxDrmMatchResult result;
+    if (!hasRenderIdentity) {
+        result.error = LinuxDrmMatchError::IdentityUnavailable;
+        result.diagnostic = "VK_EXT_physical_device_drm did not report a render-node identity";
+        return result;
+    }
+
+    if (hasValue(overridePath)) {
+        LinuxDrmRenderNode node;
+        if (!LinuxInspectDrmRenderNode(overridePath, node, result.diagnostic)) {
+            result.error = LinuxDrmMatchError::InvalidNode;
+            return result;
+        }
+        result.inspectedNodes.push_back(node);
+        if (node.deviceMajor != expectedMajor || node.deviceMinor != expectedMinor) {
+            result.error = LinuxDrmMatchError::OverrideMismatch;
+            std::ostringstream message;
+            message << "VLC_UNITY_DRM_DEVICE=" << overridePath << " resolves to "
+                    << node.deviceMajor << ':' << node.deviceMinor
+                    << " but Unity Vulkan reports " << expectedMajor << ':'
+                    << expectedMinor;
+            result.diagnostic = message.str();
+            return result;
+        }
+        result.error = LinuxDrmMatchError::ExactMatch;
+        result.path = overridePath;
+        return result;
+    }
+
+    const std::vector<std::string> paths = LinuxEnumerateDrmRenderNodes(driDirectory);
+    std::string firstInvalid;
+    for (const std::string& path : paths) {
+        LinuxDrmRenderNode node;
+        std::string diagnostic;
+        if (LinuxInspectDrmRenderNode(path, node, diagnostic))
+            result.inspectedNodes.push_back(node);
+        else if (firstInvalid.empty())
+            firstInvalid = diagnostic;
+    }
+    if (result.inspectedNodes.empty() && !paths.empty()) {
+        result.error = LinuxDrmMatchError::InvalidNode;
+        result.diagnostic = firstInvalid;
+        return result;
+    }
+    return LinuxMatchDrmRenderNode(
+        result.inspectedNodes, expectedMajor, expectedMinor);
+}
+
+const char* LinuxDrmMatchErrorName(LinuxDrmMatchError error)
+{
+    switch (error) {
+    case LinuxDrmMatchError::ExactMatch: return "none";
+    case LinuxDrmMatchError::IdentityUnavailable: return "identity-unavailable";
+    case LinuxDrmMatchError::NoCandidates: return "no-candidates";
+    case LinuxDrmMatchError::InvalidNode: return "invalid-node";
+    case LinuxDrmMatchError::NoExactMatch: return "no-exact-match";
+    case LinuxDrmMatchError::DuplicateExactMatch: return "duplicate-exact-match";
+    case LinuxDrmMatchError::OverrideMismatch: return "override-mismatch";
+    }
+    return "unknown";
 }

@@ -1,6 +1,6 @@
-#ifndef VLC_UNITY_LINUX_GRAPHICS_INTEROP_H
-#define VLC_UNITY_LINUX_GRAPHICS_INTEROP_H
+#pragma once
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -9,6 +9,34 @@ enum class LinuxOpenGLBackend
 {
     GLX,
     EGL,
+};
+
+struct LinuxDrmRenderNode
+{
+    std::string path;
+    uint32_t deviceMajor = 0;
+    uint32_t deviceMinor = 0;
+};
+
+enum class LinuxDrmMatchError
+{
+    ExactMatch,
+    IdentityUnavailable,
+    NoCandidates,
+    InvalidNode,
+    NoExactMatch,
+    DuplicateExactMatch,
+    OverrideMismatch,
+};
+
+struct LinuxDrmMatchResult
+{
+    LinuxDrmMatchError error = LinuxDrmMatchError::NoCandidates;
+    std::string path;
+    std::string diagnostic;
+    std::vector<LinuxDrmRenderNode> inspectedNodes;
+
+    explicit operator bool() const { return error == LinuxDrmMatchError::ExactMatch; }
 };
 
 // Select the backend used to interoperate with Unity's OpenGL context.
@@ -38,4 +66,20 @@ std::string LinuxSelectCompatibleDrmDevice(
     const std::vector<std::string>& candidates,
     const std::function<bool(const std::string&)>& probe);
 
-#endif /* VLC_UNITY_LINUX_GRAPHICS_INTEROP_H */
+bool LinuxInspectDrmRenderNode(const std::string& path,
+                               LinuxDrmRenderNode& node,
+                               std::string& diagnostic);
+
+LinuxDrmMatchResult LinuxMatchDrmRenderNode(
+    const std::vector<LinuxDrmRenderNode>& candidates,
+    uint32_t expectedMajor,
+    uint32_t expectedMinor);
+
+LinuxDrmMatchResult LinuxResolveVulkanDrmRenderNode(
+    const std::string& driDirectory,
+    const char* overridePath,
+    bool hasRenderIdentity,
+    uint32_t expectedMajor,
+    uint32_t expectedMinor);
+
+const char* LinuxDrmMatchErrorName(LinuxDrmMatchError error);

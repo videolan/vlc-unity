@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 #include <vector>
 
@@ -118,6 +120,87 @@ void testOverrideAndCompatibilityProbe()
     check(none.empty(), "selector must report when no GPU is compatible");
 }
 
+void testExactDrmMatcher()
+{
+    const std::vector<LinuxDrmRenderNode> candidates = {
+        { "/dev/dri/renderD128", 226, 128 },
+        { "/dev/dri/renderD129", 226, 129 },
+    };
+    LinuxDrmMatchResult result = LinuxMatchDrmRenderNode(candidates, 226, 129);
+    check(result && result.path == "/dev/dri/renderD129",
+          "Vulkan matcher must select only the exact major/minor pair");
+
+    result = LinuxMatchDrmRenderNode(candidates, 226, 130);
+    check(result.error == LinuxDrmMatchError::NoExactMatch && result.path.empty(),
+          "Vulkan matcher must never guess when no exact node exists");
+
+    const std::vector<LinuxDrmRenderNode> duplicates = {
+        { "/dev/dri/renderD128", 226, 128 },
+        { "/dev/dri/by-path/duplicate", 226, 128 },
+    };
+    result = LinuxMatchDrmRenderNode(duplicates, 226, 128);
+    check(result.error == LinuxDrmMatchError::DuplicateExactMatch,
+          "duplicate device identities must fail instead of choosing first");
+
+    result = LinuxResolveVulkanDrmRenderNode(
+        "/dev/dri", nullptr, false, 226, 128);
+    check(result.error == LinuxDrmMatchError::IdentityUnavailable,
+          "missing Vulkan render identity must fail explicitly");
+}
+
+void testDrmMetadataAndOverrideValidation()
+{
+    struct stat nullMetadata = {};
+    check(stat("/dev/null", &nullMetadata) == 0,
+          "stat /dev/null fixture");
+    const uint32_t expectedMajor = static_cast<uint32_t>(major(nullMetadata.st_rdev));
+    const uint32_t expectedMinor = static_cast<uint32_t>(minor(nullMetadata.st_rdev));
+
+    LinuxDrmMatchResult result = LinuxResolveVulkanDrmRenderNode(
+        "/dev/dri", "/dev/null", true, expectedMajor, expectedMinor);
+    check(result && result.path == "/dev/null",
+          "matching exclusive override must pass exact device validation");
+
+    result = LinuxResolveVulkanDrmRenderNode(
+        "/dev/dri", "/dev/null", true, expectedMajor, expectedMinor + 1);
+    check(result.error == LinuxDrmMatchError::OverrideMismatch,
+          "mismatched exclusive override must fail");
+
+    result = LinuxResolveVulkanDrmRenderNode(
+        "/dev/dri", "/definitely/missing/render-node", true,
+        expectedMajor, expectedMinor);
+    check(result.error == LinuxDrmMatchError::InvalidNode,
+          "inaccessible override must fail without fallback");
+
+    char directoryTemplate[] = "/tmp/vlc-unity-drm-metadata-XXXXXX";
+    char* directory = mkdtemp(directoryTemplate);
+    check(directory != nullptr, "create DRM metadata fixture directory");
+    if (!directory)
+        return;
+    const std::string root(directory);
+    const std::string regular = root + "/regular";
+    const std::string symlinkPath = root + "/by-path-render";
+    touch(regular);
+
+    LinuxDrmRenderNode node;
+    std::string diagnostic;
+    check(!LinuxInspectDrmRenderNode(regular, node, diagnostic),
+          "regular files must be rejected as DRM render nodes");
+    check(!LinuxInspectDrmRenderNode(root + "/missing", node, diagnostic),
+          "failed stat must be reported");
+
+    check(symlink("/dev/null", symlinkPath.c_str()) == 0,
+          "create by-path symlink fixture");
+    result = LinuxResolveVulkanDrmRenderNode(
+        "/dev/dri", symlinkPath.c_str(), true, expectedMajor, expectedMinor);
+    check(result && result.path == symlinkPath,
+          "by-path symlink to the exact character device must pass");
+
+    unlink(symlinkPath.c_str());
+    unlink(regular.c_str());
+    rmdir(root.c_str());
+}
+
 } // namespace
 
 int main()
@@ -125,6 +208,8 @@ int main()
     testBackendSelection();
     testRenderNodeEnumeration();
     testOverrideAndCompatibilityProbe();
+    testExactDrmMatcher();
+    testDrmMetadataAndOverrideValidation();
 
     if (failures != 0)
         std::cerr << failures << " test(s) failed\n";
