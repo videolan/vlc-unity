@@ -46,11 +46,15 @@ bool RenderAPI_OpenGLBase::setup(void **opaque,
 
 void RenderAPI_OpenGLBase::releaseFrameBufferResources()
 {
-    if (width == 0 && height == 0)
-        return;
-
     glDeleteTextures(3, tex);
     glDeleteFramebuffers(3, fbo);
+    for (int i = 0; i < 3; ++i) {
+        tex[i] = 0;
+        fbo[i] = 0;
+    }
+    width = 0;
+    height = 0;
+    updated = false;
 }
 
 void RenderAPI_OpenGLBase::cleanup(void* opaque)
@@ -60,7 +64,10 @@ void RenderAPI_OpenGLBase::cleanup(void* opaque)
     DEBUG("destroy_fbo");
 
     that->ensureCurrentContext();
-    that->releaseFrameBufferResources();
+    {
+        std::lock_guard<std::mutex> lock(that->text_lock);
+        that->releaseFrameBufferResources();
+    }
 
 #if defined(SHOW_WATERMARK)
     that->watermark.cleanup();
@@ -71,8 +78,8 @@ void RenderAPI_OpenGLBase::cleanup(void* opaque)
 bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t *cfg, libvlc_video_output_cfg_t *output)
 {
     RenderAPI_OpenGLBase* that = reinterpret_cast<RenderAPI_OpenGLBase*>(opaque);
-    if (cfg->width != that->width || cfg->height != that->height)
-        that->releaseFrameBufferResources();
+    std::lock_guard<std::mutex> lock(that->text_lock);
+    that->releaseFrameBufferResources();
 
     glGenTextures(3, that->tex);
     glGenFramebuffers(3, that->fbo);
@@ -95,6 +102,7 @@ bool RenderAPI_OpenGLBase::resize(void* opaque, const libvlc_video_render_cfg_t 
 
         if (status != GL_FRAMEBUFFER_COMPLETE) {
             DEBUG("failed to create the FBO");
+            that->releaseFrameBufferResources();
             return false;
         }
     }

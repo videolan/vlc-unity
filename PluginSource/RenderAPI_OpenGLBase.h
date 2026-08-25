@@ -61,8 +61,8 @@ private:
     std::mutex text_lock;
     unsigned width = 0;
     unsigned height = 0;
-    GLuint tex[3];
-    GLuint fbo[3];
+    GLuint tex[3] = {};
+    GLuint fbo[3] = {};
     size_t idx_render = 0;
     size_t idx_swap = 1;
     size_t idx_display = 2;
