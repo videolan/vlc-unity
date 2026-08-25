@@ -7,6 +7,10 @@ namespace LibVLCSharp
     public static class TextureHelper
     {
         static int _lastVulkanCopyEventFrame = -1;
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+        static int _lastLinuxInteropEventFrame = -1;
+#endif
+        static IntPtr _renderEvent;
 #if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX)
         const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
@@ -31,6 +35,16 @@ namespace LibVLCSharp
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetRenderEventFunc")]
         static extern IntPtr GetRenderEventFunc();
 
+        static IntPtr RenderEvent
+        {
+            get
+            {
+                if (_renderEvent == IntPtr.Zero)
+                    _renderEvent = GetRenderEventFunc();
+                return _renderEvent;
+            }
+        }
+
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl,
             EntryPoint = "libvlc_unity_has_retired_renderers")]
         [return: MarshalAs(UnmanagedType.I1)]
@@ -49,17 +63,20 @@ namespace LibVLCSharp
 
         internal static void QueueRendererCleanupEvent()
         {
-            var renderEvent = GetRenderEventFunc();
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
-            GL.IssuePluginEvent(renderEvent, 2);
+            GL.IssuePluginEvent(RenderEvent, 2);
 #endif
-            GL.IssuePluginEvent(renderEvent, 3);
+            GL.IssuePluginEvent(RenderEvent, 3);
         }
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
         static void QueueLinuxTextureInterop()
         {
-            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+            var frame = Time.frameCount;
+            if (_lastLinuxInteropEventFrame == frame)
+                return;
+            _lastLinuxInteropEventFrame = frame;
+            GL.IssuePluginEvent(RenderEvent, 1);
         }
 #endif
 
@@ -70,11 +87,10 @@ namespace LibVLCSharp
                 return;
             _lastVulkanCopyEventFrame = frame;
 #if UNITY_ANDROID && !UNITY_EDITOR
-            GL.IssuePluginEvent(GetRenderEventFunc(), 0);
+            GL.IssuePluginEvent(RenderEvent, 0);
 #elif UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
-            var renderEvent = GetRenderEventFunc();
-            GL.IssuePluginEvent(renderEvent, 1);
-            GL.IssuePluginEvent(renderEvent, 2);
+            GL.IssuePluginEvent(RenderEvent, 1);
+            GL.IssuePluginEvent(RenderEvent, 2);
 #endif
         }
 
