@@ -1,43 +1,30 @@
 #include "RenderAPI_OpenGLLinuxEGL.h"
 #include "LinuxGraphicsInterop.h"
 #include "Log.h"
-#include "TrialWatermark.h"
+
 #include <cassert>
 #include <cstdlib>
-#include <cstring>
-#include <unistd.h>
 
 #ifndef EGL_PLATFORM_GBM_KHR
 #define EGL_PLATFORM_GBM_KHR 0x31D7
 #endif
 
-namespace {
-
-bool staticMakeCurrent(void* data, bool current)
-{
-    auto that = static_cast<RenderAPI_OpenGLLinuxEGL*>(data);
-    return that->makeCurrent(current);
-}
-
-void* loadDesktopProc(const char* name, void*)
-{
-    return RenderAPI_OpenGLLinuxEGL::get_proc_address_desktop(nullptr, name);
-}
-
-} // namespace
-
-bool RenderAPI_OpenGLLinuxEGL::m_unity_context_ready = false;
+bool RenderAPI_OpenGLLinuxEGL::s_unityContextReady = false;
 
 RenderAPI* CreateRenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType)
 {
     return new RenderAPI_OpenGLLinuxEGL(apiType);
 }
 
-RenderAPI_OpenGLLinuxEGL::RenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType) :
-    RenderAPI_OpenEGL(apiType)
+RenderAPI_OpenGLLinuxEGL::RenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType)
+    : RenderAPI_OpenEGL(apiType),
+      LinuxOpenGLUnityImportManager(
+          "EGL-Linux", *this
+#if defined(SHOW_WATERMARK)
+          , &watermark
+#endif
+      )
 {
-    // Parent class doesn't initialize these, causing garbage values
-    // that bypass safety checks if ProcessDeviceEvent fails
     m_display = EGL_NO_DISPLAY;
     m_surface = EGL_NO_SURFACE;
     m_context = EGL_NO_CONTEXT;
@@ -48,734 +35,196 @@ RenderAPI_OpenGLLinuxEGL::~RenderAPI_OpenGLLinuxEGL()
     releaseResources();
 }
 
-// ---------------------------------------------------------------------------
-// proc address: try EGL first, fall back to GLX for core GL functions
-// ---------------------------------------------------------------------------
-
-void* RenderAPI_OpenGLLinuxEGL::get_proc_address_desktop(void* /*data*/, const char* procname)
+void* RenderAPI_OpenGLLinuxEGL::get_proc_address_desktop(
+    void*, const char* name)
 {
-    void* p = reinterpret_cast<void*>(eglGetProcAddress(procname));
-    if (!p)
-        p = reinterpret_cast<void*>(glXGetProcAddressARB(
-            reinterpret_cast<const GLubyte*>(procname)));
-    return p;
+    void* function = reinterpret_cast<void*>(eglGetProcAddress(name));
+    if (!function) {
+        function = reinterpret_cast<void*>(glXGetProcAddressARB(
+            reinterpret_cast<const GLubyte*>(name)));
+    }
+    return function;
 }
-
-// ---------------------------------------------------------------------------
-// retrieveOpenGLContext — detect Unity's GL context (GLX or EGL)
-// ---------------------------------------------------------------------------
 
 void RenderAPI_OpenGLLinuxEGL::retrieveOpenGLContext()
 {
-    if (m_unity_context_ready)
+    if (s_unityContextReady)
         return;
-
-    // Check if Unity exposes an EGL context (native Wayland)
-    EGLContext egl_ctx = eglGetCurrentContext();
-    if (egl_ctx != EGL_NO_CONTEXT) {
-        DEBUG("[EGL-Linux] Unity has an EGL context %p", egl_ctx);
-        m_unity_context_ready = true;
-        return;
-    }
-
-    // Check if Unity exposes a GLX context (XWayland)
-    GLXContext glx_ctx = glXGetCurrentContext();
-    if (glx_ctx != nullptr) {
-        DEBUG("[EGL-Linux] Unity has a GLX context %p (XWayland)", glx_ctx);
-        m_unity_context_ready = true;
-        return;
-    }
-
-    DEBUG("[EGL-Linux] no Unity GL context detected yet");
+    s_unityContextReady = eglGetCurrentContext() != EGL_NO_CONTEXT ||
+                          glXGetCurrentContext() != nullptr;
+    if (s_unityContextReady)
+        DEBUG("[EGL-Linux] Unity GL context is available");
 }
 
-// ---------------------------------------------------------------------------
-// ProcessDeviceEvent — create GBM-backed EGL context with desktop GL
-// ---------------------------------------------------------------------------
-
-void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
+bool RenderAPI_OpenGLLinuxEGL::initializeDrmAndContext()
 {
-    (void)interfaces;
-
-    if (type == kUnityGfxDeviceEventInitialize) {
-        DEBUG("[EGL-Linux] ProcessDeviceEvent Initialize");
-
-        if (m_context != EGL_NO_CONTEXT) {
-            return;
-        }
-
-        if (!m_unity_context_ready) {
-            DEBUG("[EGL-Linux] Unity GL context not yet available, aborting.");
-            return;
-        }
-
-        if (!initDRMAndGBM()) {
-            DEBUG("[EGL-Linux] DRM/GBM init failed");
-            return;
-        }
-
-        // Create EGL display on our GBM device
-        typedef EGLDisplay (*PFNEGLGETPLATFORMDISPLAYEXTPROC_)(EGLenum, void*, const EGLint*);
-        auto eglGetPlatformDisplayEXT_ =
-            reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC_>(
-                eglGetProcAddress("eglGetPlatformDisplayEXT"));
-        if (eglGetPlatformDisplayEXT_) {
-            m_display = eglGetPlatformDisplayEXT_(EGL_PLATFORM_GBM_KHR,
-                                                   m_gbm.get(), nullptr);
-        }
-        if (m_display == EGL_NO_DISPLAY) {
-            m_display = eglGetDisplay(reinterpret_cast<EGLNativeDisplayType>(m_gbm.get()));
-        }
-        if (m_display == EGL_NO_DISPLAY) {
-            DEBUG("[EGL-Linux] eglGetDisplay failed: 0x%x", eglGetError());
-            releaseResources();
-            return;
-        }
-
-        if (!eglInitialize(m_display, nullptr, nullptr)) {
-            DEBUG("[EGL-Linux] eglInitialize failed: 0x%x", eglGetError());
-            m_display = EGL_NO_DISPLAY;
-            releaseResources();
-            return;
-        }
-
-        // Log EGL version and client APIs
-        {
-            const char* egl_vendor = eglQueryString(m_display, EGL_VENDOR);
-            const char* egl_version = eglQueryString(m_display, EGL_VERSION);
-            const char* egl_apis = eglQueryString(m_display, EGL_CLIENT_APIS);
-            DEBUG("[EGL-Linux] EGL vendor=%s version=%s apis=%s",
-                  egl_vendor ? egl_vendor : "?",
-                  egl_version ? egl_version : "?",
-                  egl_apis ? egl_apis : "?");
-        }
-
-        // Bind desktop OpenGL API (not GLES)
-        if (!eglBindAPI(EGL_OPENGL_API)) {
-            DEBUG("[EGL-Linux] eglBindAPI(EGL_OPENGL_API) failed: 0x%x", eglGetError());
-            releaseResources();
-            return;
-        }
-        DEBUG("[EGL-Linux] eglBindAPI(EGL_OPENGL_API) succeeded");
-
-        // Choose an EGL config — surfaceless (we render to DMA-BUF FBOs)
-        // GBM displays typically don't support pbuffers
-        EGLConfig config;
-        EGLint num_configs = 0;
-        bool config_found = false;
-
-        // Try 1: RGBA8 with no surface type constraint
-        {
-            const EGLint attr[] = {
-                EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-                EGL_SURFACE_TYPE,    0,
-                EGL_RED_SIZE,   8,
-                EGL_GREEN_SIZE, 8,
-                EGL_BLUE_SIZE,  8,
-                EGL_ALPHA_SIZE, 8,
-                EGL_NONE
-            };
-            if (eglChooseConfig(m_display, attr, &config, 1, &num_configs) && num_configs > 0) {
-                DEBUG("[EGL-Linux] config found (surfaceless RGBA8): %d configs", num_configs);
-                config_found = true;
-            }
-        }
-
-        // Try 2: minimal constraints
-        if (!config_found) {
-            const EGLint attr[] = {
-                EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-                EGL_NONE
-            };
-            if (eglChooseConfig(m_display, attr, &config, 1, &num_configs) && num_configs > 0) {
-                DEBUG("[EGL-Linux] config found (minimal GL): %d configs", num_configs);
-                config_found = true;
-            }
-        }
-
-        // Try 3: any config at all (debug)
-        if (!config_found) {
-            EGLint total = 0;
-            eglGetConfigs(m_display, nullptr, 0, &total);
-            DEBUG("[EGL-Linux] no GL configs found, total configs on display: %d", total);
-            if (total > 0) {
-                // Try GLES as last resort
-                eglBindAPI(EGL_OPENGL_ES_API);
-                const EGLint attr[] = {
-                    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                    EGL_NONE
-                };
-                if (eglChooseConfig(m_display, attr, &config, 1, &num_configs) && num_configs > 0) {
-                    DEBUG("[EGL-Linux] WARNING: only GLES configs available, not desktop GL");
-                }
-            }
-            DEBUG("[EGL-Linux] eglChooseConfig failed, cannot create EGL context");
-            releaseResources();
-            return;
-        }
-
-        // Surfaceless context — we only render to FBOs backed by DMA-BUF
-        m_surface = EGL_NO_SURFACE;
-
-        // Create a standalone GL context (no sharing — we use DMA-BUF instead)
-        // Try GL 4.5 core, then 3.3 core
-        static const int gl_versions[][2] = { {4, 5}, {3, 3} };
-        for (auto& ver : gl_versions) {
-            const EGLint ctx_attr[] = {
-                EGL_CONTEXT_MAJOR_VERSION, ver[0],
-                EGL_CONTEXT_MINOR_VERSION, ver[1],
-                EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                EGL_NONE
-            };
-            m_context = eglCreateContext(m_display, config, EGL_NO_CONTEXT, ctx_attr);
-            if (m_context != EGL_NO_CONTEXT) {
-                DEBUG("[EGL-Linux] created GL %d.%d core context", ver[0], ver[1]);
-                break;
-            }
-        }
-
-        if (m_context == EGL_NO_CONTEXT) {
-            DEBUG("[EGL-Linux] all eglCreateContext attempts failed: 0x%x", eglGetError());
-            releaseResources();
-            return;
-        }
-
-        // Verify we got the right GPU, then load extensions
-        makeCurrent(true);
-        {
-            const char* gl_renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-            const char* gl_version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-            const char* gl_vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-            DEBUG("[EGL-Linux] GL renderer=%s version=%s vendor=%s",
-                  gl_renderer ? gl_renderer : "?",
-                  gl_version ? gl_version : "?",
-                  gl_vendor ? gl_vendor : "?");
-        }
-        if (!loadMemoryObjectExtensions()) {
-            DEBUG("[EGL-Linux] GL_EXT_memory_object_fd not available — cannot share textures");
-            makeCurrent(false);
-            releaseResources();
-            return;
-        }
-        makeCurrent(false);
-
-        DEBUG("[EGL-Linux] init success: display=%p surface=%p context=%p gbm=%p",
-              m_display, m_surface, m_context, m_gbm.get());
-        libvlc_media_player_t* pending = m_pending_mp;
-        m_pending_mp = nullptr;
-        if (pending)
-            setVlcContext(pending);
-
-    } else if (type == kUnityGfxDeviceEventShutdown) {
-        DEBUG("[EGL-Linux] ProcessDeviceEvent Shutdown");
-        releaseResources();
-    }
-}
-
-// ---------------------------------------------------------------------------
-// setVlcContext — register DMA-BUF output callbacks with desktop GL engine
-// ---------------------------------------------------------------------------
-
-void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t *mp)
-{
-    m_mp = mp;
-
-    if (m_context == EGL_NO_CONTEXT) {
-        libvlc_media_player_t* prev = m_pending_mp;
-        m_pending_mp = mp;
-        assert((prev == nullptr || prev == mp) && "second setVlcContext while one is pending");
-        (void)prev;
-        DEBUG("[EGL-Linux] no EGL context, deferring setVlcContext");
-        return;
-    }
-    m_pending_mp = nullptr;
-
-    DEBUG("[EGL-Linux] subscribing to DMA-BUF opengl output callbacks %p", this);
-    libvlc_video_set_output_callbacks(mp, libvlc_video_engine_opengl,
-        dmabuf_setup, dmabuf_cleanup, nullptr, dmabuf_resize, dmabuf_swap,
-        staticMakeCurrent, get_proc_address_desktop, nullptr, nullptr, this);
-}
-
-void RenderAPI_OpenGLLinuxEGL::unsetVlcContext(libvlc_media_player_t *mp)
-{
-    if (m_pending_mp == mp) {
-        m_pending_mp = nullptr;
-        m_mp = nullptr;
-        return; // Cancelled pending setVlcContext before it was promoted
-    }
-    // Callbacks were already registered — disable them
-    libvlc_video_set_output_callbacks(mp, libvlc_video_engine_disable,
-        nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr);
-    m_mp = nullptr;
-}
-
-// ---------------------------------------------------------------------------
-// DRM/GBM initialization
-// ---------------------------------------------------------------------------
-
-bool RenderAPI_OpenGLLinuxEGL::initDRMAndGBM()
-{
-    const char* deviceOverride = getenv("VLC_UNITY_DRM_DEVICE");
+    const char* overridePath = getenv("VLC_UNITY_DRM_DEVICE");
     const std::vector<std::string> candidates =
-        LinuxBuildDrmDeviceCandidates("/dev/dri", deviceOverride);
-    if (candidates.empty())
-        DEBUG("[EGL-Linux] no DRM render nodes found");
-
+        LinuxBuildDrmDeviceCandidates("/dev/dri", overridePath);
     const std::string selected = LinuxSelectCompatibleDrmDevice(
-        candidates,
-        [this](const std::string& path) {
-            DEBUG("[EGL-Linux] probing DRM render node %s", path.c_str());
+        candidates, [this](const std::string& path) {
             return m_gbm.open("EGL-Linux", path);
         });
-
     if (selected.empty()) {
-        if (deviceOverride && deviceOverride[0] != '\0')
-            DEBUG("[EGL-Linux] forced DRM device %s could not create a GBM device",
-                  deviceOverride);
-        else
-            DEBUG("[EGL-Linux] no DRM render node could create a GBM device");
+        DEBUG("[EGL-Linux] no DRM render node could create a GBM device");
         return false;
     }
 
+    using GetPlatformDisplay = EGLDisplay (*)(EGLenum, void*, const EGLint*);
+    auto getPlatformDisplay = reinterpret_cast<GetPlatformDisplay>(
+        eglGetProcAddress("eglGetPlatformDisplayEXT"));
+    if (getPlatformDisplay) {
+        m_display = getPlatformDisplay(
+            EGL_PLATFORM_GBM_KHR, m_gbm.get(), nullptr);
+    }
+    if (m_display == EGL_NO_DISPLAY) {
+        m_display = eglGetDisplay(
+            reinterpret_cast<EGLNativeDisplayType>(m_gbm.get()));
+    }
+    if (m_display == EGL_NO_DISPLAY ||
+        !eglInitialize(m_display, nullptr, nullptr) ||
+        !eglBindAPI(EGL_OPENGL_API)) {
+        DEBUG("[EGL-Linux] GBM EGL display initialization failed: 0x%x",
+              eglGetError());
+        return false;
+    }
+
+    EGLConfig config = nullptr;
+    EGLint count = 0;
+    const EGLint attributes[] = {
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_SURFACE_TYPE, 0,
+        EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8, EGL_NONE
+    };
+    if (!eglChooseConfig(m_display, attributes, &config, 1, &count) ||
+        count == 0) {
+        const EGLint fallback[] = {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE
+        };
+        if (!eglChooseConfig(m_display, fallback, &config, 1, &count) ||
+            count == 0) {
+            DEBUG("[EGL-Linux] no desktop GL EGL config is available");
+            return false;
+        }
+    }
+
+    static const int versions[][2] = {{4, 5}, {3, 3}};
+    for (const auto& version : versions) {
+        const EGLint contextAttributes[] = {
+            EGL_CONTEXT_MAJOR_VERSION, version[0],
+            EGL_CONTEXT_MINOR_VERSION, version[1],
+            EGL_CONTEXT_OPENGL_PROFILE_MASK,
+            EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+            EGL_NONE
+        };
+        m_context = eglCreateContext(
+            m_display, config, EGL_NO_CONTEXT, contextAttributes);
+        if (m_context != EGL_NO_CONTEXT)
+            break;
+    }
+    m_surface = EGL_NO_SURFACE;
+    if (m_context == EGL_NO_CONTEXT) {
+        DEBUG("[EGL-Linux] desktop GL producer context creation failed: 0x%x",
+              eglGetError());
+        return false;
+    }
+
+    m_producer.reset(new LinuxDMABufProducer(
+        "EGL-Linux", m_gbm, *this, this, nullptr, false));
+    attach(m_producer.get());
+    if (!m_producer->initialize()) {
+        attach(nullptr);
+        m_producer.reset();
+        return false;
+    }
     DEBUG("[EGL-Linux] selected DRM render node %s", selected.c_str());
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// GL_EXT_memory_object_fd extension loading
-// ---------------------------------------------------------------------------
-
-bool RenderAPI_OpenGLLinuxEGL::loadMemoryObjectExtensions()
+void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(
+    UnityGfxDeviceEventType type, IUnityInterfaces* interfaces)
 {
-    static const char* requiredExtensions[] = {
-        "GL_EXT_memory_object",
-        "GL_EXT_memory_object_fd",
-    };
-    if (!LinuxGLHasExtensions("EGL-Linux", loadDesktopProc, nullptr,
-                              requiredExtensions,
-                              sizeof(requiredExtensions) / sizeof(requiredExtensions[0]))) {
-        return false;
-    }
-
-    return LinuxGLLoadMemoryObjectFunctions("EGL-Linux", loadDesktopProc, nullptr,
-                                            glCreateMemoryObjectsEXT,
-                                            glTexStorageMem2DEXT,
-                                            glImportMemoryFdEXT,
-                                            glDeleteMemoryObjectsEXT,
-                                            glMemoryObjectParameterivEXT,
-                                            raw_glGenTextures,
-                                            raw_glBindTexture,
-                                            raw_glTexParameteri,
-                                            raw_glDeleteTextures);
-}
-
-// ---------------------------------------------------------------------------
-// DMA-BUF buffer creation and import
-// ---------------------------------------------------------------------------
-
-bool RenderAPI_OpenGLLinuxEGL::createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h)
-{
-    buf.bo = gbm_bo_create(m_gbm.get(), w, h, GBM_FORMAT_ABGR8888,
-                           GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR);
-    if (!buf.bo) {
-        DEBUG("[EGL-Linux] gbm_bo_create failed %ux%u", w, h);
-        return false;
-    }
-
-    buf.dmabuf_fd = gbm_bo_get_fd(buf.bo);
-    if (buf.dmabuf_fd < 0) {
-        DEBUG("[EGL-Linux] gbm_bo_get_fd failed");
-        gbm_bo_destroy(buf.bo);
-        buf.bo = nullptr;
-        return false;
-    }
-
-    buf.stride = gbm_bo_get_stride(buf.bo);
-
-    off_t real_size = lseek(buf.dmabuf_fd, 0, SEEK_END);
-    lseek(buf.dmabuf_fd, 0, SEEK_SET);
-    if (real_size <= 0) {
-        buf.size = (uint64_t)buf.stride * h;
-        DEBUG("[EGL-Linux] lseek failed, using stride*height=%lu", (unsigned long)buf.size);
-    } else {
-        buf.size = (uint64_t)real_size;
-    }
-
-    DEBUG("[EGL-Linux] DMA-BUF: fd=%d stride=%u size=%lu %ux%u",
-          buf.dmabuf_fd, buf.stride, (unsigned long)buf.size, w, h);
-
-    // Import into VLC's EGL/GL context
-    glGenTextures(1, &buf.vlc_tex);
-    glBindTexture(GL_TEXTURE_2D, buf.vlc_tex);
-
-    if (!LinuxGLImportMemoryFd("EGL-Linux", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                               buf.vlc_mem_obj, buf.vlc_tex, buf.dmabuf_fd, buf.size,
-                               w, h, "VLC")) {
-        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-        if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
-            glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
+    (void)interfaces;
+    if (type == kUnityGfxDeviceEventInitialize) {
+        if (m_producer || !s_unityContextReady)
+            return;
+        if (!initializeDrmAndContext()) {
+            releaseResources();
+            return;
         }
-        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-        buf.stride = 0;
-        buf.size = 0;
-        return false;
+        libvlc_media_player_t* pending = m_pendingPlayer;
+        m_pendingPlayer = nullptr;
+        if (pending)
+            setVlcContext(pending);
+    } else if (type == kUnityGfxDeviceEventShutdown) {
+        if (m_mp && m_pendingPlayer != m_mp && m_producer)
+            m_producer->unsetVlcContext(m_mp);
+        m_pendingPlayer = m_mp;
+        releaseResources(true);
     }
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenFramebuffers(1, &buf.vlc_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, buf.vlc_fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, buf.vlc_tex, 0);
-
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        DEBUG("[EGL-Linux] DMA-BUF FBO incomplete, status=0x%x", status);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-        if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
-            glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-        }
-        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-        buf.stride = 0;
-        buf.size = 0;
-        return false;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    DEBUG("[EGL-Linux] DMA-BUF buffer created: vlc_tex=%u vlc_fbo=%u", buf.vlc_tex, buf.vlc_fbo);
-    return true;
 }
 
-bool RenderAPI_OpenGLLinuxEGL::importDMABufToUnityContext(DMABufBuffer& buf, unsigned w, unsigned h)
+void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t* mp)
 {
-    // Verify Unity's GL context is current
-    GLXContext glx_ctx = glXGetCurrentContext();
-    EGLContext egl_ctx = eglGetCurrentContext();
-    DEBUG("[EGL-Linux] importDMABufToUnityContext: GLX ctx=%p EGL ctx=%p", glx_ctx, egl_ctx);
-
-    if (!glx_ctx && egl_ctx == EGL_NO_CONTEXT) {
-        DEBUG("[EGL-Linux] no GL context current on Unity thread!");
-        return false;
-    }
-
-    // Check Unity context's GL renderer and extension support
-    const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-    DEBUG("[EGL-Linux] Unity GL renderer: %s", renderer ? renderer : "NULL");
-
-    raw_glGenTextures(1, &buf.unity_tex);
-    DEBUG("[EGL-Linux] raw_glGenTextures produced tex=%u (glError=0x%x)",
-          buf.unity_tex, glGetError());
-    raw_glBindTexture(GL_TEXTURE_2D, buf.unity_tex);
-
-    if (!LinuxGLImportMemoryFd("EGL-Linux", glCreateMemoryObjectsEXT, glImportMemoryFdEXT, glDeleteMemoryObjectsEXT,
-                               glMemoryObjectParameterivEXT, glTexStorageMem2DEXT,
-                               buf.unity_mem_obj, buf.unity_tex, buf.dmabuf_fd, buf.size,
-                               w, h, "Unity")) {
-        if (buf.unity_tex) { raw_glDeleteTextures(1, &buf.unity_tex); buf.unity_tex = 0; }
-        buf.unity_mem_obj = 0;
-        return false;
-    }
-
-    raw_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    raw_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    raw_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    raw_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    raw_glBindTexture(GL_TEXTURE_2D, 0);
-
-    DEBUG("[EGL-Linux] DMA-BUF imported to Unity context: unity_tex=%u", buf.unity_tex);
-    return true;
-}
-
-// ---------------------------------------------------------------------------
-// Resource cleanup
-// ---------------------------------------------------------------------------
-
-void RenderAPI_OpenGLLinuxEGL::releaseResources()
-{
-    const bool have_context = m_context != EGL_NO_CONTEXT;
-    const bool context_current = have_context && makeCurrent(true);
-
-    if (have_context && !context_current) {
-        DEBUG("[EGL-Linux] releaseResources: skipping explicit GL cleanup because makeCurrent failed");
-    }
-
-    if (context_current) {
-        for (auto& buf : m_dmabuf_buffers) {
-            if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
-            if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-            if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-            if (buf.vlc_mem_obj && glDeleteMemoryObjectsEXT) {
-                glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-            }
-        }
-        makeCurrent(false);
-    }
-
-    for (auto& buf : m_dmabuf_buffers) {
-        buf.fence = nullptr;
-        buf.vlc_fbo = 0;
-        buf.vlc_tex = 0;
-        buf.vlc_mem_obj = 0;
-        buf.unity_tex = 0;
-        buf.unity_mem_obj = 0;
-        if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-        if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-        buf.stride = 0;
-        buf.size = 0;
-    }
-
-    m_unity_textures_imported = false;
-    m_dmabuf_width = 0;
-    m_dmabuf_height = 0;
-
-    if (m_context != EGL_NO_CONTEXT) {
-        eglDestroyContext(m_display, m_context);
-        m_context = EGL_NO_CONTEXT;
-    }
-    if (m_surface != EGL_NO_SURFACE) {
-        eglDestroySurface(m_display, m_surface);
-        m_surface = EGL_NO_SURFACE;
-    }
-    if (m_display != EGL_NO_DISPLAY) {
-        eglTerminate(m_display);
-        m_display = EGL_NO_DISPLAY;
-    }
-    m_gbm.reset();
-
-    glCreateMemoryObjectsEXT = nullptr;
-    glTexStorageMem2DEXT = nullptr;
-    glImportMemoryFdEXT = nullptr;
-    glDeleteMemoryObjectsEXT = nullptr;
-    glMemoryObjectParameterivEXT = nullptr;
-    raw_glGenTextures = nullptr;
-    raw_glBindTexture = nullptr;
-    raw_glTexParameteri = nullptr;
-    raw_glDeleteTextures = nullptr;
-}
-
-// ---------------------------------------------------------------------------
-// DMA-BUF VLC callbacks
-// ---------------------------------------------------------------------------
-
-bool RenderAPI_OpenGLLinuxEGL::dmabuf_setup(void** opaque,
-                                             const libvlc_video_setup_device_cfg_t* cfg,
-                                             libvlc_video_setup_device_info_t* out)
-{
-    (void)cfg; (void)out;
-    DEBUG("[EGL-Linux] DMA-BUF output callback setup");
-    if (!opaque || !*opaque) {
-        DEBUG("[EGL-Linux] DMA-BUF setup called without backend instance");
-        return false;
-    }
-    auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(*opaque);
-    that->m_dmabuf_width = 0;
-    that->m_dmabuf_height = 0;
-#if defined(SHOW_WATERMARK)
-    that->makeCurrent(true);
-    bool ok = that->watermark.setup();
-    that->makeCurrent(false);
-    return ok;
-#else
-    return true;
-#endif
-}
-
-void RenderAPI_OpenGLLinuxEGL::dmabuf_cleanup(void* opaque)
-{
-    DEBUG("[EGL-Linux] DMA-BUF output callback cleanup");
-    auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(opaque);
-
-    if (!that->makeCurrent(true)) {
-        DEBUG("[EGL-Linux] DMA-BUF cleanup skipped because makeCurrent failed");
-        for (auto& buf : that->m_dmabuf_buffers) {
-            buf.fence = nullptr;
-            buf.vlc_fbo = 0;
-            buf.vlc_tex = 0;
-            buf.vlc_mem_obj = 0;
-        }
+    m_mp = mp;
+    if (!m_producer) {
+        libvlc_media_player_t* previous = m_pendingPlayer;
+        m_pendingPlayer = mp;
+        assert((!previous || previous == mp) &&
+               "second pending EGL Linux player");
+        (void)previous;
         return;
     }
-    for (auto& buf : that->m_dmabuf_buffers) {
-        if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
-        if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-        if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-        if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
-            that->glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-        }
-    }
-#if defined(SHOW_WATERMARK)
-    that->watermark.cleanup();
-#endif
-    that->makeCurrent(false);
+    m_pendingPlayer = nullptr;
+    if (!m_producer->setVlcContext(mp))
+        DEBUG("[EGL-Linux] failed to register shared DMA-BUF producer callbacks");
 }
 
-bool RenderAPI_OpenGLLinuxEGL::dmabuf_resize(void* opaque,
-                                              const libvlc_video_render_cfg_t* cfg,
-                                              libvlc_video_output_cfg_t* output)
+void RenderAPI_OpenGLLinuxEGL::unsetVlcContext(libvlc_media_player_t* mp)
 {
-    auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(opaque);
-    DEBUG("[EGL-Linux] DMA-BUF resize %ux%u", cfg->width, cfg->height);
-
-    that->makeCurrent(true);
-
-    bool ok = true;
-    {
-        std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
-
-        if (cfg->width != that->m_dmabuf_width || cfg->height != that->m_dmabuf_height) {
-            for (auto& buf : that->m_dmabuf_buffers) {
-                if (buf.fence) { glDeleteSync(buf.fence); buf.fence = nullptr; }
-                if (buf.vlc_fbo) { glDeleteFramebuffers(1, &buf.vlc_fbo); buf.vlc_fbo = 0; }
-                if (buf.vlc_tex) { glDeleteTextures(1, &buf.vlc_tex); buf.vlc_tex = 0; }
-                if (buf.vlc_mem_obj && that->glDeleteMemoryObjectsEXT) {
-                    that->glDeleteMemoryObjectsEXT(1, &buf.vlc_mem_obj); buf.vlc_mem_obj = 0;
-                }
-                if (buf.dmabuf_fd >= 0) { close(buf.dmabuf_fd); buf.dmabuf_fd = -1; }
-                if (buf.bo) { gbm_bo_destroy(buf.bo); buf.bo = nullptr; }
-                buf.unity_tex = 0;
-                buf.unity_mem_obj = 0;
-            }
-
-            for (size_t i = 0; i < kDMABufSlots; i++) {
-                if (!that->createDMABufBuffer(that->m_dmabuf_buffers[i], cfg->width, cfg->height)) {
-                    DEBUG("[EGL-Linux] DMA-BUF buffer creation failed for slot %zu", i);
-                    ok = false;
-                    break;
-                }
-            }
-
-            if (ok) {
-                that->m_dmabuf_width = cfg->width;
-                that->m_dmabuf_height = cfg->height;
-                that->m_unity_textures_imported = false;
-            }
-        }
-
-        if (ok) {
-            that->m_idx_render = 0;
-            that->m_idx_swap = 1;
-            that->m_idx_display = 2;
-            that->m_updated = false;
-            glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
-        }
-    }
-
-    if (ok) {
-        output->u.opengl_format = GL_RGBA;
-        output->full_range = true;
-        output->colorspace = libvlc_video_colorspace_BT709;
-        output->primaries  = libvlc_video_primaries_BT709;
-        output->transfer   = libvlc_video_transfer_func_SRGB;
-        output->orientation = libvlc_video_orient_bottom_right;
-    }
-
-    that->makeCurrent(false);
-    return ok;
+    if (m_pendingPlayer == mp)
+        m_pendingPlayer = nullptr;
+    else if (m_producer)
+        m_producer->unsetVlcContext(mp);
+    m_mp = nullptr;
 }
 
-void RenderAPI_OpenGLLinuxEGL::dmabuf_swap(void* opaque)
+bool RenderAPI_OpenGLLinuxEGL::hasRenderThreadContext() const
 {
-    auto* that = static_cast<RenderAPI_OpenGLLinuxEGL*>(opaque);
-    std::lock_guard<std::mutex> lock(that->m_dmabuf_lock);
-
-#if defined(SHOW_WATERMARK)
-    bool isPaused = libvlc_unity_trial_is_paused();
-    bool isStopped = libvlc_unity_trial_is_stopped();
-    bool isPlaying = !isPaused && !isStopped;
-    if (isPaused && that->m_dmabuf_width > 0)
-        return;
-    if (isPlaying && !libvlc_unity_trial_tick())
-    {
-        return;
-    }
-    if (that->m_dmabuf_width > 0 && that->m_dmabuf_height > 0) {
-        that->watermark.draw(that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo,
-                             that->m_dmabuf_width, that->m_dmabuf_height);
-    }
-#endif
-
-    auto& rendered = that->m_dmabuf_buffers[that->m_idx_render];
-    if (rendered.fence) {
-        glDeleteSync(rendered.fence);
-        rendered.fence = nullptr;
-    }
-    rendered.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    glFlush();
-
-    that->m_updated = true;
-    std::swap(that->m_idx_swap, that->m_idx_render);
-    glBindFramebuffer(GL_FRAMEBUFFER, that->m_dmabuf_buffers[that->m_idx_render].vlc_fbo);
+    return glXGetCurrentContext() != nullptr ||
+           eglGetCurrentContext() != EGL_NO_CONTEXT;
 }
-
-// ---------------------------------------------------------------------------
-// performRenderThreadWork — called from OnRenderEvent on the render thread
-// where Unity's GL context IS current.
-// Either import DMA-BUF textures directly, or do CPU readback if cross-device.
-// ---------------------------------------------------------------------------
 
 void RenderAPI_OpenGLLinuxEGL::performRenderThreadWork()
 {
-    std::lock_guard<std::mutex> lock(m_dmabuf_lock);
-
-    if (m_unity_textures_imported || m_dmabuf_width == 0 || m_dmabuf_height == 0)
-        return;
-
-    DEBUG("[EGL-Linux] importing DMA-BUF textures into Unity context (render thread)");
-    for (size_t i = 0; i < kDMABufSlots; i++) {
-        if (!importDMABufToUnityContext(m_dmabuf_buffers[i], m_dmabuf_width, m_dmabuf_height)) {
-            DEBUG("[EGL-Linux] failed to import DMA-BUF buffer %zu into Unity context", i);
-            return;
-        }
-    }
-    m_unity_textures_imported = true;
-    DEBUG("[EGL-Linux] all DMA-BUF textures imported into Unity context");
+    refresh();
 }
 
-// ---------------------------------------------------------------------------
-// getVideoFrame — return texture handle
-// ---------------------------------------------------------------------------
-
-void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(unsigned width, unsigned height, bool* out_updated)
+void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(
+    unsigned, unsigned, bool* outUpdated)
 {
-    (void)width; (void)height;
-    std::lock_guard<std::mutex> lock(m_dmabuf_lock);
+    return videoFrame(outUpdated);
+}
 
-    if (out_updated)
-        *out_updated = false;
-
-    if (m_dmabuf_width == 0 || m_dmabuf_height == 0)
-        return nullptr;
-
-    // Textures not yet imported by render thread
-    if (!m_unity_textures_imported)
-        return nullptr;
-
-    if (m_updated) {
-        std::swap(m_idx_swap, m_idx_display);
-        m_updated = false;
-        if (out_updated)
-            *out_updated = true;
+void RenderAPI_OpenGLLinuxEGL::releaseResources(bool deviceShutdown)
+{
+    const bool unityCurrent = glXGetCurrentContext() != nullptr ||
+                              eglGetCurrentContext() != EGL_NO_CONTEXT;
+    release(unityCurrent, deviceShutdown);
+    if (m_producer) {
+        m_producer->release();
+        m_producer.reset();
     }
-
-    auto& display = m_dmabuf_buffers[m_idx_display];
-
-    // VLC renders in its own standalone EGL context while Unity consumes the
-    // imported DMA-BUF in a separate GLX context under XWayland. These
-    // contexts are not in the same GL share group, so waiting on a GLsync here
-    // from the managed GetTexture() call can crash inside the driver. Keep the
-    // fence lifetime on the VLC/EGL side and rely on DMA-BUF implicit sync for
-    // this path.
-
-    return (void*)(size_t)display.unity_tex;
+    attach(nullptr);
+    if (m_context != EGL_NO_CONTEXT)
+        eglDestroyContext(m_display, m_context);
+    if (m_surface != EGL_NO_SURFACE)
+        eglDestroySurface(m_display, m_surface);
+    if (m_display != EGL_NO_DISPLAY)
+        eglTerminate(m_display);
+    m_context = EGL_NO_CONTEXT;
+    m_surface = EGL_NO_SURFACE;
+    m_display = EGL_NO_DISPLAY;
+    m_gbm.reset();
 }

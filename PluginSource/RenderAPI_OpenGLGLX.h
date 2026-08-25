@@ -1,110 +1,72 @@
-#ifndef RENDER_API_OPENGL_GLX_H
-#define RENDER_API_OPENGL_GLX_H
+#pragma once
 
+#include "LinuxDMABufProducer.h"
+#include "LinuxOpenGLUnityImports.h"
 #include "RenderAPI_OpenGLBase.h"
-#include "RenderAPI_OpenGLLinuxDMABuf.h"
-#include "PlatformBase.h"
+
 #include <GL/glx.h>
 #include <X11/Xlib.h>
-#include <mutex>
-#include <gbm.h>
-#include <string>
+#include <memory>
 
-class RenderAPI_OpenGLGLX : public RenderAPI_OpenGLBase
+class RenderAPI_OpenGLGLX final : public RenderAPI_OpenGLBase,
+                                  public ILinuxDMABufProducerContext,
+                                  public LinuxOpenGLUnityImportManager
 {
 public:
-    RenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
-    virtual ~RenderAPI_OpenGLGLX();
+    explicit RenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
+    ~RenderAPI_OpenGLGLX() override;
 
-    virtual void setVlcContext(libvlc_media_player_t *mp) override;
-    virtual void unsetVlcContext(libvlc_media_player_t *mp) override;
-    virtual void ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityInterfaces* interfaces) override;
-    virtual void retrieveOpenGLContext() override;
-    virtual void ensureCurrentContext() override;
-    virtual bool makeCurrent(bool current) override;
-    virtual void performRenderThreadWork() override;
-    bool isInitialized() const override {
-        const bool contextReady = m_context != nullptr && m_pbuffer != None;
-        const bool dmabufReady = m_dmabuf_initialized && static_cast<bool>(m_gbm);
-        return contextReady && (m_shared_context || dmabufReady);
+    void setVlcContext(libvlc_media_player_t* mp) override;
+    void unsetVlcContext(libvlc_media_player_t* mp) override;
+    void ProcessDeviceEvent(UnityGfxDeviceEventType type,
+                            IUnityInterfaces* interfaces) override;
+    void retrieveOpenGLContext() override;
+    void ensureCurrentContext() override;
+    bool makeCurrent(bool current) override;
+    void performRenderThreadWork() override;
+    void* getVideoFrame(unsigned width, unsigned height,
+                        bool* outUpdated) override;
+    bool isInitialized() const override
+    {
+        const bool contextReady = m_context && m_pbuffer != None;
+        return contextReady && (m_sharedContext || m_producer != nullptr);
+    }
+    void beginShutdown() override { LinuxOpenGLUnityImportManager::beginShutdown(); }
+    void prepareForPluginUnload() override
+    {
+        LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload();
+    }
+    bool canDestroy() const override { return LinuxOpenGLUnityImportManager::canDestroy(); }
+
+    static void* get_proc_address(void*, const char* name);
+    bool producerMakeCurrent(bool current) override { return makeCurrent(current); }
+    void* producerLoadProc(const char* name) override
+    {
+        return get_proc_address(nullptr, name);
     }
 
-    static void* get_proc_address(void* /*data*/, const char* procname);
-    void* getVideoFrame(unsigned width, unsigned height, bool* out_updated) override;
+private:
+    bool hasRenderThreadContext() const override;
 
-protected:
+    bool createPrivateContext();
+    bool verifySharedContext();
+    bool initializeDMABuf();
+    bool tryDMABufDevice(const std::string& path);
+    void shutdownInternal(bool deviceShutdown = false);
+    static bool staticMakeCurrent(void* data, bool current);
+    static void sharedSwap(void* opaque);
+
     Display* m_display = nullptr;
     GLXPbuffer m_pbuffer = None;
     GLXContext m_context = nullptr;
-    libvlc_media_player_t* m_pending_mp = nullptr;
-    static GLXContext unity_context;
-    static Display* unity_display;
-    static GLuint unity_probe_texture;
-    bool m_shared_context = false;
-
-    // DMA-BUF buffer descriptor (one per triple-buffer slot)
-    struct DMABufBuffer {
-        struct gbm_bo* bo = nullptr;
-        int dmabuf_fd = -1;
-        GLuint vlc_mem_obj = 0;
-        GLuint vlc_tex = 0;
-        GLuint vlc_fbo = 0;
-        GLuint unity_mem_obj = 0;
-        GLuint unity_tex = 0;
-        uint32_t stride = 0;
-        uint64_t size = 0;
-        GLsync fence = nullptr;
-    };
-
-    // DMA-BUF state
-    static constexpr size_t kDMABufSlots = 3;
-    bool m_dmabuf_initialized = false;
-    bool m_unity_textures_imported = false;
+    GLXFBConfig m_chosenConfig = nullptr;
+    libvlc_media_player_t* m_pendingPlayer = nullptr;
+    bool m_contextCreationReportedSharing = false;
+    bool m_sharedContext = false;
     LinuxGBMDevice m_gbm;
-    DMABufBuffer m_dmabuf_buffers[kDMABufSlots];
-    unsigned m_dmabuf_width = 0;
-    unsigned m_dmabuf_height = 0;
+    std::unique_ptr<LinuxDMABufProducer> m_producer;
 
-    // Shadowed triple-buffer state (same pattern as Vulkan class)
-    std::mutex m_dmabuf_lock;
-    size_t m_idx_render = 0;
-    size_t m_idx_swap = 1;
-    size_t m_idx_display = 2;
-    bool m_updated = false;
-
-    // GL_EXT_memory_object_fd function pointers
-    PFNGLCREATEMEMORYOBJECTSEXTPROC glCreateMemoryObjectsEXT = nullptr;
-    PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT = nullptr;
-    PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT = nullptr;
-    PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT = nullptr;
-    PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_ glMemoryObjectParameterivEXT = nullptr;
-
-    // Raw GL function pointers (bypass Unity's GL wrapper for Unity-context ops)
-    PFNGLGENTEXTURESPROC_RAW raw_glGenTextures = nullptr;
-    PFNGLBINDTEXTUREPROC_RAW raw_glBindTexture = nullptr;
-    PFNGLTEXPARAMETERIPROC_RAW raw_glTexParameteri = nullptr;
-    PFNGLDELETETEXTURESPROC_RAW raw_glDeleteTextures = nullptr;
-
-    // DMA-BUF helpers
-    bool initDMABuf();
-    bool tryDMABufDevice(const std::string& path);
-    bool verifySharedContext();
-    void releaseDMABufResources();
-
-    void shutdownInternal();
-
-    bool createDMABufBuffer(DMABufBuffer& buf, unsigned w, unsigned h);
-    bool importDMABufToUnityContext(DMABufBuffer& buf, unsigned w, unsigned h);
-    bool loadMemoryObjectExtensions();
-
-    // DMA-BUF-specific VLC callbacks
-    static bool dmabuf_setup(void** opaque, const libvlc_video_setup_device_cfg_t*,
-                             libvlc_video_setup_device_info_t*);
-    static void dmabuf_cleanup(void* opaque);
-    static bool dmabuf_resize(void* opaque, const libvlc_video_render_cfg_t* cfg,
-                              libvlc_video_output_cfg_t* output);
-    static void dmabuf_swap(void* opaque);
-    static void shared_swap(void* opaque);
+    static GLXContext s_unityContext;
+    static Display* s_unityDisplay;
+    static GLuint s_unityProbeTexture;
 };
-
-#endif /* RENDER_API_OPENGL_GLX_H */
