@@ -81,7 +81,9 @@ for pc in gl egl glesv2 libunwind libunwind-generic lcms2 libpulse \
     [ -f "$src" ] || src="/usr/share/pkgconfig/${pc}.pc"
     [ -f "$src" ] && ln -sf "$src" "contrib/${TRIPLET}/lib/pkgconfig/" || true
 done
-for pc in xproto kbproto; do
+# xrandr.pc pulls these protocol-only packages transitively. Keep them in the
+# allowlist as well so pkg-config --exists xrandr succeeds under PKG_CONFIG_LIBDIR.
+for pc in xproto kbproto randrproto renderproto xextproto; do
     src="/usr/share/pkgconfig/${pc}.pc"
     [ -f "$src" ] && ln -sf "$src" "contrib/${TRIPLET}/lib/pkgconfig/" || true
 done
