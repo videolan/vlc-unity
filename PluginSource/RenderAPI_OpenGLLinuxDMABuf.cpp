@@ -1,8 +1,7 @@
 #include "RenderAPI_OpenGLLinuxDMABuf.h"
 #include "Log.h"
+#include "UniqueFd.h"
 #include <cstring>
-#include <fcntl.h>
-#include <gbm.h>
 #include <unistd.h>
 
 #ifndef GL_HANDLE_TYPE_OPAQUE_FD_EXT
@@ -10,6 +9,12 @@
 #endif
 #ifndef GL_DEDICATED_MEMORY_OBJECT_EXT
 #define GL_DEDICATED_MEMORY_OBJECT_EXT 0x9581
+#endif
+#ifndef GL_TEXTURE_TILING_EXT
+#define GL_TEXTURE_TILING_EXT 0x9580
+#endif
+#ifndef GL_LINEAR_TILING_EXT
+#define GL_LINEAR_TILING_EXT 0x9585
 #endif
 
 namespace {
@@ -57,46 +62,6 @@ bool allFound(const bool* found, size_t count)
 }
 
 } // namespace
-
-LinuxGBMDevice::~LinuxGBMDevice()
-{
-    reset();
-}
-
-bool LinuxGBMDevice::open(const char* logPrefix, const std::string& path)
-{
-    reset();
-
-    m_fd = ::open(path.c_str(), O_RDWR | O_CLOEXEC);
-    if (m_fd < 0) {
-        DEBUG("[%s] could not open DRM render node %s", logPrefix, path.c_str());
-        return false;
-    }
-
-    m_device = gbm_create_device(m_fd);
-    if (!m_device) {
-        DEBUG("[%s] gbm_create_device failed for %s", logPrefix, path.c_str());
-        reset();
-        return false;
-    }
-
-    const char* backend = gbm_device_get_backend_name(m_device);
-    DEBUG("[%s] DRM render node %s uses GBM backend %s",
-          logPrefix, path.c_str(), backend ? backend : "?");
-    return true;
-}
-
-void LinuxGBMDevice::reset()
-{
-    if (m_device) {
-        gbm_device_destroy(m_device);
-        m_device = nullptr;
-    }
-    if (m_fd >= 0) {
-        close(m_fd);
-        m_fd = -1;
-    }
-}
 
 bool LinuxGLHasExtensions(const char* logPrefix,
                           LinuxGLProcLoader loadProc,
@@ -172,7 +137,8 @@ bool LinuxGLLoadMemoryObjectFunctions(const char* logPrefix,
         loadProc("glMemoryObjectParameterivEXT", loadProcData));
 
     if (!glCreateMemoryObjectsEXT || !glTexStorageMem2DEXT ||
-        !glImportMemoryFdEXT || !glDeleteMemoryObjectsEXT) {
+        !glImportMemoryFdEXT || !glDeleteMemoryObjectsEXT ||
+        !glMemoryObjectParameterivEXT) {
         DEBUG("[%s] failed to load GL_EXT_memory_object_fd functions", logPrefix);
         return false;
     }
@@ -211,13 +177,13 @@ bool LinuxGLImportMemoryFd(const char* logPrefix,
 {
     glCreateMemoryObjectsEXT(1, &memObj);
 
-    if (glMemoryObjectParameterivEXT) {
-        GLint dedicated = GL_TRUE;
-        glMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-    }
+    GLint dedicated = GL_TRUE;
+    glMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+    GLint tiling = GL_LINEAR_TILING_EXT;
+    glMemoryObjectParameterivEXT(memObj, GL_TEXTURE_TILING_EXT, &tiling);
 
-    int importFd = dup(dmabufFd);
-    if (importFd < 0) {
+    UniqueFd importFd(dup(dmabufFd));
+    if (!importFd) {
         DEBUG("[%s] dup(dmabuf_fd) failed for %s import", logPrefix, label);
         if (glDeleteMemoryObjectsEXT && memObj) {
             glDeleteMemoryObjectsEXT(1, &memObj);
@@ -227,7 +193,10 @@ bool LinuxGLImportMemoryFd(const char* logPrefix,
     }
 
     clearGlErrors();
-    glImportMemoryFdEXT(memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, importFd);
+    // EXT_external_objects_fd transfers ownership only after a successful
+    // import. Keep RAII ownership until GL confirms success.
+    glImportMemoryFdEXT(
+        memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, importFd.get());
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
         DEBUG("[%s] glImportMemoryFdEXT failed for %s, GL error=0x%x", logPrefix, label, err);
@@ -235,9 +204,9 @@ bool LinuxGLImportMemoryFd(const char* logPrefix,
             glDeleteMemoryObjectsEXT(1, &memObj);
             memObj = 0;
         }
-        close(importFd);
         return false;
     }
+    (void)importFd.release();
 
     clearGlErrors();
     glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, width, height, memObj, 0);

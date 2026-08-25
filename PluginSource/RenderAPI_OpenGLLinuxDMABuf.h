@@ -2,31 +2,10 @@
 #define RENDER_API_OPENGL_LINUX_DMABUF_H
 
 #include "RenderAPI_OpenGLBase.h"
+#include "LinuxGBMDevice.h"
 #include <cstddef>
 #include <cstdint>
 #include <string>
-
-struct gbm_device;
-
-class LinuxGBMDevice
-{
-public:
-    LinuxGBMDevice() = default;
-    ~LinuxGBMDevice();
-
-    LinuxGBMDevice(const LinuxGBMDevice&) = delete;
-    LinuxGBMDevice& operator=(const LinuxGBMDevice&) = delete;
-
-    bool open(const char* logPrefix, const std::string& path);
-    void reset();
-
-    gbm_device* get() const { return m_device; }
-    explicit operator bool() const { return m_device != nullptr; }
-
-private:
-    int m_fd = -1;
-    gbm_device* m_device = nullptr;
-};
 
 typedef void (*PFNGLMEMORYOBJECTPARAMETERIVEXTPROC_)(GLuint, GLenum, const GLint*);
 typedef void (*PFNGLGENTEXTURESPROC_RAW)(GLsizei, GLuint*);
