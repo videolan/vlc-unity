@@ -210,7 +210,7 @@ namespace LibVLCSharp
 
                 // Force Unity to allocate GPU resources for the texture before we pass it to the plugin
                 // This ensures the VkImage is fully created and initialized
-                texture.Apply(false, false);
+                texture.Apply(updateMipmaps: false, makeNoLongerReadable: true);
 
                 // Pass texture to plugin so it can update it via AccessTexture
                 if (!SetUnityTextureVulkan(player.NativeReference, texture.GetNativeTexturePtr()))
