@@ -160,7 +160,8 @@ namespace LibVLCSharp
 
             var trimmedPath = mediaPath.Trim(new char[] { '"' });
             var finalOptions = options?.Length > 0 ? options : mediaOptions;
-            MediaPlayer.Media = new Media(new Uri(trimmedPath), finalOptions);
+            using var media = new Media(new Uri(trimmedPath), finalOptions);
+            MediaPlayer.Media = media;
             Play();
         }
 
@@ -169,9 +170,11 @@ namespace LibVLCSharp
             PrepareForNewMedia(path);
 
             var finalOptions = options?.Length > 0 ? options : mediaOptions;
-            var media = await CreateAndParseMediaAsync(mediaPath, false, finalOptions);
+            using var media = await CreateAndParseMediaAsync(mediaPath, false, finalOptions);
+            using var subItems = media.SubItems;
+            using var selected = subItems?.FirstOrDefault();
 
-            MediaPlayer.Media = media.SubItems.FirstOrDefault() ?? media;
+            MediaPlayer.Media = selected ?? media;
             Play();
         }
 
@@ -202,15 +205,14 @@ namespace LibVLCSharp
 
             try
             {
-                Media media = await CreateAndParseMediaAsync(path, true, finalOptions);
+                using var media = await CreateAndParseMediaAsync(path, true, finalOptions);
 
                 if (_backgroundNativePlayer != player)
-                {
-                    media?.Dispose();
                     return;
-                }
 
-                player.Media = media.SubItems.FirstOrDefault() ?? media;
+                using var subItems = media.SubItems;
+                using var selected = subItems?.FirstOrDefault();
+                player.Media = selected ?? media;
                 player.Play();
             }
             catch (Exception ex)
@@ -249,7 +251,14 @@ namespace LibVLCSharp
                 return;
             }
 
-            if (CurrentPreloadState == PreloadState.Preparing && _backgroundNativePlayer.Media == null)
+            bool mediaIsStillPreparing = false;
+            if (CurrentPreloadState == PreloadState.Preparing)
+            {
+                using var backgroundMedia = _backgroundNativePlayer.Media;
+                mediaIsStillPreparing = backgroundMedia == null;
+            }
+
+            if (mediaIsStillPreparing)
             {
                 Log("Swap requested before parsing finished. Falling back to OpenAsync.");
                 var path = PreloadedMediaPath;
@@ -335,16 +344,30 @@ namespace LibVLCSharp
         public int Volume => MediaPlayer != null ? MediaPlayer.Volume : 0;
         public bool IsPlaying => MediaPlayer != null && MediaPlayer.IsPlaying;
         /// <summary>Gets the media duration in milliseconds.</summary>
-        public long Duration => (MediaPlayer != null && MediaPlayer.Media != null) ? FromLibVLCTime(MediaPlayer.Media.Duration) : 0;
+        public long Duration
+        {
+            get
+            {
+                using var media = MediaPlayer?.Media;
+                return media == null ? 0 : FromLibVLCTime(media.Duration);
+            }
+        }
 
         /// <summary>Gets the current playback time in milliseconds.</summary>
         public long Time => MediaPlayer != null ? FromLibVLCTime(MediaPlayer.Time) : 0;
 
+        /// <summary>
+        /// Gets the requested native tracks. The caller must dispose every
+        /// returned <see cref="MediaTrack"/>.
+        /// </summary>
         public List<MediaTrack> Tracks(TrackType type)
         {
             return ConvertMediaTrackList(MediaPlayer?.Tracks(type));
         }
 
+        /// <summary>
+        /// Gets the selected native track. The caller must dispose the result.
+        /// </summary>
         public MediaTrack SelectedTrack(TrackType type)
         {
             return MediaPlayer?.SelectedTrack(type);
@@ -364,14 +387,14 @@ namespace LibVLCSharp
 
         public VideoOrientation? GetVideoOrientation()
         {
-            var tracks = MediaPlayer?.Tracks(TrackType.Video);
+            using var tracks = MediaPlayer?.Tracks(TrackType.Video);
 
             if (tracks == null || tracks.Count == 0)
                 return null;
 
-            var orientation = tracks[0]?.Data.Video.Orientation; // At the moment we're assuming the track we're playing is the first track
-
-            return orientation;
+            using var track = tracks[0];
+            // At the moment we're assuming the track we're playing is the first track.
+            return track?.Data.Video.Orientation;
         }
         #endregion
 
@@ -534,9 +557,16 @@ namespace LibVLCSharp
                 media.AddOption(":start-paused");
 
             var parseOptions = uri.IsFile ? MediaParseOptions.ParseLocal : MediaParseOptions.ParseNetwork;
-            await media.ParseAsync(LibVLC, parseOptions);
-
-            return media;
+            try
+            {
+                await media.ParseAsync(LibVLC, parseOptions);
+                return media;
+            }
+            catch
+            {
+                media.Dispose();
+                throw;
+            }
         }
 
         private void OnBackgroundPlayerReady(object sender, EventArgs e)
@@ -594,12 +624,13 @@ namespace LibVLCSharp
             if (tracklist == null)
                 return new List<MediaTrack>();
 
-            var tracks = new List<MediaTrack>((int)tracklist.Count);
-            for (uint i = 0; i < tracklist.Count; i++)
+            using (tracklist)
             {
-                tracks.Add(tracklist[i]);
+                var tracks = new List<MediaTrack>((int)tracklist.Count);
+                for (uint i = 0; i < tracklist.Count; i++)
+                    tracks.Add(tracklist[i]);
+                return tracks;
             }
-            return tracks;
         }
 
         private void Log(object message)

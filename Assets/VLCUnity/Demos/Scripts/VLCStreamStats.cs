@@ -105,7 +105,11 @@ namespace LibVLCSharp
             _canvasGroup.interactable = _isVisible;
             _canvasGroup.blocksRaycasts = _isVisible;
 
-            if (!_isVisible || vlcPlayer == null || vlcPlayer.MediaPlayer?.Media == null)
+            if (!_isVisible || vlcPlayer == null)
+                return;
+
+            using var media = vlcPlayer.MediaPlayer?.Media;
+            if (media == null)
                 return;
 
             UpdateTime();
@@ -113,14 +117,14 @@ namespace LibVLCSharp
             _pollTimer += Time.deltaTime;
             if (_pollTimer >= pollRateSeconds)
             {
-                UpdateStatsIfDirty();
+                UpdateStatsIfDirty(media);
                 _pollTimer = 0f;
             }
         }
 
-        private void UpdateStatsIfDirty()
+        private void UpdateStatsIfDirty(Media media)
         {
-            MediaStats currentStats = vlcPlayer.MediaPlayer.Media.Statistics;
+            MediaStats currentStats = media.Statistics;
 
             if (currentStats.IsDirty(in _lastStats))
             {
@@ -157,13 +161,18 @@ namespace LibVLCSharp
 
         private void UpdateMediaInfo()
         {
-            var tracks = vlcPlayer.Tracks(TrackType.Video);
+            using var tracks = vlcPlayer.MediaPlayer.Tracks(TrackType.Video);
             if (tracks == null || tracks.Count == 0)
                 return;
 
-            var videoTrack = tracks[0].Data.Video;
-            uint fourcc = tracks[0].OriginalFourcc;
-            string codecStr = vlcPlayer.MediaPlayer.Media.CodecDescription(TrackType.Video, fourcc);
+            using var track = tracks[0];
+            using var media = vlcPlayer.MediaPlayer.Media;
+            if (track == null || media == null)
+                return;
+
+            var videoTrack = track.Data.Video;
+            uint fourcc = track.OriginalFourcc;
+            string codecStr = media.CodecDescription(TrackType.Video, fourcc);
 
             resolutionText.text = $"{videoTrack.Width}x{videoTrack.Height}";
             codecText.text = codecStr;
@@ -172,9 +181,10 @@ namespace LibVLCSharp
         private void UpdateTime()
         {
             TimeSpan currentTime = TimeSpan.FromMilliseconds(vlcPlayer.Time);
-            TimeSpan totalTime = TimeSpan.FromMilliseconds(vlcPlayer.Duration);
+            var duration = vlcPlayer.Duration;
+            TimeSpan totalTime = TimeSpan.FromMilliseconds(duration);
 
-            string format = vlcPlayer.Duration >= 3600000 ? @"hh\:mm\:ss" : @"mm\:ss";
+            string format = duration >= 3600000 ? @"hh\:mm\:ss" : @"mm\:ss";
             timeText.text = $"{currentTime.ToString(format)} / {totalTime.ToString(format)}";
         }
 

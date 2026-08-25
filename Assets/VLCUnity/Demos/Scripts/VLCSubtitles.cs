@@ -1,8 +1,5 @@
 using UnityEngine;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
 using LibVLCSharp;
 
 // this class serves as an example on how to configure playback in Unity with VLC for Unity using LibVLCSharp.
@@ -27,22 +24,21 @@ public class VLCSubtitles : MonoBehaviour
         if (state != VLCState.Playing)
             return;
 
-        var trackList = mediaPlayer.MediaPlayer.Tracks(TrackType.Text);
+        using var trackList = mediaPlayer.MediaPlayer.Tracks(TrackType.Text);
 
-        foreach (var track in trackList)
+        for (uint i = 0; i < trackList.Count; ++i)
         {
+            using var track = trackList[i];
             Debug.Log($"Language {track.Language}, id {track.Id}");
+            if (string.Equals(track.Language, "jpn", StringComparison.OrdinalIgnoreCase))
+                mediaPlayer.MediaPlayer.Select(track);
         }
-
-        mediaPlayer.MediaPlayer.Select(trackList.Single(t => t.Language.Equals("jpn")));
 
         // we can also use the track id to select it (11 is the ID of the japanese subtitle track)
         // _mediaPlayer.Select(TrackType.Text, "spu/11");
         
         // if you would like to add an external subtitle file (.srt, .ass, etc.), use the _mediaPlayer.AddSlave method instead
         // https://code.videolan.org/videolan/LibVLCSharp/-/blob/3.x/docs/how_do_I_do_X.md#how-do-i-set-subtitles
-
-        trackList.Dispose();
 
         mediaPlayer.OnPlayerStateChanged.RemoveListener(OnPlayerStateChanged);
     }

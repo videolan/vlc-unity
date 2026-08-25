@@ -48,7 +48,8 @@ public class VLCCastExample : MonoBehaviour
             // set the previously discovered renderer item (chromecast) on the mediaplayer
             if (mediaPlayer.MediaPlayer.SetRenderer(rendererItem))
             {
-                mediaPlayer.MediaPlayer.Media = new Media(new Uri(mediaPlayer.mediaPath));
+                using var media = new Media(new Uri(mediaPlayer.mediaPath));
+                mediaPlayer.MediaPlayer.Media = media;
             }
         }
     }

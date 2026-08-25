@@ -56,19 +56,18 @@ public class VLCThreeSixty : MonoBehaviour
 
     void Check360Projection()
     {
-        var media = mediaPlayerScreen.MediaPlayer?.Media;
+        using var media = mediaPlayerScreen.MediaPlayer?.Media;
         if (media == null)
             return;
 
-        var videoTracks = media.TrackList(TrackType.Video);
+        using var videoTracks = media.TrackList(TrackType.Video);
 
         if (videoTracks != null && videoTracks.Count > 0)
         {
-            bool is360 = videoTracks[0].Data.Video.Projection == VideoProjection.Equirectangular;
+            using var videoTrack = videoTracks[0];
+            bool is360 = videoTrack.Data.Video.Projection == VideoProjection.Equirectangular;
             Debug.Log(is360 ? "The video is a 360 video" : "The video was not identified as a 360 video by VLC");
         }
-
-        videoTracks?.Dispose();
     }
 
     void RotateView(float sphereRotation, float yawDelta, float pitchDelta)

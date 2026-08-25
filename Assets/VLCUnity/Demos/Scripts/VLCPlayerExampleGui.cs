@@ -41,6 +41,7 @@ public class VLCPlayerExampleGui : MonoBehaviour
     List<Button> _videoTracksButtons = new List<Button>();
     List<Button> _audioTracksButtons = new List<Button>();
     List<Button> _textTracksButtons = new List<Button>();
+    readonly List<MediaTrack> _trackWrappers = new List<MediaTrack>();
 
 
     void Start()
@@ -165,6 +166,10 @@ public class VLCPlayerExampleGui : MonoBehaviour
         {
             Destroy(tracksButtonsGroup.transform.GetChild(i).gameObject);
         }
+
+        foreach (var track in _trackWrappers)
+            track.Dispose();
+        _trackWrappers.Clear();
     }
 
     //Create Audio, Video, or Subtitle button groups
@@ -172,7 +177,8 @@ public class VLCPlayerExampleGui : MonoBehaviour
     {
         buttonList.Clear();
         var tracks = vlcPlayer.Tracks(type);
-        var selected = vlcPlayer.SelectedTrack(type);
+        _trackWrappers.AddRange(tracks);
+        using var selected = vlcPlayer.SelectedTrack(type);
 
         if (tracks.Count > 0)
         {
@@ -219,5 +225,12 @@ public class VLCPlayerExampleGui : MonoBehaviour
 
         }
 
+    }
+
+    void OnDestroy()
+    {
+        foreach (var track in _trackWrappers)
+            track.Dispose();
+        _trackWrappers.Clear();
     }
 }
