@@ -13,16 +13,17 @@ TRIPLET="${1:?Usage: $0 <TRIPLET> <ARCH>}"
 ARCH="${2:?Usage: $0 <TRIPLET> <ARCH>}"
 export NCPU=$(getconf _NPROCESSORS_ONLN)
 
-set_runpath_to_origin() {
+set_runpath() {
     local path="$1"
+    local runpath="${2:-\$ORIGIN}"
     [ -f "$path" ] || return 0
 
     if command -v patchelf >/dev/null 2>&1; then
-        patchelf --set-rpath '$ORIGIN' "$path"
+        patchelf --set-rpath "$runpath" "$path"
         return 0
     fi
 
-    python3 - "$path" <<'PY'
+    python3 - "$path" "$runpath" <<'PY'
 import pathlib
 import re
 import subprocess
@@ -35,7 +36,7 @@ if not match:
     sys.exit(0)
 
 old = match.group(1).encode()
-new = b"$ORIGIN"
+new = sys.argv[2].encode()
 if old == new:
     sys.exit(0)
 if len(old) < len(new):
@@ -157,12 +158,24 @@ fi
 make -j$NCPU
 make install
 
-# libtool bakes the install prefix into libvlc's RUNPATH. Replace it at build
-# time so deployed libraries resolve their sibling SONAMEs from the final
-# package location instead of the original build path.
+# Libtool bakes the install prefix into RUNPATH. Replace it at build time so
+# deployed libraries resolve their sibling SONAMEs from the final package
+# location instead of the original build path.
 for f in linux-install/lib/libvlc.so*; do
     [ -f "$f" ] || continue
-    set_runpath_to_origin "$f"
+    set_runpath "$f"
+done
+
+# VLC helper libraries live in lib/vlc and modules live one directory deeper
+# in lib/vlc/plugins/<category>. Both need relocatable paths to lib/vlc (for
+# helpers such as libvlc_xcb_events.so.0 and libvlc_pulse.so.0) and to lib (for
+# libvlccore.so). Without this, dlopen() succeeds only on the original builder.
+find linux-install/lib/vlc -maxdepth 1 -type f \
+    \( -name "*.so" -o -name "*.so.*" \) -print0 | while IFS= read -r -d '' f; do
+    set_runpath "$f" '$ORIGIN:$ORIGIN/..'
+done
+find linux-install/lib/vlc/plugins -type f -name "*.so" -print0 | while IFS= read -r -d '' f; do
+    set_runpath "$f" '$ORIGIN/../..:$ORIGIN/../../..'
 done
 
 # Flatten only the top-level libvlc/libvlccore runtime libs and create SONAME
