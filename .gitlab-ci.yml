@@ -579,7 +579,7 @@ libvlc-linux-x86_64:
         - cd linux-${ARCH}/linux-install
         - sed -i "1s|.*|prefix=$(pwd)|" lib/pkgconfig/libvlc.pc
         - cd ../..
-        - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} --buildtype release
+        - PKG_CONFIG_PATH=./linux-${ARCH}/linux-install/lib/pkgconfig meson setup build_linux_${ARCH} ${ARGS_TRIAL} -Dlinux_vulkan=enabled --buildtype release
         - ninja -C build_linux_${ARCH}
         - meson test -C build_linux_${ARCH} --print-errorlogs
         - rm -rf "build_linux_${ARCH}/install-root"
