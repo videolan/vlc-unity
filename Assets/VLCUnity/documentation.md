@@ -124,7 +124,62 @@ For the Unity Linux target, we support:
 
 VLC for Unity requires Ubuntu 22.04 LTS or equivalent (glibc 2.35+).
 
-**Graphics API**: OpenGL only (Vulkan support planned for a future release). Uses GLX on X11 and XWayland, with experimental EGL support on native Wayland. Select OpenGL in Unity Player Settings.
+**Graphics APIs**: OpenGLCore is the default and remains the recommended
+compatibility path. Vulkan is available as an opt-in backend for Linux
+Standalone, Embedded Linux, and the Linux Editor. OpenGL uses GLX on X11 and
+XWayland, with experimental EGL support on native Wayland.
+
+To try Vulkan, disable **Auto Graphics API** for the Linux target and put
+Vulkan first with OpenGLCore second so Unity can fall back when Vulkan is not
+available, or select Vulkan alone for a validation build. The native plugin
+must be preloaded so it can install Vulkan
+device-extension requirements before Unity creates the device. Standalone and
+Embedded Linux players preload the packaged plugin automatically. After first
+importing or updating the plugin, restart the Linux Editor before selecting or
+testing Vulkan so the preloaded plugin can intercept the next device creation.
+The backend refuses to use external-memory functionality when interception was
+too late. If initialization reports this or another missing capability, select
+OpenGLCore and restart Unity or the player. A running Vulkan device cannot
+switch to OpenGL in place.
+
+The first Vulkan milestone requires all of the following on the same physical
+GPU:
+
+- `VK_EXT_physical_device_drm` with an exact render-node major/minor match;
+- exact OpenGL/Vulkan `deviceUUID` and `driverUUID` equality;
+- explicit single-plane linear DMA-BUF import support; and
+- bidirectional reusable opaque-fd external semaphores.
+
+Mesa Intel and AMD are the initial validation targets. Unsupported drivers,
+late-loaded Editor plugins, or multi-GPU configurations fail cleanly instead
+of guessing a render node or using Vulkan extensions that were not enabled.
+
+#### Building the Linux plugin with Vulkan support
+
+Vulkan support is a build-time option of the native plugin, not a runtime
+setting. Configure the build with `-Dlinux_vulkan=enabled` (or `auto`, the
+default, which silently omits Vulkan when its development files are missing):
+
+```
+meson setup build -Dlinux_vulkan=enabled
+```
+
+This requires the Vulkan development headers (`libvulkan-dev` /
+`vulkan-headers`) in addition to the usual `libgl-dev`, `libegl-dev`,
+`libx11-dev`, `libgbm-dev` (21.1+) and `libdrm-dev`. The resulting plugin gets
+Vulkan entry points from Unity when Unity is running Vulkan; it does not depend
+on `libvulkan.so.1` merely to load. OpenGLCore therefore remains usable on a
+machine without a Vulkan loader. A plugin binary built without Vulkan support
+simply reports that Vulkan is unavailable at runtime; rebuild with the option
+enabled to add it.
+
+The Linux Vulkan pipeline renders VLC into GBM linear DMA-BUF buffers on a
+plugin-owned OpenGL context, imports them into Unity's Vulkan device as
+external images, and copies them into the Unity-owned texture on Unity's
+render thread through an owned queue submission synchronized with reusable
+opaque-fd external semaphores. The physical device must match the GL device
+exactly (DRM render node and UUID equality), which is what the milestone
+requirements above validate.
 
 /!\ The plugin bundles LibVLC 4. System-installed VLC packages (typically VLC 3 on most Linux distributions) are not used.
 
@@ -157,6 +212,14 @@ The GLX backend verifies direct OpenGL context sharing before playback. If it
 must fall back to DMA-BUF, it probes the available `/dev/dri/renderD*` devices
 and keeps the first device whose buffers can be imported by the active OpenGL
 context. Logs contain the probe result and selected render node.
+
+The Vulkan policy is deliberately stricter: it reads the Unity Vulkan physical
+device's DRM render major/minor and accepts only the node whose `st_rdev`
+matches exactly. It never uses OpenGL's first-compatible selection policy,
+PCI/UUID-to-node inference, or a single-node fallback. In Vulkan mode,
+`VLC_UNITY_DRM_DEVICE` is still exclusive and must resolve to that exact device.
+Startup logs include the Vulkan device name, DRM identity, selected node, and
+both GL/Vulkan UUIDs.
 
 To force a render node while diagnosing device selection:
 ```

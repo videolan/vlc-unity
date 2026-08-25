@@ -108,7 +108,7 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 
 ### Linux Notes
 
-- **Graphics**: OpenGL only (Vulkan planned for a future release). Uses GLX on X11 and XWayland so Unity and VLC can share textures directly. Experimental native Wayland uses EGL. Select OpenGL in Unity Player Settings.
+- **Graphics**: OpenGLCore is the default. Vulkan is available as an opt-in backend for Linux Standalone, Embedded Linux, and the Linux Editor (see [Linux notes](Assets/VLCUnity/documentation.md#linux)). Restart the Editor after importing or updating the preloaded plugin before testing Vulkan. OpenGL uses GLX on X11 and XWayland so Unity and VLC can share textures directly. Experimental native Wayland uses EGL.
 - **Dependencies**: The plugin bundles LibVLC 4. System-installed VLC (typically v3 on most distros) is not used.
 - **Tested on**: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS.
 - **Wayland**: XWayland is supported through GLX. Native Wayland through EGL is experimental and intended for validation rather than production use.
@@ -152,7 +152,7 @@ More LibVLCSharp samples can be found [here](https://code.videolan.org/mfkl/libv
 
 ### Future graphics APIs
 
-- Vulkan (on other targets than Android)
+- Vulkan on remaining targets (Android, Linux Standalone, Embedded Linux, and the Linux Editor are supported today)
 - WebGL
 
 ### Other improvements
@@ -231,7 +231,7 @@ However, Videolabs being the main contributors to VLC improvements, feel free to
 
 If you would like VLC developers to provide you with:
 
-- custom development on LibVLC, VLC for Unity and/or LibVLCSharp, 
+- custom development on LibVLC, VLC for Unity and/or LibVLCSharp,
 - training and workshops,
 - support services,
 - consulting services,
