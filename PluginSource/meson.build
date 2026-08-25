@@ -4,6 +4,8 @@ plugin_sources_base = files(
     'PlatformBase.h',
     'RenderAPI.cpp',
     'RenderAPI.h',
+    'RenderAPIRegistry.cpp',
+    'RenderAPIRegistry.h',
     'RenderingPlugin.cpp',
 )
 
@@ -241,6 +243,17 @@ vlc_unity_plugin = library(
 )
 
 if host_system == 'linux'
+    render_api_registry_tests = executable(
+        'render-api-registry-tests',
+        files(
+            'RenderAPIRegistry.cpp',
+            'tests/RenderAPIRegistryTests.cpp',
+        ),
+        include_directories: plugin_include_dirs,
+        dependencies: [ libvlc_dep ],
+    )
+    test('render-api-registry', render_api_registry_tests)
+
     linux_graphics_interop_tests = executable(
         'linux-graphics-interop-tests',
         files(
