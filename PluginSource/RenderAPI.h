@@ -34,6 +34,20 @@ public:
 
     virtual void retrieveOpenGLContext() {}
     virtual void performRenderThreadWork() {}
+    // Queue submissions that require UnityVulkanGraphicsQueueAccess_Allow are
+    // dispatched from a separately configured plugin event. Backends that do
+    // not own Vulkan queue submissions leave this as a no-op.
+    virtual void performQueueSubmissionWork() {}
+    virtual bool setUnityTexture(void* unityTexturePtr) {
+        (void)unityTexturePtr;
+        return false;
+    }
+    virtual void beginShutdown() {}
+    // Plugin unload cannot wait for a render-thread callback. Backends with
+    // deferred GPU ownership must detach or delegate that ownership here so
+    // their destructor is safe and deterministic.
+    virtual void prepareForPluginUnload() { beginShutdown(); }
+    virtual bool canDestroy() const { return true; }
     virtual bool isInitialized() const { return true; }
     virtual void setColorSpace(int color_space) {
         (void)color_space;
