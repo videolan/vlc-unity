@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <mutex>
+#include <vector>
 
 #if defined(SHOW_WATERMARK)
 static std::atomic<int64_t> g_trialAccumulatedMs{0};
@@ -21,7 +22,7 @@ static const int64_t TRIAL_TIME_LIMIT_MS = 30 * 1000;
 #endif
 
 #if defined(SUPPORT_VULKAN)
-#include "RenderAPI_Vulkan.h"
+#include "VulkanPlatformRequirements.h"
 #endif
 
 extern "C" {
@@ -41,9 +42,7 @@ libvlc_instance_t * inst;
 #if defined(SHOW_WATERMARK)
 static void trial_reset();
 static void trial_pause();
-#if defined(UNITY_LINUX)
 static bool trial_is_expired();
-#endif
 
 static void on_media_player_state_changed(void* opaque, libvlc_state_t state)
 {
@@ -119,6 +118,12 @@ static const struct libvlc_media_player_cbs* callbacks_with_trial_state(
 
 static IUnityGraphics* s_Graphics = NULL;
 static std::map<libvlc_media_player_t*,RenderAPI*> contexts = {};
+static std::vector<RenderAPI*> retiredContexts;
+// Unity invokes plugin exports and render events from different threads.
+// One mutex is enough to keep renderer lookup, retirement, and destruction
+// mutually exclusive without a separate registry abstraction.
+static std::mutex s_contextsMutex;
+static RenderAPI* EarlyRenderAPI = NULL;
 static IUnityInterfaces* s_UnityInterfaces = NULL;
 
 static int s_color_space;
@@ -204,7 +209,11 @@ libvlc_unity_set_bit_depth_format(libvlc_media_player_t* mp, int bit_depth)
     if(bit_depth != 8 /* && bit_depth != 10 */ && bit_depth != 16)
         return;
 
-    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
+    auto context = contexts.find(mp);
+    if (context == contexts.end())
+        return;
+    RenderAPI* s_CurrentAPI = context->second;
     if(!s_CurrentAPI)
     {
         return;
@@ -246,7 +255,7 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
 #endif
     mp = libvlc_media_player_new(inst, effective_callbacks, callbacks_opaque);
 
-    RenderAPI* s_CurrentAPI;
+    RenderAPI* s_CurrentAPI = nullptr;
 
     if (mp == NULL) {
         DEBUG("Error initializing media player");
@@ -254,37 +263,45 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
     }
 
     DEBUG("Calling... Initialize Render API \n");
-
-    s_DeviceType = s_Graphics->GetRenderer();
-    if(s_DeviceType == kUnityGfxRendererNull)
     {
-        DEBUG("s_DeviceType is NULL \n");    
-        return NULL; 
+        std::lock_guard<std::mutex> lock(s_contextsMutex);
+        if (!s_Graphics) {
+            DEBUG("Unity graphics interface is unavailable");
+            goto err;
+        }
+        s_DeviceType = s_Graphics->GetRenderer();
+        if(s_DeviceType == kUnityGfxRendererNull)
+        {
+            DEBUG("s_DeviceType is NULL \n");
+            goto err;
+        }
+
+        DEBUG("Calling... CreateRenderAPI \n");
+        DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
+
+        s_CurrentAPI = CreateRenderAPI(s_DeviceType);
+
+        if(s_CurrentAPI == NULL)
+        {
+            DEBUG("s_CurrentAPI is NULL \n");
+            goto err;
+        }
+
+        DEBUG("Calling... ProcessDeviceEvent \n");
+
+        s_CurrentAPI->ProcessDeviceEvent(
+            kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
+        s_CurrentAPI->setColorSpace(s_color_space);
+
+        DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
+        s_CurrentAPI->setVlcContext(mp);
+
+        contexts[mp] = s_CurrentAPI;
     }
-    
-    DEBUG("Calling... CreateRenderAPI \n");
-    DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
-
-    s_CurrentAPI = CreateRenderAPI(s_DeviceType);
-
-    if(s_CurrentAPI == NULL)
-    {
-        DEBUG("s_CurrentAPI is NULL \n");
-        return NULL;
-    }    
-    
-    DEBUG("Calling... ProcessDeviceEvent \n");
-    
-    s_CurrentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
-    s_CurrentAPI->setColorSpace(s_color_space);
-
-    DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", s_CurrentAPI, mp);
-    s_CurrentAPI->setVlcContext(mp);
-
-    contexts[mp] = s_CurrentAPI;
 
     return mp;
 err:
+    delete s_CurrentAPI;
     if ( mp ) {
         // Stop playing
         libvlc_media_player_stop_async (mp);
@@ -292,7 +309,7 @@ err:
         // Free the media_player
         libvlc_media_player_release (mp);
         mp = NULL;
-    }    
+    }
     return NULL;
 }
 
@@ -302,14 +319,20 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
     if(mp == NULL)
         return;
 
-    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
-
-    if(s_CurrentAPI == NULL)
-        return;
-
-    s_CurrentAPI->unsetVlcContext(mp);
-
-    contexts.erase(mp);
+    RenderAPI* s_CurrentAPI = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(s_contextsMutex);
+        auto context = contexts.find(mp);
+        if (context != contexts.end()) {
+            s_CurrentAPI = context->second;
+            if (s_CurrentAPI) {
+                s_CurrentAPI->unsetVlcContext(mp);
+                s_CurrentAPI->beginShutdown();
+                retiredContexts.push_back(s_CurrentAPI);
+            }
+            contexts.erase(context);
+        }
+    }
 
     libvlc_media_player_release(mp);
 }
@@ -334,7 +357,11 @@ libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned hei
     if(width == 0 && height == 0)
         return NULL;
 
-    RenderAPI* s_CurrentAPI = contexts.find(mp)->second;
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
+    auto context = contexts.find(mp);
+    if (context == contexts.end())
+        return nullptr;
+    RenderAPI* s_CurrentAPI = context->second;
 
     if (!s_CurrentAPI) {
         DEBUG("Error, no Render API");
@@ -355,6 +382,7 @@ libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityText
         return false;
     }
 
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
     auto it = contexts.find(mp);
     if(it == contexts.end()) {
         DEBUG("libvlc_unity_set_unity_texture_vulkan: no context found for mp");
@@ -367,14 +395,8 @@ libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityText
         return false;
     }
 
-#if defined(SUPPORT_VULKAN)
-    // Check if this is the Vulkan renderer
-    if (s_DeviceType == kUnityGfxRendererVulkan) {
-        // Cast to RenderAPI_Vulkan and call setUnityTexture
-        RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(s_CurrentAPI);
-        return vulkanAPI->setUnityTexture(unityTexturePtr);
-    }
-#endif
+    if (s_DeviceType == kUnityGfxRendererVulkan)
+        return s_CurrentAPI->setUnityTexture(unityTexturePtr);
 
     DEBUG("libvlc_unity_set_unity_texture_vulkan: not on Vulkan renderer");
     return false;
@@ -390,10 +412,12 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginL
     s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
 
 #if defined(SUPPORT_VULKAN)
-    // Initialize Vulkan validation layers BEFORE any Vulkan instance creation
-    // This must be called before kUnityGfxDeviceEventInitialize
-    extern void InitializeVulkanValidation(IUnityInterfaces* interfaces);
-    InitializeVulkanValidation(unityInterfaces);
+    const auto preloadTime = std::chrono::steady_clock::now().time_since_epoch();
+    const auto preloadUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        preloadTime).count();
+    DEBUG("[Vulkan] plugin preload interception registration at %lld us",
+          static_cast<long long>(preloadUs));
+    (void)InitializeVulkanInterception(unityInterfaces);
 #endif
 
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
@@ -415,6 +439,28 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginU
         s_Graphics = nullptr;
     }
 
+    {
+        std::lock_guard<std::mutex> lock(s_contextsMutex);
+        for (auto& context : contexts) {
+            if (!context.second)
+                continue;
+            context.second->unsetVlcContext(context.first);
+            context.second->prepareForPluginUnload();
+            delete context.second;
+        }
+        contexts.clear();
+        for (RenderAPI* retired : retiredContexts) {
+            if (!retired)
+                continue;
+            retired->prepareForPluginUnload();
+            delete retired;
+        }
+        retiredContexts.clear();
+        if (EarlyRenderAPI)
+            EarlyRenderAPI->prepareForPluginUnload();
+        delete EarlyRenderAPI;
+        EarlyRenderAPI = nullptr;
+    }
     s_UnityInterfaces = nullptr;
 }
 
@@ -423,27 +469,28 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
     VLCUnity_UnityPluginUnload();
 }
 
-static RenderAPI* EarlyRenderAPI = NULL;
-
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 {
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
     // Create graphics API implementation upon initialization
-       if (eventType == kUnityGfxDeviceEventInitialize) {
-            DEBUG("Initialise Render API");
-            if (EarlyRenderAPI != NULL) {
-                DEBUG("*** EarlyRenderAPI != NULL while initialising ***");
-                return;
-            }
+    if (eventType == kUnityGfxDeviceEventInitialize) {
+        const auto deviceTime = std::chrono::steady_clock::now().time_since_epoch();
+        DEBUG("[Vulkan] graphics-device initialize observed at %lld us",
+              static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(deviceTime).count()));
+        DEBUG("Initialise Render API");
+        if (EarlyRenderAPI != NULL) {
+            DEBUG("*** Reinitialising existing EarlyRenderAPI ***");
+        } else {
+            DEBUG("s_Graphics->GetRenderer() \n");
 
-        DEBUG("s_Graphics->GetRenderer() \n");
+            s_DeviceType = s_Graphics->GetRenderer();
 
-        s_DeviceType = s_Graphics->GetRenderer();
+            DEBUG("CreateRenderAPI(s_DeviceType) \n");
+            DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
 
-        DEBUG("CreateRenderAPI(s_DeviceType) \n");
-        DEBUG("s_DeviceType = %s \n", GetRendererName(s_DeviceType));
-
-        EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
-        return;
+            EarlyRenderAPI = CreateRenderAPI(s_DeviceType);
+            return;
+        }
     }
 
     if(EarlyRenderAPI){
@@ -463,12 +510,30 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
             currentAPI->ProcessDeviceEvent(eventType, s_UnityInterfaces);
         }
     }
+    for (auto retired = retiredContexts.begin();
+         retired != retiredContexts.end();) {
+        RenderAPI* api = *retired;
+        api->ProcessDeviceEvent(eventType, s_UnityInterfaces);
+        if (eventType == kUnityGfxDeviceEventShutdown && api->canDestroy()) {
+            delete api;
+            retired = retiredContexts.erase(retired);
+        } else {
+            ++retired;
+        }
+    }
 }
+
+enum RenderEventId
+{
+    kVulkanCopyEvent = 0,
+    kRenderThreadWorkEvent = 1,
+    kVulkanQueueSubmissionEvent = 2,
+    kRendererCleanupEvent = 3,
+};
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-    (void)eventID;
-
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
 #if !defined(_WIN32)
     DEBUG_VERBOSE("[VLC-Unity] OnRenderEvent called with eventID=%d, thread=%ld\n", eventID, (long)pthread_self());
 #else
@@ -477,34 +542,10 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
     DEBUG_VERBOSE("[VLC-Unity]   s_DeviceType=%s\n", GetRendererName(s_DeviceType));
     DEBUG_VERBOSE("[VLC-Unity]   contexts.size()=%zu\n", contexts.size());
 
-#if defined(UNITY_ANDROID) || defined(UNITY_LINUX)
-    if(EarlyRenderAPI)
+    if (eventID == kRenderThreadWorkEvent && EarlyRenderAPI)
     {
         DEBUG_VERBOSE("[VLC-Unity]   Calling EarlyRenderAPI->retrieveOpenGLContext()\n");
         EarlyRenderAPI->retrieveOpenGLContext();
-    }
-#endif
-
-#if defined(UNITY_LINUX)
-    {
-        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
-        for(it = contexts.begin(); it != contexts.end(); it++)
-        {
-            RenderAPI* currentAPI = it->second;
-            if(currentAPI && !currentAPI->isInitialized())
-                currentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
-        }
-    }
-
-    // Perform render-thread work (e.g. DMA-BUF texture import) for all active contexts
-    {
-        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
-        for(it = contexts.begin(); it != contexts.end(); it++)
-        {
-            RenderAPI* currentAPI = it->second;
-            if(currentAPI)
-                currentAPI->performRenderThreadWork();
-        }
     }
 
 #if defined(SHOW_WATERMARK)
@@ -524,31 +565,42 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
         }
     }
 #endif
-#endif
 
-#if defined(UNITY_ANDROID)
-    // Call render event for all active contexts
-    std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
-    for(it = contexts.begin(); it != contexts.end(); it++)
-    {
-        RenderAPI* currentAPI = it->second;
-        (void)currentAPI;
-        DEBUG_VERBOSE("[VLC-Unity]   Processing context: mp=%p, api=%p\n", it->first, currentAPI);
-
-#if defined(SUPPORT_VULKAN)
-        if(currentAPI && s_DeviceType == kUnityGfxRendererVulkan) {
-            DEBUG_VERBOSE("[VLC-Unity]   Calling onRenderEvent for Vulkan API\n");
-            // Cast to Vulkan API and call onRenderEvent
-            RenderAPI_Vulkan* vulkanAPI = static_cast<RenderAPI_Vulkan*>(currentAPI);
-            vulkanAPI->onRenderEvent();
-        } else
-#endif
+    if (eventID == kRenderThreadWorkEvent) {
+        std::map<libvlc_media_player_t*, RenderAPI*>::iterator it;
+        for(it = contexts.begin(); it != contexts.end(); it++)
         {
-            DEBUG_VERBOSE("[VLC-Unity]   Skipping: currentAPI=%p, s_DeviceType=%s\n", currentAPI, GetRendererName(s_DeviceType));
+            RenderAPI* currentAPI = it->second;
+            if(currentAPI && !currentAPI->isInitialized())
+                currentAPI->ProcessDeviceEvent(kUnityGfxDeviceEventInitialize, s_UnityInterfaces);
         }
     }
-    DEBUG_VERBOSE("[VLC-Unity] OnRenderEvent complete\n");
-#endif
+
+    for (auto& context : contexts) {
+        RenderAPI* renderer = context.second;
+        if (!renderer)
+            continue;
+        if (eventID == kVulkanQueueSubmissionEvent)
+            renderer->performQueueSubmissionWork();
+        else if (eventID == kVulkanCopyEvent ||
+                 eventID == kRenderThreadWorkEvent)
+            renderer->performRenderThreadWork();
+    }
+
+    for (auto retired = retiredContexts.begin();
+         retired != retiredContexts.end();) {
+        RenderAPI* api = *retired;
+        if (eventID == kVulkanQueueSubmissionEvent)
+            api->performQueueSubmissionWork();
+        else
+            api->performRenderThreadWork();
+        if (api->canDestroy()) {
+            delete api;
+            retired = retiredContexts.erase(retired);
+        } else {
+            ++retired;
+        }
+    }
 }
 
 #if defined(SHOW_WATERMARK)
@@ -569,12 +621,10 @@ static void trial_pause()
     g_trialLastTickMs.store(-1);
 }
 
-#if defined(UNITY_LINUX)
 static bool trial_is_expired()
 {
     return g_trialAccumulatedMs.load() >= TRIAL_TIME_LIMIT_MS;
 }
-#endif
 
 extern "C" bool libvlc_unity_trial_tick()
 {
