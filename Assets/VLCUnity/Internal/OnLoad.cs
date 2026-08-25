@@ -6,6 +6,8 @@ namespace LibVLCSharp
 {
     class OnLoad
     {
+        static bool _rendererCleanupPending;
+
 #if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX)
         internal const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
@@ -46,6 +48,7 @@ namespace LibVLCSharp
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void OnBeforeSceneLoadRuntimeMethod()
         {
+            OnQuit();
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             var libDir = LibVLCDirectory;
             var pluginPath = libDir + "/vlc/plugins";
@@ -57,7 +60,36 @@ namespace LibVLCSharp
 #if UNITY_ANDROID || UNITY_IOS || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             GL.IssuePluginEvent(GetRenderEventFunc(), 1);
 #endif
+            Application.onBeforeRender += PumpRendererCleanup;
+            Application.quitting += OnQuit;
         }
+
+        internal static void RequestRendererCleanup()
+        {
+            _rendererCleanupPending = true;
+        }
+
+        static void PumpRendererCleanup()
+        {
+            if (!_rendererCleanupPending)
+                return;
+
+            if (!TextureHelper.HasRetiredRenderers())
+            {
+                _rendererCleanupPending = false;
+                return;
+            }
+
+            TextureHelper.QueueRendererCleanupEvent();
+        }
+
+        internal static void OnQuit()
+        {
+            Application.onBeforeRender -= PumpRendererCleanup;
+            Application.quitting -= OnQuit;
+            _rendererCleanupPending = false;
+        }
+
         static UnityColorSpace PlayerColorSpace => QualitySettings.activeColorSpace == 0 ? UnityColorSpace.Gamma : UnityColorSpace.Linear;
     }
 }

@@ -345,6 +345,13 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
     libvlc_media_player_release(mp);
 }
 
+extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
+libvlc_unity_has_retired_renderers()
+{
+    std::lock_guard<std::mutex> lock(s_contextsMutex);
+    return !retiredContexts.empty();
+}
+
 extern "C" void* UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_get_texture(libvlc_media_player_t* mp, unsigned width, unsigned height, bool * updated)
 {

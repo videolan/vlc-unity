@@ -25,6 +25,7 @@ namespace LibVLCSharp
 
         private static void Shutdown()
         {
+            OnLoad.OnQuit();
             VLCUnityLogger.OnQuit();
         }
     }

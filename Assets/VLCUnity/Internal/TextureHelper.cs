@@ -31,7 +31,23 @@ namespace LibVLCSharp
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetRenderEventFunc")]
         static extern IntPtr GetRenderEventFunc();
 
+        [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl,
+            EntryPoint = "libvlc_unity_has_retired_renderers")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        static extern bool HasRetiredRenderersNative();
+
+        internal static bool HasRetiredRenderers()
+        {
+            return HasRetiredRenderersNative();
+        }
+
         internal static void QueueRendererCleanup()
+        {
+            OnLoad.RequestRendererCleanup();
+            QueueRendererCleanupEvent();
+        }
+
+        internal static void QueueRendererCleanupEvent()
         {
             var renderEvent = GetRenderEventFunc();
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
