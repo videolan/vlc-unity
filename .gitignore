@@ -7,6 +7,12 @@
 /[Oo]bj/
 /[Bb]uild/
 /[Bb]uilds/
+/build-*/
+/build_*/
+/embedded-linux-test/
+/libvlc-linux-*/
+/linux-x86_64/
+/vlc-unity-linux-*/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 /standalone
@@ -59,6 +65,10 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+/*.zip
+/*.x86_64
+/*_s.debug
+/mono_crash.mem.*.blob
 
 # Crashlytics generated file
 crashlytics-build.properties
