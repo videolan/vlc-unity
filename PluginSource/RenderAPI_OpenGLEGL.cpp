@@ -28,6 +28,11 @@ RenderAPI_OpenEGL::RenderAPI_OpenEGL(UnityGfxRenderer apiType) :
 {
 }
 
+RenderAPI_OpenEGL::~RenderAPI_OpenEGL()
+{
+    releaseResources();
+}
+
 
 bool RenderAPI_OpenEGL::makeCurrent(bool current)
 {
@@ -67,19 +72,66 @@ void* RenderAPI_OpenEGL::get_proc_address(void* /*data*/, const char* procname)
     return p;
 }
 
-void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t *mp)
+void RenderAPI_OpenEGL::setVlcContext(libvlc_media_player_t* mp)
 {
-    if(unity_context == EGL_NO_CONTEXT) {
-        DEBUG("OpenGL context has not been retrieved, aborting...");
+    m_mp = mp;
+    if (!isInitialized()) {
+        DEBUG("[EGL] delaying output callbacks until the shared context is ready");
+        return;
+    }
+    registerOutputCallbacks();
+}
+
+void RenderAPI_OpenEGL::unsetVlcContext(libvlc_media_player_t* mp)
+{
+    if (m_mp != mp)
+        return;
+    unregisterOutputCallbacks();
+    m_mp = nullptr;
+}
+
+void RenderAPI_OpenEGL::registerOutputCallbacks()
+{
+    if (!m_mp || m_callbacksRegistered)
+        return;
+    DEBUG("[EGL] subscribing to opengl output callbacks %p", this);
+    m_callbacksRegistered = libvlc_video_set_output_callbacks(
+        m_mp, libvlc_video_engine_gles2,
+        setup, cleanup, nullptr, resize, swap,
+        staticMakeCurrent, get_proc_address, nullptr, nullptr, this);
+    if (!m_callbacksRegistered)
+        DEBUG("[EGL] failed to subscribe to opengl output callbacks");
+}
+
+void RenderAPI_OpenEGL::unregisterOutputCallbacks()
+{
+    if (!m_mp || !m_callbacksRegistered)
+        return;
+    libvlc_video_set_output_callbacks(
+        m_mp, libvlc_video_engine_disable, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+    m_callbacksRegistered = false;
+}
+
+void RenderAPI_OpenEGL::releaseResources()
+{
+    if (m_display == EGL_NO_DISPLAY) {
+        m_surface = EGL_NO_SURFACE;
+        m_context = EGL_NO_CONTEXT;
         return;
     }
 
-    m_mp = mp;
-
-    DEBUG("[EGL] subscribing to opengl output callbacks %p", this);
-    libvlc_video_set_output_callbacks(mp, libvlc_video_engine_gles2,
-        setup, cleanup, nullptr, resize, swap,
-        staticMakeCurrent, get_proc_address, nullptr, nullptr, this);
+    if (eglGetCurrentContext() == m_context) {
+        eglMakeCurrent(
+            m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    }
+    if (m_context != EGL_NO_CONTEXT)
+        eglDestroyContext(m_display, m_context);
+    if (m_surface != EGL_NO_SURFACE)
+        eglDestroySurface(m_display, m_surface);
+    m_context = EGL_NO_CONTEXT;
+    m_surface = EGL_NO_SURFACE;
+    m_display = EGL_NO_DISPLAY;
 }
 
 // should only be called from the unity rendering thread
@@ -105,6 +157,10 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
 	(void)interfaces;
 	if (type == kUnityGfxDeviceEventInitialize) {
         DEBUG("[EGL] Entering ProcessDeviceEvent with kUnityGfxDeviceEventInitialize");
+
+        if (isInitialized())
+            return;
+        releaseResources();
 
         if(unity_context == EGL_NO_CONTEXT) {
             DEBUG("[EGL] Failed to retrieve OpenGL Context... aborting.");
@@ -142,7 +198,8 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
             return;
         }
 
-        if (!eglChooseConfig(m_display, config_attr, &config, 1, &num_configs) || eglGetError() != EGL_SUCCESS) {
+        if (!eglChooseConfig(m_display, config_attr, &config, 1, &num_configs) ||
+            num_configs == 0 || eglGetError() != EGL_SUCCESS) {
             DEBUG("[EGL] eglGetConfigAttrib() returned error %x", eglGetError());
             return;
         }
@@ -169,6 +226,7 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
         m_context = eglCreateContext(m_display, config, unity_context, ctx_attr);
         if (m_context != EGL_NO_CONTEXT && eglGetError() == EGL_SUCCESS) {
             DEBUG("[EGL] kUnityGfxDeviceEventInitialize success disp=%p m_surf=%p m_ctx=%p", m_display, m_surface, m_context);
+            registerOutputCallbacks();
             return;
         }
         DEBUG("[EGL] eglCreateContext() failed for regular context creation, error %x", eglGetError());
@@ -190,8 +248,9 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
         ctx_attr_low_overhead[4] = EGL_NONE;
 
         m_context = eglCreateContext(m_display, config, unity_context, ctx_attr_low_overhead);
-        if (m_context != EGL_NO_CONTEXT || eglGetError() == EGL_SUCCESS) {
+        if (m_context != EGL_NO_CONTEXT && eglGetError() == EGL_SUCCESS) {
             DEBUG("[EGL] kUnityGfxDeviceEventInitialize success disp=%p m_surf=%p m_ctx=%p", m_display, m_surface, m_context);
+            registerOutputCallbacks();
         }
         else{
             DEBUG("[EGL] eglCreateContext() failed for low overhead context, error %x", eglGetError());
@@ -199,7 +258,8 @@ void RenderAPI_OpenEGL::ProcessDeviceEvent(UnityGfxDeviceEventType type, IUnityI
 #endif
 	} else if (type == kUnityGfxDeviceEventShutdown) {
         DEBUG("[EGL] kUnityGfxDeviceEventShutdown");
-        eglDestroyContext(m_display, m_context);
-        eglDestroySurface(m_display, m_surface);
+		unregisterOutputCallbacks();
+        releaseResources();
+        unity_context = EGL_NO_CONTEXT;
 	}
 }

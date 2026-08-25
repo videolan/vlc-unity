@@ -149,8 +149,7 @@ void RenderAPI_Android::destroyWindowSurface(jobject obj)
 void RenderAPI_Android::setVlcContext(libvlc_media_player_t *mp)
 {
     if(RenderAPI_OpenEGL::unity_context == EGL_NO_CONTEXT) {
-        DEBUG("[Android] No OpenGL context retrieved");
-        return;
+        DEBUG("[Android] No OpenGL context retrieved yet");
     }
 
     DEBUG("[Android] setVlcContext %p", this);
