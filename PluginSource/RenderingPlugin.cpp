@@ -128,6 +128,14 @@ static IUnityInterfaces* s_UnityInterfaces = NULL;
 
 static int s_color_space;
 
+enum RenderEventId
+{
+    kVulkanCopyEvent = 0,
+    kRenderThreadWorkEvent = 1,
+    kVulkanQueueSubmissionEvent = 2,
+    kRendererCleanupEvent = 3,
+};
+
 // Helper function to convert UnityGfxRenderer enum to string
 static const char* GetRendererName(UnityGfxRenderer renderer) {
     switch (renderer) {
@@ -418,6 +426,19 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginL
     DEBUG("[Vulkan] plugin preload interception registration at %lld us",
           static_cast<long long>(preloadUs));
     (void)InitializeVulkanInterception(unityInterfaces);
+#if defined(UNITY_LINUX)
+    IUnityGraphicsVulkan* vulkan =
+        unityInterfaces->Get<IUnityGraphicsVulkan>();
+    if (vulkan && vulkan->ConfigureEvent) {
+        UnityVulkanPluginEventConfig queueEvent = {};
+        queueEvent.renderPassPrecondition = kUnityVulkanRenderPass_DontCare;
+        queueEvent.graphicsQueueAccess = kUnityVulkanGraphicsQueueAccess_Allow;
+        queueEvent.flags =
+            kUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission |
+            kUnityVulkanEventConfigFlag_FlushCommandBuffers;
+        vulkan->ConfigureEvent(kVulkanQueueSubmissionEvent, &queueEvent);
+    }
+#endif
 #endif
 
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
@@ -522,14 +543,6 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
         }
     }
 }
-
-enum RenderEventId
-{
-    kVulkanCopyEvent = 0,
-    kRenderThreadWorkEvent = 1,
-    kVulkanQueueSubmissionEvent = 2,
-    kRendererCleanupEvent = 3,
-};
 
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
