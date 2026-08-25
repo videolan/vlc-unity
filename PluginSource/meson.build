@@ -22,7 +22,7 @@ android_sources = files(
 )
 
 d3d11_sources = files(
-    'RenderAPI_D3D11.cpp', 
+    'RenderAPI_D3D11.cpp',
 )
 
 egl_sources = files(
@@ -31,8 +31,6 @@ egl_sources = files(
 )
 
 glx_sources = files(
-    'RenderAPI_OpenGLLinuxDMABuf.cpp',
-    'RenderAPI_OpenGLLinuxDMABuf.h',
     'RenderAPI_OpenGLGLX.cpp',
     'RenderAPI_OpenGLGLX.h',
 )
@@ -45,11 +43,49 @@ linux_egl_sources = files(
 linux_graphics_interop_sources = files(
     'LinuxGraphicsInterop.cpp',
     'LinuxGraphicsInterop.h',
+    'LinuxGBMDevice.cpp',
+    'LinuxGBMDevice.h',
+    'LinuxDMABufProducer.cpp',
+    'LinuxDMABufProducer.h',
+    'LinuxDMABufWatermark.cpp',
+    'LinuxDMABufWatermark.h',
+    'LinuxOpenGLUnityImports.cpp',
+    'LinuxOpenGLUnityImports.h',
+    'RenderAPI_OpenGLLinuxDMABuf.cpp',
+    'RenderAPI_OpenGLLinuxDMABuf.h',
+    'UniqueFd.cpp',
+    'UniqueFd.h',
 )
 
-vulkan_sources = files(
+vulkan_core_sources = files(
+    'VulkanFrameSource.h',
+    'VulkanSubmissionStrategy.h',
+    'VulkanUnityCopyCore.cpp',
+    'VulkanUnityCopyCore.h',
+    'VulkanPlatformRequirements.cpp',
+    'VulkanPlatformRequirements.h',
+)
+
+vulkan_android_sources = files(
+    'AndroidVulkanFrameSource.cpp',
+    'AndroidVulkanFrameSource.h',
     'RenderAPI_Vulkan.cpp',
     'RenderAPI_Vulkan.h',
+    'UnitySubmissionStrategy.cpp',
+    'UnitySubmissionStrategy.h',
+    'VulkanPlatformRequirementsAndroid.cpp',
+)
+
+vulkan_linux_sources = files(
+    'LinuxDMABufFrameSource.cpp',
+    'LinuxDMABufFrameSource.h',
+    'LinuxVulkanDeviceIdentity.cpp',
+    'LinuxVulkanDeviceIdentity.h',
+    'OwnedQueueSubmissionStrategy.cpp',
+    'OwnedQueueSubmissionStrategy.h',
+    'RenderAPI_VulkanLinux.cpp',
+    'RenderAPI_VulkanLinux.h',
+    'VulkanPlatformRequirementsLinux.cpp',
 )
 
 cgl_sources = files(
@@ -115,7 +151,7 @@ elif host_system == 'linux'
     gl_dep = dependency('gl', required: true)
     egl_dep = dependency('egl', required: true)
     x11_dep = dependency('x11', required: true)
-    gbm_dep = dependency('gbm', required: true)
+    gbm_dep = dependency('gbm', version: '>=21.1', required: true)
     libdrm_dep = dependency('libdrm', required: true)
     vlc_unity_deps += [ gl_dep, egl_dep, x11_dep ]
     vlc_unity_cppflags += [ '-DUNITY_LINUX=1' ]
@@ -128,6 +164,21 @@ elif host_system == 'linux'
         linux_egl_sources,
     ]
     vlc_unity_deps += [ gbm_dep, libdrm_dep ]
+    # VkPhysicalDeviceDrmPropertiesEXT and the DRM-format-modifier structs
+    # need vulkan-headers >= 1.2.174; gate here so 'auto' degrades cleanly on
+    # older toolchains instead of failing mid-compile.
+    vulkan_dep = dependency(
+        'vulkan', version: '>=1.2.174',
+        required: get_option('linux_vulkan'))
+    if vulkan_dep.found()
+        vulkan_headers_dep = vulkan_dep.partial_dependency(
+            compile_args: true,
+            includes: true,
+        )
+        vlc_unity_deps += [ vulkan_headers_dep ]
+        vlc_unity_cppflags += [ '-DSUPPORT_VULKAN=1' ]
+        plugin_sources += [ vulkan_core_sources, vulkan_linux_sources ]
+    endif
 elif host_system == 'android'
     if get_option('static_android')
         vlc_unity_ldflags += [ '-static-libstdc++' ]
@@ -140,7 +191,7 @@ elif host_system == 'android'
     if host_machine.cpu_family() == 'aarch64'
         vlc_unity_deps += [ cc.find_library('vulkan') ]
         vlc_unity_cppflags += [ '-DSUPPORT_VULKAN=1' ]
-        plugin_sources += [ vulkan_sources ]
+        plugin_sources += [ vulkan_core_sources, vulkan_android_sources ]
     endif
 endif
 
@@ -199,4 +250,75 @@ if host_system == 'linux'
         include_directories: plugin_include_dirs,
     )
     test('linux-graphics-interop', linux_graphics_interop_tests)
+
+    linux_vulkan_identity_tests = executable(
+        'linux-vulkan-identity-tests',
+        files(
+            'LinuxVulkanDeviceIdentity.cpp',
+            'tests/LinuxVulkanDeviceIdentityTests.cpp',
+        ),
+        include_directories: plugin_include_dirs,
+    )
+    test('linux-vulkan-identity', linux_vulkan_identity_tests)
+
+    unique_fd_tests = executable(
+        'unique-fd-tests',
+        files('UniqueFd.cpp', 'tests/UniqueFdTests.cpp'),
+        include_directories: plugin_include_dirs,
+    )
+    test('unique-fd', unique_fd_tests)
+
+    if vulkan_dep.found()
+        vulkan_core_tests = executable(
+            'vulkan-core-tests',
+            files(
+                'Log.cpp',
+                'VulkanUnityCopyCore.cpp',
+                'tests/VulkanCoreTests.cpp',
+            ),
+            include_directories: plugin_include_dirs,
+            dependencies: [ vulkan_headers_dep ],
+            cpp_args: [ '-DUNITY_LINUX=1' ],
+        )
+        test('vulkan-core', vulkan_core_tests)
+
+        vulkan_requirements_tests = executable(
+            'vulkan-requirements-tests',
+            files(
+                'Log.cpp',
+                'VulkanPlatformRequirements.cpp',
+                'VulkanPlatformRequirementsLinux.cpp',
+                'tests/VulkanRequirementsTests.cpp',
+            ),
+            include_directories: plugin_include_dirs,
+            dependencies: [ vulkan_headers_dep ],
+            cpp_args: [ '-DUNITY_LINUX=1' ],
+        )
+        test('vulkan-requirements', vulkan_requirements_tests)
+
+        owned_queue_submission_tests = executable(
+            'owned-queue-submission-tests',
+            files(
+                'Log.cpp',
+                'OwnedQueueSubmissionStrategy.cpp',
+                'tests/OwnedQueueSubmissionTests.cpp',
+            ),
+            include_directories: plugin_include_dirs,
+            dependencies: [ vulkan_headers_dep ],
+            cpp_args: [ '-DUNITY_LINUX=1' ],
+        )
+        test('owned-queue-submission', owned_queue_submission_tests)
+
+        unity_submission_strategy_tests = executable(
+            'unity-submission-strategy-tests',
+            files(
+                'UnitySubmissionStrategy.cpp',
+                'tests/UnitySubmissionStrategyTests.cpp',
+            ),
+            include_directories: plugin_include_dirs,
+            dependencies: [ vulkan_headers_dep ],
+            cpp_args: [ '-DUNITY_LINUX=1' ],
+        )
+        test('unity-submission-strategy', unity_submission_strategy_tests)
+    endif
 endif

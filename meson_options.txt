@@ -12,3 +12,8 @@ option('fatal_warnings',
     type: 'boolean',
     value: true,
     description: 'Treat compiler warnings as errors')
+
+option('linux_vulkan',
+    type: 'feature',
+    value: 'auto',
+    description: 'Build optional Linux Vulkan support when the loader is available')
