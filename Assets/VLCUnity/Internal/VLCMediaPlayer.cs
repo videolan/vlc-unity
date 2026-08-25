@@ -421,9 +421,12 @@ namespace LibVLCSharp
 
         private void DestroyMediaPlayer()
         {
-            MediaPlayer?.Stop();
-            MediaPlayer?.Dispose();
+            if (MediaPlayer == null)
+                return;
+            MediaPlayer.Stop();
+            MediaPlayer.Dispose();
             MediaPlayer = null;
+            TextureHelper.QueueRendererCleanup();
         }
 
         private void DispatchToMainThread(Action action)

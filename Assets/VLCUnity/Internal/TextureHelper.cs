@@ -1,13 +1,12 @@
 using UnityEngine;
-using UnityEditor;
 using System;
 using System.Runtime.InteropServices;
-using LibVLCSharp;
 
 namespace LibVLCSharp
 {
     public static class TextureHelper
     {
+        static int _lastVulkanCopyEventFrame = -1;
 #if !UNITY_EDITOR_WIN && (UNITY_ANDROID || UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX)
         const string UnityPlugin = "libVLCUnityPlugin";
 #elif UNITY_IOS
@@ -20,14 +19,69 @@ namespace LibVLCSharp
         static extern void SetBitDepthFormat(IntPtr mediaplayer, int bitDepth);
 
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "libvlc_unity_set_unity_texture_vulkan")]
+        [return: MarshalAs(UnmanagedType.I1)]
         static extern bool SetUnityTextureVulkan(IntPtr mediaplayer, IntPtr texturePtr);
+
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+        [DllImport(UnityPlugin, CallingConvention = CallingConvention.Winapi,
+            EntryPoint = "libvlc_unity_get_vulkan_interception_failure")]
+        static extern IntPtr GetVulkanInterceptionFailure();
+#endif
 
         [DllImport(UnityPlugin, CallingConvention = CallingConvention.Cdecl, EntryPoint = "GetRenderEventFunc")]
         static extern IntPtr GetRenderEventFunc();
 
+        internal static void QueueRendererCleanup()
+        {
+            var renderEvent = GetRenderEventFunc();
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            GL.IssuePluginEvent(renderEvent, 2);
+#endif
+            GL.IssuePluginEvent(renderEvent, 3);
+        }
+
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+        static void QueueLinuxTextureInterop()
+        {
+            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+        }
+#endif
+
+        static void IssueVulkanCopyWorkOncePerFrame()
+        {
+            var frame = Time.frameCount;
+            if (_lastVulkanCopyEventFrame == frame)
+                return;
+            _lastVulkanCopyEventFrame = frame;
 #if UNITY_ANDROID && !UNITY_EDITOR
-        // Track if we're using the Vulkan approach (Unity-owned texture)
-        private static bool isVulkanMode = false;
+            GL.IssuePluginEvent(GetRenderEventFunc(), 0);
+#elif UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            var renderEvent = GetRenderEventFunc();
+            GL.IssuePluginEvent(renderEvent, 1);
+            GL.IssuePluginEvent(renderEvent, 2);
+#endif
+        }
+
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+        static bool IsVulkanTexturePath()
+        {
+            return SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Vulkan;
+        }
+
+        static string GetVulkanInterceptionFailureMessage()
+        {
+            try
+            {
+                var message = GetVulkanInterceptionFailure();
+                return message == IntPtr.Zero ? null : Marshal.PtrToStringAnsi(message);
+            }
+            catch (Exception exception) when (
+                exception is DllNotFoundException ||
+                exception is EntryPointNotFoundException)
+            {
+                return null;
+            }
+        }
 #endif
         /// <summary>
         /// Update texture with new frame data
@@ -40,9 +94,9 @@ namespace LibVLCSharp
             if (texture == null)
                 return false;
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-            // Vulkan on Android uses AccessTexture approach - plugin updates the texture directly via render thread
-            if (isVulkanMode)
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            // Vulkan uses AccessTexture; the plugin copies on Unity's render thread.
+            if (IsVulkanTexturePath())
             {
                 // Check if there's an update
                 var texptr = player.GetTexture((uint)texture.width, (uint)texture.height, out bool updated);
@@ -51,8 +105,11 @@ namespace LibVLCSharp
                 {
                     // Issue a plugin event to trigger the texture copy on the render thread
                     // This ensures AccessTexture is called at the right time
-                    IntPtr renderEventFunc = GetRenderEventFunc();
-                    GL.IssuePluginEvent(renderEventFunc, 0);
+                    // Linux uses a normal event to access/record the texture,
+                    // followed by a queue-authorized event that submits the
+                    // plugin-owned command buffer. Android records into
+                    // Unity's command buffer and needs only event zero.
+                    IssueVulkanCopyWorkOncePerFrame();
                     return true;
                 }
                 return false;
@@ -61,7 +118,7 @@ namespace LibVLCSharp
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
-            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+            QueueLinuxTextureInterop();
 #endif
 
             // Standard approach for non-Vulkan
@@ -106,16 +163,17 @@ namespace LibVLCSharp
 #endif
             }
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-            // Vulkan on Android requires a different approach
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Vulkan)
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            if (IsVulkanTexturePath())
             {
                 if (width == 0 || height == 0)
                     return default;
+                if (bitDepth != BitDepth.Bit8)
+                    throw new VLCException("The Vulkan video path currently requires an RGBA32 destination texture");
 
                 // Create Unity-owned texture
                 var texture = new Texture2D((int)width, (int)height,
-                    bitDepth == BitDepth.Bit16 ? TextureFormat.RGBAHalf : TextureFormat.RGBA32,
+                    TextureFormat.RGBA32,
                     mipmap, linear);
 
                 // Force Unity to allocate GPU resources for the texture before we pass it to the plugin
@@ -125,22 +183,24 @@ namespace LibVLCSharp
                 // Pass texture to plugin so it can update it via AccessTexture
                 if (!SetUnityTextureVulkan(player.NativeReference, texture.GetNativeTexturePtr()))
                 {
-                    UnityEngine.Debug.LogError("[VLC-Unity] Failed to set Unity texture for Vulkan");
+                    var failure = GetVulkanInterceptionFailureMessage();
+                    var detail = string.IsNullOrEmpty(failure) ? string.Empty : $": {failure}";
+                    UnityEngine.Debug.LogError(
+                        "[VLC-Unity] Failed to set Unity texture for Vulkan" + detail);
                     UnityEngine.Object.Destroy(texture);
                     return default;
                 }
 
-                isVulkanMode = true;
                 return texture;
             }
 #endif
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             // Trigger render-thread work (DMA-BUF texture import on Linux/Wayland)
-            GL.IssuePluginEvent(GetRenderEventFunc(), 1);
+            QueueLinuxTextureInterop();
 #endif
 
-            // Standard approach for non-Vulkan or non-Android
+            // Standard external-texture approach for non-Vulkan renderers.
             var texptr = player.GetTexture(width, height, out bool updated);
 
             if (width != 0 && height != 0 && updated && texptr != IntPtr.Zero)
