@@ -80,6 +80,7 @@ namespace LibVLCSharp
         private int _cachedVolume = 100;
 
         private Texture2D _vlcTexture = null;
+        private bool _usesDirectVulkanOutput;
         private VLCAudioSource _vlcAudioSource;
 
         private readonly ConcurrentQueue<Action> _mainThreadActions = new();
@@ -130,10 +131,22 @@ namespace LibVLCSharp
             if (width == 0 || height == 0)
                 return;
 
-            if (_vlcTexture == null || _vlcTexture.width != width || _vlcTexture.height != height)
+            bool wantsDirectVulkanOutput =
+                TextureHelper.IsVulkanTexturePathActive() &&
+                !flipTextureX && !flipTextureY;
+            Texture activeTexture = _usesDirectVulkanOutput
+                ? OutputTexture
+                : _vlcTexture;
+            if (activeTexture == null || activeTexture.width != width ||
+                activeTexture.height != height ||
+                wantsDirectVulkanOutput != _usesDirectVulkanOutput)
                 ResizeOutputTextures(width, height);
 
-            if (_vlcTexture != null)
+            if (_usesDirectVulkanOutput)
+            {
+                TextureHelper.UpdateVulkanTexture(OutputTexture, MediaPlayer);
+            }
+            else if (_vlcTexture != null)
             {
                 if (TextureHelper.UpdateTexture(_vlcTexture, MediaPlayer))
                 {
@@ -485,6 +498,18 @@ namespace LibVLCSharp
             if (GetVideoOrientation() == VideoOrientation.BottomRight)
                 (py, px) = (px, py);
 
+            if (!flipTextureX && !flipTextureY &&
+                TextureHelper.IsVulkanTexturePathActive())
+            {
+                OutputTexture = TextureHelper.CreateDirectVulkanOutput(MediaPlayer);
+                if (OutputTexture != null)
+                {
+                    _usesDirectVulkanOutput = true;
+                    OnTextureResized?.Invoke(OutputTexture);
+                    return;
+                }
+            }
+
             _vlcTexture = TextureHelper.CreateNativeTexture(MediaPlayer, linear: true);
 
             if (_vlcTexture != null)
@@ -512,6 +537,7 @@ namespace LibVLCSharp
                 DestroyImmediate(_vlcTexture);
                 _vlcTexture = null;
             }
+            _usesDirectVulkanOutput = false;
         }
 
         private void AttachMainPlayerEvents(MediaPlayer player)

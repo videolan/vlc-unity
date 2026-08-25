@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Runtime.InteropServices;
+using UnityEngine.Experimental.Rendering;
 
 namespace LibVLCSharp
 {
@@ -115,6 +116,86 @@ namespace LibVLCSharp
             }
         }
 #endif
+
+        internal static bool IsVulkanTexturePathActive()
+        {
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            return IsVulkanTexturePath();
+#else
+            return false;
+#endif
+        }
+
+        static bool RegisterVulkanTexture(MediaPlayer player, Texture texture)
+        {
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            if (!IsVulkanTexturePath() || player == null || texture == null)
+                return false;
+            if (SetUnityTextureVulkan(
+                    player.NativeReference, texture.GetNativeTexturePtr()))
+                return true;
+
+            var failure = GetVulkanInterceptionFailureMessage();
+            var detail = string.IsNullOrEmpty(failure) ? string.Empty : $": {failure}";
+            UnityEngine.Debug.LogError(
+                "[VLC-Unity] Failed to set Unity texture for Vulkan" + detail);
+#endif
+            return false;
+        }
+
+        internal static RenderTexture CreateDirectVulkanOutput(
+            MediaPlayer player)
+        {
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            if (!IsVulkanTexturePath() || player == null)
+                return null;
+
+            uint width = 0;
+            uint height = 0;
+            player.Size(0, ref width, ref height);
+            if (width == 0 || height == 0)
+                return null;
+
+            var descriptor = new RenderTextureDescriptor(
+                (int)width, (int)height)
+            {
+                depthBufferBits = 0,
+                msaaSamples = 1,
+                graphicsFormat = GraphicsFormat.R8G8B8A8_UNorm,
+                useMipMap = false,
+                autoGenerateMips = false,
+            };
+            var texture = new RenderTexture(descriptor);
+            if (!texture.Create() || !RegisterVulkanTexture(player, texture))
+            {
+                texture.Release();
+                UnityEngine.Object.Destroy(texture);
+                return null;
+            }
+            return texture;
+#else
+            return null;
+#endif
+        }
+
+        internal static bool UpdateVulkanTexture(
+            Texture texture, MediaPlayer player)
+        {
+#if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
+            if (!IsVulkanTexturePath() || texture == null || player == null)
+                return false;
+
+            var texturePointer = player.GetTexture(
+                (uint)texture.width, (uint)texture.height, out bool updated);
+            if (!updated || texturePointer == IntPtr.Zero)
+                return false;
+
+            IssueVulkanCopyWorkOncePerFrame();
+            return true;
+#else
+            return false;
+#endif
+        }
         /// <summary>
         /// Update texture with new frame data
         /// </summary>
@@ -129,23 +210,7 @@ namespace LibVLCSharp
 #if (UNITY_ANDROID && !UNITY_EDITOR) || UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
             // Vulkan uses AccessTexture; the plugin copies on Unity's render thread.
             if (IsVulkanTexturePath())
-            {
-                // Check if there's an update
-                var texptr = player.GetTexture((uint)texture.width, (uint)texture.height, out bool updated);
-
-                if (updated && texptr != System.IntPtr.Zero)
-                {
-                    // Issue a plugin event to trigger the texture copy on the render thread
-                    // This ensures AccessTexture is called at the right time
-                    // Linux uses a normal event to access/record the texture,
-                    // followed by a queue-authorized event that submits the
-                    // plugin-owned command buffer. Android records into
-                    // Unity's command buffer and needs only event zero.
-                    IssueVulkanCopyWorkOncePerFrame();
-                    return true;
-                }
-                return false;
-            }
+                return UpdateVulkanTexture(texture, player);
 #endif
 
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX
@@ -213,12 +278,8 @@ namespace LibVLCSharp
                 texture.Apply(updateMipmaps: false, makeNoLongerReadable: true);
 
                 // Pass texture to plugin so it can update it via AccessTexture
-                if (!SetUnityTextureVulkan(player.NativeReference, texture.GetNativeTexturePtr()))
+                if (!RegisterVulkanTexture(player, texture))
                 {
-                    var failure = GetVulkanInterceptionFailureMessage();
-                    var detail = string.IsNullOrEmpty(failure) ? string.Empty : $": {failure}";
-                    UnityEngine.Debug.LogError(
-                        "[VLC-Unity] Failed to set Unity texture for Vulkan" + detail);
                     UnityEngine.Object.Destroy(texture);
                     return default;
                 }
