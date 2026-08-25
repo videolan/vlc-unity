@@ -1,55 +1,88 @@
 #include <dlfcn.h>
 #include <jni.h>
+#include "AndroidJNI.h"
 #include "Log.h"
 #include "RenderAPI_OpenGLEGL.h"
 
-// JNI environment - accessible from other Android renderers
-JNIEnv* jni_env = 0;
-static void *handle;
+static JavaVM* java_vm = nullptr;
+static void* handle = nullptr;
 typedef jint (*JNI_OnLoad_pf)(JavaVM *, void*);
 typedef void (*JNI_OnUnload_pf)(JavaVM *, void*);
 
-// extern "C" int VLCJNI_OnLoad(JavaVM *, JNIEnv*);
-// extern "C" void VLCJNI_OnUnload(JavaVM *, JNIEnv *);
+namespace {
+
+class ScopedJNIEnv
+{
+public:
+    ScopedJNIEnv()
+    {
+        m_vm = java_vm;
+        if (!m_vm)
+            return;
+        const jint result = m_vm->GetEnv(
+            reinterpret_cast<void**>(&m_env), JNI_VERSION_1_6);
+        if (result == JNI_EDETACHED &&
+            m_vm->AttachCurrentThread(&m_env, nullptr) == JNI_OK) {
+            m_attached = true;
+        } else if (result != JNI_OK) {
+            m_env = nullptr;
+        }
+    }
+
+    ~ScopedJNIEnv()
+    {
+        if (m_attached)
+            m_vm->DetachCurrentThread();
+    }
+
+    JNIEnv* get() const { return m_env; }
+
+private:
+    JavaVM* m_vm = nullptr;
+    JNIEnv* m_env = nullptr;
+    bool m_attached = false;
+};
+
+} // namespace
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
     (void)reserved;
     DEBUG("ENTERED RENDERAPI_ANDROID.CPP -> JNI_ONLOAD");
 
-    //if (vm->GetEnv(reinterpret_cast<void**>(&jni_env), JNI_VERSION_1_6) != JNI_OK) {
-    //    return -1;
-    //}
-    vm->AttachCurrentThread(&jni_env, 0);
-
-    // if ( VLCJNI_OnLoad(vm, jni_env) != 0 )
-    // {
-    //     DEBUG("VLCJNI_OnLoad failed");
-    //     return -1;
-    // }
+    JNIEnv* env = nullptr;
+    if (vm->GetEnv(
+            reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+    java_vm = vm;
 
     handle = dlopen("libvlc.so", RTLD_LAZY);
     if (!handle)
     {
         DEBUG("could not link libvlc.so");
-        return -1;
+        java_vm = nullptr;
+        return JNI_ERR;
     }
 
     DEBUG("(JNI_OnLoad_pf) dlsym(handle, JNI_OnLoad);");
 
-    JNI_OnLoad_pf load;
-    load = (JNI_OnLoad_pf) dlsym(handle, "JNI_OnLoad");
-    if (!load || load(vm, jni_env) < 0)
+    JNI_OnLoad_pf load = reinterpret_cast<JNI_OnLoad_pf>(
+        dlsym(handle, "JNI_OnLoad"));
+    if (!load || load(vm, env) < 0)
     {
         if (!load)
             DEBUG("could not find VLC JNI_OnLoad");
         else
             DEBUG("VLC JNI_OnLoad failed");
-        return -1;
+        dlclose(handle);
+        handle = nullptr;
+        java_vm = nullptr;
+        return JNI_ERR;
     }
 
 
-    DEBUG("[Android] initialize jni env %p", jni_env);
+    DEBUG("[Android] initialized JNI with VM %p", java_vm);
     DEBUG("Exiting...");
 
     return JNI_VERSION_1_6;
@@ -59,20 +92,110 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 void JNI_OnUnload(JavaVM *vm, void *reserved)
 {
     (void)reserved;
-    DEBUG("[Android] unload jni env %p", jni_env);
+    DEBUG("[Android] unload JNI VM %p", java_vm);
 
-    JNI_OnLoad_pf unload;
+    JNIEnv* env = nullptr;
+    (void)vm->GetEnv(
+        reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (handle) {
+        JNI_OnUnload_pf unload = reinterpret_cast<JNI_OnUnload_pf>(
+            dlsym(handle, "JNI_OnUnload"));
+        if (unload)
+            unload(vm, env);
+        else
+            DEBUG("could not find VLC JNI_OnUnload");
+        dlclose(handle);
+        handle = nullptr;
+    }
 
-    unload = (JNI_OnLoad_pf) dlsym(handle, "JNI_OnUnload");
-    if (unload)
-        unload(vm, jni_env);
-    else
-        DEBUG("could not find VLC JNI_OnUnload");
-    dlclose(handle);
+    java_vm = nullptr;
+}
 
-    // VLCJNI_OnUnload(vm, jni_env);
+jobject AndroidCreateAWindow(const char* logTag)
+{
+    ScopedJNIEnv scopedEnv;
+    JNIEnv* env = scopedEnv.get();
+    if (!env) {
+        DEBUG("%s no JNIEnv is available", logTag);
+        return nullptr;
+    }
+    if (env->PushLocalFrame(16) != JNI_OK) {
+        if (env->ExceptionCheck())
+            env->ExceptionClear();
+        DEBUG("%s failed to create a JNI local frame", logTag);
+        return nullptr;
+    }
 
-    vm->DetachCurrentThread();
+    jobject globalWindow = nullptr;
+    do {
+        jclass activityThread = env->FindClass("android/app/ActivityThread");
+        if (!activityThread)
+            break;
+        jmethodID currentApplication = env->GetStaticMethodID(
+            activityThread, "currentApplication", "()Landroid/app/Application;");
+        if (!currentApplication)
+            break;
+        jobject app = env->CallStaticObjectMethod(
+            activityThread, currentApplication);
+        if (!app)
+            break;
+
+        jclass contextClass = env->FindClass("android/content/Context");
+        if (!contextClass)
+            break;
+        jmethodID getClassLoader = env->GetMethodID(
+            contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
+        if (!getClassLoader)
+            break;
+        jobject classLoader = env->CallObjectMethod(app, getClassLoader);
+        if (!classLoader)
+            break;
+
+        jclass classLoaderClass = env->FindClass("java/lang/ClassLoader");
+        if (!classLoaderClass)
+            break;
+        jmethodID loadClass = env->GetMethodID(
+            classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+        if (!loadClass)
+            break;
+        jstring className = env->NewStringUTF("org.videolan.libvlc.AWindow");
+        if (!className)
+            break;
+        jclass windowClass = static_cast<jclass>(
+            env->CallObjectMethod(classLoader, loadClass, className));
+        if (!windowClass)
+            break;
+
+        jmethodID constructor = env->GetMethodID(
+            windowClass, "<init>",
+            "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");
+        if (!constructor)
+            break;
+        jobject window = env->NewObject(windowClass, constructor, nullptr);
+        if (window)
+            globalWindow = env->NewGlobalRef(window);
+    } while (false);
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        if (globalWindow)
+            env->DeleteGlobalRef(globalWindow);
+        globalWindow = nullptr;
+    }
+    env->PopLocalFrame(nullptr);
+    if (!globalWindow)
+        DEBUG("%s failed to create org.videolan.libvlc.AWindow", logTag);
+    return globalWindow;
+}
+
+void AndroidDeleteGlobalRef(jobject object)
+{
+    if (!object)
+        return;
+    ScopedJNIEnv scopedEnv;
+    JNIEnv* env = scopedEnv.get();
+    if (env)
+        env->DeleteGlobalRef(object);
 }
 
 
@@ -110,40 +233,12 @@ RenderAPI_Android::~RenderAPI_Android()
 jobject RenderAPI_Android::createWindowSurface()
 {
     DEBUG("Entering createWindowSurface");
-
-    jclass activityThread = jni_env->FindClass("android/app/ActivityThread");
-    jmethodID currentApplication = jni_env->GetStaticMethodID(activityThread, "currentApplication", "()Landroid/app/Application;");
-    jobject app = jni_env->CallStaticObjectMethod(activityThread, currentApplication);
-
-    jclass contextClass = jni_env->FindClass("android/content/Context");
-    jmethodID getClassLoader = jni_env->GetMethodID(contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
-    jobject classLoader = jni_env->CallObjectMethod(app, getClassLoader);
-
-    jclass classLoaderClass = jni_env->FindClass("java/lang/ClassLoader");
-    jmethodID loadClass = jni_env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-
-    jstring className = jni_env->NewStringUTF("org.videolan.libvlc.AWindow");
-    jclass cls_JavaClass = (jclass)jni_env->CallObjectMethod(classLoader, loadClass, className);
-    jni_env->DeleteLocalRef(className);
-
-    if(cls_JavaClass == nullptr)
-    {
-        DEBUG("Failed to find class org.videolan.libvlc.AWindow");
-        abort();
-    }
-    // find constructor method
-    jmethodID mid_JavaClass = jni_env->GetMethodID (cls_JavaClass, "<init>", "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");
-
-    // create object instance
-    jobject obj_JavaClass = jni_env->NewObject(cls_JavaClass, mid_JavaClass, nullptr);
-    // return object with a global reference
-    return jni_env->NewGlobalRef(obj_JavaClass);
+    return AndroidCreateAWindow("[Android]");
 }
 
 void RenderAPI_Android::destroyWindowSurface(jobject obj)
 {
-    if (obj != nullptr)
-        jni_env->DeleteGlobalRef(obj);
+    AndroidDeleteGlobalRef(obj);
 }
 
 void RenderAPI_Android::setVlcContext(libvlc_media_player_t *mp)

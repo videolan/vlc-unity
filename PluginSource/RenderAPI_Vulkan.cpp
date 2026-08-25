@@ -21,6 +21,7 @@
 #if defined(UNITY_ANDROID)
 
 #include "RenderAPI_Vulkan.h"
+#include "AndroidJNI.h"
 #include "Log.h"
 #include "TrialWatermark.h"
 #include "VulkanPlatformRequirements.h"
@@ -30,8 +31,6 @@
 #include <stdexcept>
 #include <utility>
 #include <vlc/libvlc_media_player.h>
-
-extern JNIEnv* jni_env;
 
 #if VULKAN_ENABLE_VALIDATION
 VkDebugUtilsMessengerEXT RenderAPI_Vulkan::s_debug_messenger = VK_NULL_HANDLE;
@@ -148,37 +147,12 @@ void RenderAPI_Vulkan::shutdownValidationMessenger()
 
 jobject RenderAPI_Vulkan::createWindowSurface()
 {
-    jclass activityThread = jni_env->FindClass("android/app/ActivityThread");
-    jmethodID currentApplication = jni_env->GetStaticMethodID(
-        activityThread, "currentApplication", "()Landroid/app/Application;");
-    jobject app = jni_env->CallStaticObjectMethod(activityThread, currentApplication);
-
-    jclass contextClass = jni_env->FindClass("android/content/Context");
-    jmethodID getClassLoader = jni_env->GetMethodID(
-        contextClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
-    jobject classLoader = jni_env->CallObjectMethod(app, getClassLoader);
-    jclass classLoaderClass = jni_env->FindClass("java/lang/ClassLoader");
-    jmethodID loadClass = jni_env->GetMethodID(
-        classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-    jstring className = jni_env->NewStringUTF("org.videolan.libvlc.AWindow");
-    jclass windowClass = static_cast<jclass>(
-        jni_env->CallObjectMethod(classLoader, loadClass, className));
-    jni_env->DeleteLocalRef(className);
-    if (!windowClass) {
-        DEBUG("[Vulkan-Android] org.videolan.libvlc.AWindow is unavailable");
-        return nullptr;
-    }
-
-    jmethodID constructor = jni_env->GetMethodID(
-        windowClass, "<init>", "(Lorg/videolan/libvlc/AWindow$SurfaceCallback;)V");
-    jobject window = jni_env->NewObject(windowClass, constructor, nullptr);
-    return jni_env->NewGlobalRef(window);
+    return AndroidCreateAWindow("[Vulkan-Android]");
 }
 
 void RenderAPI_Vulkan::destroyWindowSurface(jobject object)
 {
-    if (object)
-        jni_env->DeleteGlobalRef(object);
+    AndroidDeleteGlobalRef(object);
 }
 
 void RenderAPI_Vulkan::setVlcContext(libvlc_media_player_t* mp)

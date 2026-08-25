@@ -20,6 +20,7 @@ watermark_sources = files(
 )
 
 android_sources = files(
+    'AndroidJNI.h',
     'RenderAPI_Android.cpp',
 )
 
