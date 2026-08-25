@@ -186,11 +186,10 @@ namespace LibVLCSharp
 
             var texturePointer = player.GetTexture(
                 (uint)texture.width, (uint)texture.height, out bool updated);
-            if (!updated || texturePointer == IntPtr.Zero)
-                return false;
-
+            // Completion polling is part of the render event. Keep pumping it
+            // even when the producer has no free slot to publish a new frame.
             IssueVulkanCopyWorkOncePerFrame();
-            return true;
+            return updated && texturePointer != IntPtr.Zero;
 #else
             return false;
 #endif
