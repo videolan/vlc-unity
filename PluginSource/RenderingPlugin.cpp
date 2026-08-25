@@ -423,6 +423,27 @@ libvlc_unity_set_unity_texture_vulkan(libvlc_media_player_t* mp, void* unityText
 
 static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType);
 
+#if defined(SUPPORT_VULKAN) && defined(UNITY_LINUX)
+static void ConfigureVulkanQueueSubmissionEvent(UnityGfxRenderer deviceType)
+{
+    if (deviceType != kUnityGfxRendererVulkan || !s_UnityInterfaces)
+        return;
+
+    IUnityGraphicsVulkan* vulkan =
+        s_UnityInterfaces->Get<IUnityGraphicsVulkan>();
+    if (!vulkan || !vulkan->ConfigureEvent)
+        return;
+
+    UnityVulkanPluginEventConfig queueEvent = {};
+    queueEvent.renderPassPrecondition = kUnityVulkanRenderPass_DontCare;
+    queueEvent.graphicsQueueAccess = kUnityVulkanGraphicsQueueAccess_Allow;
+    queueEvent.flags =
+        kUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission |
+        kUnityVulkanEventConfigFlag_FlushCommandBuffers;
+    vulkan->ConfigureEvent(kVulkanQueueSubmissionEvent, &queueEvent);
+}
+#endif
+
 extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
     DEBUG("UnityPluginLoad");
@@ -437,19 +458,6 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API VLCUnity_UnityPluginL
     DEBUG("[Vulkan] plugin preload interception registration at %lld us",
           static_cast<long long>(preloadUs));
     (void)InitializeVulkanInterception(unityInterfaces);
-#if defined(UNITY_LINUX)
-    IUnityGraphicsVulkan* vulkan =
-        unityInterfaces->Get<IUnityGraphicsVulkan>();
-    if (vulkan && vulkan->ConfigureEvent) {
-        UnityVulkanPluginEventConfig queueEvent = {};
-        queueEvent.renderPassPrecondition = kUnityVulkanRenderPass_DontCare;
-        queueEvent.graphicsQueueAccess = kUnityVulkanGraphicsQueueAccess_Allow;
-        queueEvent.flags =
-            kUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission |
-            kUnityVulkanEventConfigFlag_FlushCommandBuffers;
-        vulkan->ConfigureEvent(kVulkanQueueSubmissionEvent, &queueEvent);
-    }
-#endif
 #endif
 
     // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
@@ -523,6 +531,10 @@ static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType ev
                 DEBUG("s_Graphics->GetRenderer() \n");
                 const UnityGfxRenderer deviceType = s_Graphics->GetRenderer();
                 s_DeviceType.store(deviceType);
+
+#if defined(SUPPORT_VULKAN) && defined(UNITY_LINUX)
+                ConfigureVulkanQueueSubmissionEvent(deviceType);
+#endif
 
                 DEBUG("CreateRenderAPI(s_DeviceType) \n");
                 DEBUG("s_DeviceType = %s \n", GetRendererName(deviceType));
