@@ -516,6 +516,7 @@ namespace Videolabs.VLCUnity.Editor
     {
         const string LINUX_PATH = "VLCUnity/Plugins/Linux/x86_64";
         const string VLC_PLUGINS_PATH = "VLCUnity/Plugins/Linux/x86_64/vlc/";
+        const string UNITY_PLUGIN_NAME = "libVLCUnityPlugin.so";
         static readonly Regex LinuxSonameRegex = new Regex(@"\.so\.\d+$");
 
         static LinuxPluginPostprocessor()
@@ -540,7 +541,8 @@ namespace Videolabs.VLCUnity.Editor
                 {
                     if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
                         || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
-                        || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
+                        || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux)
+                        || pi.isPreloaded)
                     {
                         anyDirty = true;
                         break;
@@ -550,7 +552,8 @@ namespace Videolabs.VLCUnity.Editor
 
                 if (pi.GetCompatibleWithAnyPlatform() || !pi.GetCompatibleWithEditor()
                     || !pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
-                    || !pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
+                    || !pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux)
+                    || (IsUnityPlugin(assetPath) && !pi.isPreloaded))
                 {
                     anyDirty = true;
                     break;
@@ -590,12 +593,14 @@ namespace Videolabs.VLCUnity.Editor
                     {
                         if (pi.GetCompatibleWithAnyPlatform() || pi.GetCompatibleWithEditor()
                             || pi.GetCompatibleWithPlatform(BuildTarget.StandaloneLinux64)
-                            || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux))
+                            || pi.GetCompatibleWithPlatform(BuildTarget.EmbeddedLinux)
+                            || pi.isPreloaded)
                         {
                             pi.SetCompatibleWithAnyPlatform(false);
                             pi.SetCompatibleWithEditor(false);
                             pi.SetCompatibleWithPlatform(BuildTarget.StandaloneLinux64, false);
                             pi.SetCompatibleWithPlatform(BuildTarget.EmbeddedLinux, false);
+                            pi.isPreloaded = false;
                             pi.SaveAndReimport();
                         }
                         continue;
@@ -628,6 +633,12 @@ namespace Videolabs.VLCUnity.Editor
                         dirty = true;
                     }
 
+                    if (IsUnityPlugin(assetPath) && !pi.isPreloaded)
+                    {
+                        pi.isPreloaded = true;
+                        dirty = true;
+                    }
+
                     if (dirty)
                     {
                         pi.SaveAndReimport();
@@ -645,6 +656,11 @@ namespace Videolabs.VLCUnity.Editor
         static bool ShouldExcludeFromUnityPluginLoading(string assetPath)
         {
             return assetPath.Contains(VLC_PLUGINS_PATH) || LinuxSonameRegex.IsMatch(assetPath);
+        }
+
+        static bool IsUnityPlugin(string assetPath)
+        {
+            return assetPath.EndsWith("/" + UNITY_PLUGIN_NAME, StringComparison.Ordinal);
         }
     }
 
