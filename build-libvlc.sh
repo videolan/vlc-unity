@@ -61,13 +61,15 @@ fi
 export PATH="$(pwd)/extras/tools/build/bin:$PATH"
 
 # Build contribs from source — ignore system packages so all deps are
-# built as static libs, making VLC plugins self-contained.
-export PKG_CONFIG_LIBDIR=""
-export PKG_CONFIG_PATH=""
+# built as static libs, making VLC plugins self-contained. Point pkg-config at
+# the allowlisted metadata staged below so contrib configure steps can find it.
+CONTRIB_PKG_CONFIG_DIR="$(pwd)/contrib/${TRIPLET}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="${CONTRIB_PKG_CONFIG_DIR}"
+export PKG_CONFIG_PATH="${CONTRIB_PKG_CONFIG_DIR}"
 export PKG_CONFIG_SYSROOT_DIR=""
 # Expose selected system pkg-config files that contrib-built dependencies rely on
 # during their own configure/build steps (for example Vulkan-Loader needs X11/XCB).
-mkdir -p contrib/${TRIPLET}/lib/pkgconfig
+mkdir -p "${CONTRIB_PKG_CONFIG_DIR}"
 src="/usr/lib/${TRIPLET}/pkgconfig/x11.pc"
 if [ -f "$src" ]; then
     cp "$src" "contrib/${TRIPLET}/lib/pkgconfig/x11.pc"
