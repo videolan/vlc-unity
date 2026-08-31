@@ -29,7 +29,14 @@ public:
     {
         LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload();
     }
-    bool canDestroy() const override { return false; }
+    bool canDestroy() const override
+    {
+        return LinuxOpenGLUnityImportManager::canDestroy();
+    }
+    bool retirementRequiresExplicitCleanupEvent() const override
+    {
+        return true;
+    }
 
     static void* get_proc_address_desktop(void* data, const char* name);
 
@@ -41,6 +48,16 @@ public:
 
 private:
     bool hasRenderThreadContext() const override;
+    LinuxOpenGLContextIdentity currentRenderThreadContextIdentity()
+        const override
+    {
+        const EGLContext egl = eglGetCurrentContext();
+        if (egl != EGL_NO_CONTEXT)
+            return { reinterpret_cast<uintptr_t>(egl), true };
+        return {
+            reinterpret_cast<uintptr_t>(glXGetCurrentContext()), false
+        };
+    }
 
     bool initializeDrmAndContext();
     void releaseResources();

@@ -36,7 +36,14 @@ public:
     {
         LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload();
     }
-    bool canDestroy() const override { return false; }
+    bool canDestroy() const override
+    {
+        return LinuxOpenGLUnityImportManager::canDestroy();
+    }
+    bool retirementRequiresExplicitCleanupEvent() const override
+    {
+        return true;
+    }
 
     static void* get_proc_address(void*, const char* name);
     bool producerMakeCurrent(bool current) override { return makeCurrent(current); }
@@ -47,6 +54,13 @@ public:
 
 private:
     bool hasRenderThreadContext() const override;
+    LinuxOpenGLContextIdentity currentRenderThreadContextIdentity()
+        const override
+    {
+        return {
+            reinterpret_cast<uintptr_t>(glXGetCurrentContext()), false
+        };
+    }
 
     bool createPrivateContext();
     bool verifySharedContext();

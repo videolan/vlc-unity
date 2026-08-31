@@ -350,15 +350,6 @@ libvlc_unity_media_player_release(libvlc_media_player_t* mp)
 extern "C" bool UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API
 libvlc_unity_has_retired_renderers()
 {
-#if defined(UNITY_LINUX)
-    const UnityGfxRenderer renderer = s_DeviceType.load();
-    if (renderer == kUnityGfxRendererOpenGL ||
-        renderer == kUnityGfxRendererOpenGLCore ||
-        renderer == kUnityGfxRendererOpenGLES20 ||
-        renderer == kUnityGfxRendererOpenGLES30) {
-        return false;
-    }
-#endif
     return s_contexts.hasRetired();
 }
 
@@ -649,6 +640,10 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
             std::lock_guard<std::mutex> lock(context->callMutex);
             if (context->state != RenderAPIEntryState::Retired ||
                 !context->renderer) {
+                continue;
+            }
+            if (context->renderer->retirementRequiresExplicitCleanupEvent() &&
+                eventID != kRendererCleanupEvent) {
                 continue;
             }
             if (eventID == kVulkanQueueSubmissionEvent)

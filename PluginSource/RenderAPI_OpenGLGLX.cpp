@@ -441,6 +441,10 @@ bool RenderAPI_OpenGLGLX::hasRenderThreadContext() const
 
 void RenderAPI_OpenGLGLX::performRenderThreadWork()
 {
+    if (finishShutdownOnRenderThread()) {
+        shutdownInternal();
+        return;
+    }
     if (m_sharedContext) {
         if (hasRenderThreadContext())
             waitForSharedFrame();
@@ -467,14 +471,6 @@ void RenderAPI_OpenGLGLX::shutdownInternal()
     if (m_sharedContext &&
         (unityCurrent || previousContext == m_context || makeCurrent(true))) {
         releaseFrameSynchronization();
-        if (previousContext != m_context) {
-            if (previousContext) {
-                glXMakeContextCurrent(
-                    m_display, previousDraw, previousRead, previousContext);
-            } else {
-                glXMakeContextCurrent(m_display, None, None, nullptr);
-            }
-        }
     }
     abandonImports();
     if (m_producer) {
@@ -483,6 +479,12 @@ void RenderAPI_OpenGLGLX::shutdownInternal()
     }
     attach(nullptr);
     m_gbm.reset();
+    if (m_display && m_context && glXGetCurrentContext() == m_context)
+        glXMakeContextCurrent(m_display, None, None, nullptr);
+    if (m_display && previousContext && previousContext != m_context) {
+        glXMakeContextCurrent(
+            m_display, previousDraw, previousRead, previousContext);
+    }
     if (m_context)
         glXDestroyContext(m_display, m_context);
     if (m_pbuffer != None)

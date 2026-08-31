@@ -4,9 +4,16 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <mutex>
 
 class OpenGLWatermark;
+
+struct LinuxOpenGLContextIdentity
+{
+    uintptr_t handle = 0;
+    bool isEgl = false;
+};
 
 // Shared DMA-BUF to Unity texture-import machinery for the Linux OpenGL
 // backends (GLX and desktop EGL): watermark hooks, slot invalidation and
@@ -22,6 +29,11 @@ public:
     void attach(LinuxDMABufProducer* producer) { m_attachedProducer = producer; }
 
     void beginShutdown();
+    bool finishShutdownOnRenderThread();
+    bool canDestroy() const
+    {
+        return m_shutdownComplete.load(std::memory_order_acquire);
+    }
     void prepareImportsForPluginUnload();
 
     void abandonImports();
@@ -30,6 +42,8 @@ public:
 
 protected:
     virtual bool hasRenderThreadContext() const = 0;
+    virtual LinuxOpenGLContextIdentity currentRenderThreadContextIdentity()
+        const = 0;
 
     bool onProducerSetup() override;
     void onProducerCleanup() override;
@@ -60,4 +74,6 @@ private:
     std::mutex m_mutex;
     std::atomic<bool> m_imported { false };
     std::atomic<bool> m_shutdownRequested { false };
+    std::atomic<bool> m_shutdownComplete { false };
+    LinuxOpenGLContextIdentity m_importContext;
 };

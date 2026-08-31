@@ -15,9 +15,37 @@ LinuxOpenGLUnityImportManager::LinuxOpenGLUnityImportManager(
 
 void LinuxOpenGLUnityImportManager::beginShutdown()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
     m_shutdownRequested.store(true, std::memory_order_release);
-    abandonCurrentImportsLocked();
+}
+
+bool LinuxOpenGLUnityImportManager::finishShutdownOnRenderThread()
+{
+    if (!m_shutdownRequested.load(std::memory_order_acquire))
+        return false;
+    if (m_shutdownComplete.load(std::memory_order_acquire))
+        return true;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_shutdownComplete.load(std::memory_order_relaxed))
+        return true;
+    if (m_importContext.handle != 0) {
+        const LinuxOpenGLContextIdentity current =
+            currentRenderThreadContextIdentity();
+        if (current.handle == 0)
+            return false;
+        if (current.handle == m_importContext.handle &&
+            current.isEgl == m_importContext.isEgl) {
+            destroyImportsLocked(m_imports);
+        } else {
+            // Unity replaced the GL context (for example while leaving Play
+            // Mode). The old context owns those names and will destroy them;
+            // issuing deletes against the replacement could hit reused names.
+            abandonCurrentImportsLocked();
+        }
+    }
+    m_imported.store(false);
+    m_shutdownComplete.store(true, std::memory_order_release);
+    return true;
 }
 
 bool LinuxOpenGLUnityImportManager::onProducerSetup()
@@ -90,6 +118,7 @@ void LinuxOpenGLUnityImportManager::destroyImportsLocked(
             m_attachedProducer->deleteMemoryObjects()(1, &imported.memoryObject);
         imported = {};
     }
+    m_importContext = {};
 }
 
 void LinuxOpenGLUnityImportManager::abandonCurrentImportsLocked()
@@ -97,6 +126,7 @@ void LinuxOpenGLUnityImportManager::abandonCurrentImportsLocked()
     for (UnityImport& imported : m_imports)
         imported = {};
     m_imported.store(false);
+    m_importContext = {};
 }
 
 void LinuxOpenGLUnityImportManager::abandonImports()
@@ -108,6 +138,8 @@ void LinuxOpenGLUnityImportManager::abandonImports()
 void LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload()
 {
     beginShutdown();
+    abandonImports();
+    m_shutdownComplete.store(true, std::memory_order_release);
 }
 
 void LinuxOpenGLUnityImportManager::refresh()
@@ -129,6 +161,7 @@ void LinuxOpenGLUnityImportManager::refresh()
             return;
         }
     }
+    m_importContext = currentRenderThreadContextIdentity();
     m_imported.store(true);
 }
 

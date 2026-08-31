@@ -257,6 +257,7 @@ namespace LibVLCSharp
             _backgroundNativePlayer.Media?.Dispose();
             _backgroundNativePlayer.Dispose();
             _backgroundNativePlayer = null;
+            TextureHelper.QueueRendererCleanup();
 
             PreloadedMediaPath = null;
             _preloadedOptions = Array.Empty<string>();

@@ -198,6 +198,10 @@ bool RenderAPI_OpenGLLinuxEGL::hasRenderThreadContext() const
 
 void RenderAPI_OpenGLLinuxEGL::performRenderThreadWork()
 {
+    if (finishShutdownOnRenderThread()) {
+        releaseResources();
+        return;
+    }
     refresh();
 }
 
@@ -209,12 +213,33 @@ void* RenderAPI_OpenGLLinuxEGL::getVideoFrame(
 
 void RenderAPI_OpenGLLinuxEGL::releaseResources()
 {
+    const EGLDisplay previousEglDisplay = eglGetCurrentDisplay();
+    const EGLContext previousEglContext = eglGetCurrentContext();
+    const EGLSurface previousEglDraw = eglGetCurrentSurface(EGL_DRAW);
+    const EGLSurface previousEglRead = eglGetCurrentSurface(EGL_READ);
+    Display* previousGlxDisplay = glXGetCurrentDisplay();
+    const GLXContext previousGlxContext = glXGetCurrentContext();
+    const GLXDrawable previousGlxDraw = glXGetCurrentDrawable();
+    const GLXDrawable previousGlxRead = glXGetCurrentReadDrawable();
+
     abandonImports();
     if (m_producer) {
         m_producer->release();
         m_producer.reset();
     }
     attach(nullptr);
+    if (m_context != EGL_NO_CONTEXT && eglGetCurrentContext() == m_context) {
+        eglMakeCurrent(
+            m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    }
+    if (previousEglContext != EGL_NO_CONTEXT &&
+        previousEglContext != m_context) {
+        eglMakeCurrent(previousEglDisplay, previousEglDraw,
+                       previousEglRead, previousEglContext);
+    } else if (previousGlxContext != nullptr && previousGlxDisplay != nullptr) {
+        glXMakeContextCurrent(previousGlxDisplay, previousGlxDraw,
+                              previousGlxRead, previousGlxContext);
+    }
     if (m_context != EGL_NO_CONTEXT)
         eglDestroyContext(m_display, m_context);
     if (m_surface != EGL_NO_SURFACE)
