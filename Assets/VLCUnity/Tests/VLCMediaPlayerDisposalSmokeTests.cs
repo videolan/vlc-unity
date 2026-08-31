@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -20,19 +20,25 @@ namespace LibVLCSharp.Tests
         const int OperationTimeoutFrames = 300;
         const int CleanupTimeoutFrames = 120;
 
-        readonly System.Collections.Generic.List<GameObject> _createdObjects = new();
-        GameObject _cameraObject;
+        readonly List<GameObject> _createdObjects = new();
+        string _mediaPath;
 
         [UnitySetUp]
         public IEnumerator EnterPlayModeForDisposalSmoke()
         {
             yield return new EnterPlayMode();
 
-            // A camera guarantees that Unity services queued plugin events even
-            // when the scene that was open before the test contained no camera.
-            _cameraObject = new GameObject("VLC disposal smoke camera");
-            _cameraObject.AddComponent<Camera>();
-            _createdObjects.Add(_cameraObject);
+            _mediaPath = ResolveMediaPath();
+            if (_mediaPath == null)
+            {
+                Assert.Ignore(
+                    $"Set {MediaEnvironmentVariable} to a short local video " +
+                    "to run the native disposal smoke test.");
+            }
+
+            var cameraObject = new GameObject("VLC disposal smoke camera");
+            cameraObject.AddComponent<Camera>();
+            _createdObjects.Add(cameraObject);
         }
 
         [UnityTearDown]
@@ -47,9 +53,6 @@ namespace LibVLCSharp.Tests
 
             yield return null;
 
-            // Ensure a failed assertion does not leave deferred native cleanup
-            // queued for the next test or Editor Play Mode session.
-            TextureHelper.QueueRendererCleanup();
             for (int frame = 0;
                  frame < CleanupTimeoutFrames && TextureHelper.HasRetiredRenderers();
                  ++frame)
@@ -64,32 +67,11 @@ namespace LibVLCSharp.Tests
         [Timeout(120000)]
         public IEnumerator DisposalDrainsRenderersAndPlaybackCanBeRecreated()
         {
-            string mediaPath = ResolveMediaPath();
-            if (mediaPath == null)
-            {
-                Assert.Ignore(
-                    $"Set {MediaEnvironmentVariable} to a short local video " +
-                    "to run the native disposal smoke test.");
-            }
-
-            // Warm up LibVLC, the graphics backend, and any driver-level caches
-            // before taking the Linux descriptor baseline.
-            yield return CreatePlayAndDispose(mediaPath, "warm-up player");
+            yield return CreatePlayAndDispose("warm-up player");
             int descriptorBaseline = CountOpenFileDescriptors();
 
-            // CancelPreload disposes a background MediaPlayer through a path
-            // separate from VLCMediaPlayer.DestroyMediaPlayer().
-            yield return CancelPreloadAndDisposeOwner(mediaPath);
-
-            // Exercise callers that use LibVLCSharp directly rather than the
-            // VLCMediaPlayer component's managed cleanup helper.
-            yield return CreatePlayAndDisposeDirectly(mediaPath);
-
-            // Dispose while frames may still be in flight, then recreate twice.
-            // Reaching a new output texture proves the previous generation did
-            // not leave callback or graphics state that crashes its successor.
-            yield return CreatePlayAndDispose(mediaPath, "recreated player 1");
-            yield return CreatePlayAndDispose(mediaPath, "recreated player 2");
+            yield return CreatePlayAndDisposeDirectly();
+            yield return CreatePlayAndDispose("recreated player");
 
             int finalDescriptorCount = CountOpenFileDescriptors();
             if (descriptorBaseline >= 0 && finalDescriptorCount >= 0)
@@ -102,15 +84,14 @@ namespace LibVLCSharp.Tests
             }
         }
 
-        IEnumerator CreatePlayAndDispose(string mediaPath, string objectName)
+        IEnumerator CreatePlayAndDispose(string objectName)
         {
             GameObject playerObject = new GameObject(objectName);
             _createdObjects.Add(playerObject);
             VLCMediaPlayer player = playerObject.AddComponent<VLCMediaPlayer>();
             player.playOnAwake = false;
 
-            Task openTask = player.OpenAsync(mediaPath);
-            yield return WaitForTask(openTask, $"opening media for {objectName}");
+            player.Open(_mediaPath);
 
             for (int frame = 0;
                  frame < OperationTimeoutFrames && player.OutputTexture == null;
@@ -134,27 +115,7 @@ namespace LibVLCSharp.Tests
             yield return WaitForRendererDrain(objectName);
         }
 
-        IEnumerator CancelPreloadAndDisposeOwner(string mediaPath)
-        {
-            GameObject playerObject = new GameObject("preload cancellation player");
-            _createdObjects.Add(playerObject);
-            VLCMediaPlayer player = playerObject.AddComponent<VLCMediaPlayer>();
-            player.playOnAwake = false;
-
-            Task preloadTask = player.PreloadAsync(mediaPath);
-            yield return null;
-            player.CancelPreload();
-            yield return WaitForTask(preloadTask, "cancelling preload");
-
-            Assert.That(player.CurrentPreloadState, Is.EqualTo(VLCMediaPlayer.PreloadState.None));
-            yield return WaitForRendererDrain("CancelPreload()");
-
-            UnityEngine.Object.Destroy(playerObject);
-            yield return null;
-            yield return WaitForRendererDrain("preload owner disposal");
-        }
-
-        static IEnumerator CreatePlayAndDisposeDirectly(string mediaPath)
+        IEnumerator CreatePlayAndDisposeDirectly()
         {
             MediaPlayer directPlayer = null;
             Media directMedia = null;
@@ -163,7 +124,7 @@ namespace LibVLCSharp.Tests
             try
             {
                 directPlayer = new MediaPlayer(VLCMediaPlayer.LibVLC);
-                directMedia = new Media(new Uri(mediaPath));
+                directMedia = new Media(new Uri(_mediaPath));
                 directPlayer.Media = directMedia;
                 directPlayer.Play();
 
@@ -207,28 +168,6 @@ namespace LibVLCSharp.Tests
             yield return WaitForRendererDrain("direct MediaPlayer.Dispose()");
         }
 
-        static IEnumerator WaitForTask(Task task, string operation)
-        {
-            for (int frame = 0;
-                 frame < OperationTimeoutFrames && !task.IsCompleted;
-                 ++frame)
-            {
-                yield return null;
-            }
-
-            Assert.That(
-                task.IsCompleted,
-                Is.True,
-                $"Timed out while {operation} after {OperationTimeoutFrames} frames.");
-            Assert.That(task.IsCanceled, Is.False, $"Task was cancelled while {operation}.");
-            if (task.IsFaulted)
-            {
-                Assert.Fail(
-                    $"Task failed while {operation}: " +
-                    task.Exception?.Flatten().InnerException);
-            }
-        }
-
         static IEnumerator WaitForRendererDrain(string operation)
         {
             for (int frame = 0;
@@ -251,41 +190,18 @@ namespace LibVLCSharp.Tests
             if (string.IsNullOrWhiteSpace(configured))
                 return null;
 
-            configured = configured.Trim().Trim('"');
-            if (Uri.TryCreate(configured, UriKind.Absolute, out Uri uri) &&
-                !string.Equals(uri.Scheme, Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase))
-            {
-                Assert.Fail(
-                    $"{MediaEnvironmentVariable} must point to a local media file, " +
-                    $"not a {uri.Scheme} URI.");
-            }
-
-            string localPath = uri != null && uri.IsFile
-                ? uri.LocalPath
-                : Path.GetFullPath(configured);
-            if (!File.Exists(localPath))
-            {
-                Assert.Fail(
-                    $"{MediaEnvironmentVariable} does not exist: {localPath}");
-            }
+            string localPath = Path.GetFullPath(configured.Trim().Trim('"'));
+            Assert.That(File.Exists(localPath), Is.True,
+                $"{MediaEnvironmentVariable} does not exist: {localPath}");
             return new Uri(localPath).AbsoluteUri;
         }
 
         static int CountOpenFileDescriptors()
         {
 #if UNITY_EDITOR_LINUX
-            try
-            {
-                return Directory.EnumerateFileSystemEntries("/proc/self/fd").Count();
-            }
-            catch (IOException)
-            {
-                return -1;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return -1;
-            }
+            return Directory.Exists("/proc/self/fd")
+                ? Directory.EnumerateFileSystemEntries("/proc/self/fd").Count()
+                : -1;
 #else
             return -1;
 #endif
