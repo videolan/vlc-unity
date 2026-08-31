@@ -33,11 +33,6 @@ public:
     {
         return LinuxOpenGLUnityImportManager::canDestroy();
     }
-    bool retirementRequiresExplicitCleanupEvent() const override
-    {
-        return true;
-    }
-
     static void* get_proc_address_desktop(void* data, const char* name);
 
     bool producerMakeCurrent(bool current) override { return makeCurrent(current); }

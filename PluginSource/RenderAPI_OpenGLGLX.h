@@ -40,11 +40,6 @@ public:
     {
         return LinuxOpenGLUnityImportManager::canDestroy();
     }
-    bool retirementRequiresExplicitCleanupEvent() const override
-    {
-        return true;
-    }
-
     static void* get_proc_address(void*, const char* name);
     bool producerMakeCurrent(bool current) override { return makeCurrent(current); }
     void* producerLoadProc(const char* name) override

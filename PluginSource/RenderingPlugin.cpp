@@ -642,14 +642,15 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
                 !context->renderer) {
                 continue;
             }
-            if (context->renderer->retirementRequiresExplicitCleanupEvent() &&
-                eventID != kRendererCleanupEvent) {
+            if (eventID == kVulkanQueueSubmissionEvent) {
+                context->renderer->performQueueSubmissionWork();
                 continue;
             }
-            if (eventID == kVulkanQueueSubmissionEvent)
-                context->renderer->performQueueSubmissionWork();
-            else
-                context->renderer->performRenderThreadWork();
+            if (eventID != kRendererCleanupEvent)
+                continue;
+            if (!context->observeCleanupEvent())
+                continue;
+            context->renderer->performRenderThreadWork();
             if (context->renderer->canDestroy()) {
                 context->state = RenderAPIEntryState::Destroying;
                 remove = true;

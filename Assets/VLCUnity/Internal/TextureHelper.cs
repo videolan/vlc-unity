@@ -56,11 +56,6 @@ namespace LibVLCSharp
             return HasRetiredRenderersNative();
         }
 
-        internal static void QueueRendererCleanup()
-        {
-            OnLoad.RequestRendererCleanup();
-        }
-
         internal static void QueueRendererCleanupEvent()
         {
 #if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX || UNITY_EMBEDDED_LINUX

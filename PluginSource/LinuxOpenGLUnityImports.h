@@ -2,6 +2,7 @@
 
 #include "LinuxDMABufProducer.h"
 
+#include <GL/glx.h>
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -13,6 +14,51 @@ struct LinuxOpenGLContextIdentity
 {
     uintptr_t handle = 0;
     bool isEgl = false;
+};
+
+// Restores whichever Unity OpenGL context was current after a backend briefly
+// activates and destroys its private producer context.
+class ScopedLinuxOpenGLContextRestore
+{
+public:
+    ScopedLinuxOpenGLContextRestore(GLXContext privateGlx,
+                                    EGLContext privateEgl)
+        : m_privateGlx(privateGlx), m_privateEgl(privateEgl),
+          m_eglDisplay(eglGetCurrentDisplay()),
+          m_eglContext(eglGetCurrentContext()),
+          m_eglDraw(eglGetCurrentSurface(EGL_DRAW)),
+          m_eglRead(eglGetCurrentSurface(EGL_READ)),
+          m_glxDisplay(glXGetCurrentDisplay()),
+          m_glxContext(glXGetCurrentContext()),
+          m_glxDraw(glXGetCurrentDrawable()),
+          m_glxRead(glXGetCurrentReadDrawable())
+    {
+    }
+
+    ~ScopedLinuxOpenGLContextRestore()
+    {
+        if (m_eglContext != EGL_NO_CONTEXT && m_eglContext != m_privateEgl) {
+            eglMakeCurrent(m_eglDisplay, m_eglDraw, m_eglRead, m_eglContext);
+        } else if (m_glxContext && m_glxContext != m_privateGlx &&
+                   m_glxDisplay) {
+            glXMakeContextCurrent(
+                m_glxDisplay, m_glxDraw, m_glxRead, m_glxContext);
+        }
+    }
+
+    GLXContext glxContext() const { return m_glxContext; }
+
+private:
+    GLXContext m_privateGlx;
+    EGLContext m_privateEgl;
+    EGLDisplay m_eglDisplay;
+    EGLContext m_eglContext;
+    EGLSurface m_eglDraw;
+    EGLSurface m_eglRead;
+    Display* m_glxDisplay;
+    GLXContext m_glxContext;
+    GLXDrawable m_glxDraw;
+    GLXDrawable m_glxRead;
 };
 
 // Shared DMA-BUF to Unity texture-import machinery for the Linux OpenGL
@@ -30,10 +76,7 @@ public:
 
     void beginShutdown();
     bool finishShutdownOnRenderThread();
-    bool canDestroy() const
-    {
-        return m_shutdownComplete.load(std::memory_order_acquire);
-    }
+    bool canDestroy() const { return m_shutdownComplete; }
     void prepareImportsForPluginUnload();
 
     void abandonImports();
@@ -73,7 +116,8 @@ private:
     std::array<UnityImport, LinuxDMABufProducer::SlotCount> m_imports;
     std::mutex m_mutex;
     std::atomic<bool> m_imported { false };
-    std::atomic<bool> m_shutdownRequested { false };
-    std::atomic<bool> m_shutdownComplete { false };
+    // Renderer lifecycle calls are serialized by RenderAPIEntry::callMutex.
+    bool m_shutdownRequested = false;
+    bool m_shutdownComplete = false;
     LinuxOpenGLContextIdentity m_importContext;
 };

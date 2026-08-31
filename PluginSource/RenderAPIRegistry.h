@@ -26,10 +26,24 @@ struct RenderAPIEntry
     {
     }
 
+    // The first cleanup event only establishes a Unity render boundary after
+    // disposal. A later event may release renderer-owned graphics resources.
+    bool observeCleanupEvent()
+    {
+        if (!m_cleanupEventObserved) {
+            m_cleanupEventObserved = true;
+            return false;
+        }
+        return true;
+    }
+
     libvlc_media_player_t* mediaPlayer = nullptr;
     std::unique_ptr<RenderAPI> renderer;
     std::mutex callMutex;
     RenderAPIEntryState state = RenderAPIEntryState::Active;
+
+private:
+    bool m_cleanupEventObserved = false;
 };
 
 using RenderAPIEntryPtr = std::shared_ptr<RenderAPIEntry>;

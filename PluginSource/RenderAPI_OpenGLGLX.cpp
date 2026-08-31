@@ -463,27 +463,25 @@ void* RenderAPI_OpenGLGLX::getVideoFrame(
 
 void RenderAPI_OpenGLGLX::shutdownInternal()
 {
-    const bool unityCurrent = s_unityContext &&
-                              glXGetCurrentContext() == s_unityContext;
-    const GLXContext previousContext = glXGetCurrentContext();
-    const GLXDrawable previousDraw = glXGetCurrentDrawable();
-    const GLXDrawable previousRead = glXGetCurrentReadDrawable();
-    if (m_sharedContext &&
-        (unityCurrent || previousContext == m_context || makeCurrent(true))) {
-        releaseFrameSynchronization();
-    }
-    abandonImports();
-    if (m_producer) {
-        m_producer->release();
-        m_producer.reset();
-    }
-    attach(nullptr);
-    m_gbm.reset();
-    if (m_display && m_context && glXGetCurrentContext() == m_context)
-        glXMakeContextCurrent(m_display, None, None, nullptr);
-    if (m_display && previousContext && previousContext != m_context) {
-        glXMakeContextCurrent(
-            m_display, previousDraw, previousRead, previousContext);
+    {
+        ScopedLinuxOpenGLContextRestore restoreContext(
+            m_context, EGL_NO_CONTEXT);
+        const bool unityCurrent = s_unityContext &&
+                                  glXGetCurrentContext() == s_unityContext;
+        if (m_sharedContext &&
+            (unityCurrent || restoreContext.glxContext() == m_context ||
+             makeCurrent(true))) {
+            releaseFrameSynchronization();
+        }
+        abandonImports();
+        if (m_producer) {
+            m_producer->release();
+            m_producer.reset();
+        }
+        attach(nullptr);
+        m_gbm.reset();
+        if (m_display && m_context && glXGetCurrentContext() == m_context)
+            glXMakeContextCurrent(m_display, None, None, nullptr);
     }
     if (m_context)
         glXDestroyContext(m_display, m_context);

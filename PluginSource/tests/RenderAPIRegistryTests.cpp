@@ -60,6 +60,10 @@ void testRetirementKeepsSnapshotsAlive()
         retired->state = RenderAPIEntryState::Retired;
     }
     check(registry.hasRetired(), "completed retirement must remain drainable");
+    check(!retired->observeCleanupEvent(),
+          "first cleanup event must only establish the render boundary");
+    check(retired->observeCleanupEvent(),
+          "a later cleanup event must make retirement eligible");
 
     std::weak_ptr<RenderAPIEntry> lifetime = retired;
     {

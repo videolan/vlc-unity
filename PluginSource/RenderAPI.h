@@ -47,10 +47,6 @@ public:
     // deferred GPU ownership must detach or delegate that ownership here so
     // their destructor is safe and deterministic.
     virtual void prepareForPluginUnload() { beginShutdown(); }
-    virtual bool retirementRequiresExplicitCleanupEvent() const
-    {
-        return false;
-    }
     virtual bool canDestroy() const { return true; }
     virtual bool isInitialized() const { return true; }
     virtual void setColorSpace(int color_space) {

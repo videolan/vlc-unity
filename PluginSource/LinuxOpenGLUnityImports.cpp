@@ -15,19 +15,17 @@ LinuxOpenGLUnityImportManager::LinuxOpenGLUnityImportManager(
 
 void LinuxOpenGLUnityImportManager::beginShutdown()
 {
-    m_shutdownRequested.store(true, std::memory_order_release);
+    m_shutdownRequested = true;
 }
 
 bool LinuxOpenGLUnityImportManager::finishShutdownOnRenderThread()
 {
-    if (!m_shutdownRequested.load(std::memory_order_acquire))
+    if (!m_shutdownRequested)
         return false;
-    if (m_shutdownComplete.load(std::memory_order_acquire))
+    if (m_shutdownComplete)
         return true;
 
     std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_shutdownComplete.load(std::memory_order_relaxed))
-        return true;
     if (m_importContext.handle != 0) {
         const LinuxOpenGLContextIdentity current =
             currentRenderThreadContextIdentity();
@@ -44,7 +42,7 @@ bool LinuxOpenGLUnityImportManager::finishShutdownOnRenderThread()
         }
     }
     m_imported.store(false);
-    m_shutdownComplete.store(true, std::memory_order_release);
+    m_shutdownComplete = true;
     return true;
 }
 
@@ -139,7 +137,7 @@ void LinuxOpenGLUnityImportManager::prepareImportsForPluginUnload()
 {
     beginShutdown();
     abandonImports();
-    m_shutdownComplete.store(true, std::memory_order_release);
+    m_shutdownComplete = true;
 }
 
 void LinuxOpenGLUnityImportManager::refresh()
@@ -147,7 +145,7 @@ void LinuxOpenGLUnityImportManager::refresh()
     std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
     if (!lock.owns_lock() || !hasRenderThreadContext())
         return;
-    if (m_shutdownRequested.load(std::memory_order_acquire))
+    if (m_shutdownRequested)
         return;
 
     if (!m_attachedProducer || m_attachedProducer->width() == 0 || m_imported.load())
