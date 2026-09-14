@@ -16,7 +16,6 @@ namespace LibVLCSharp
         private CanvasGroup _canvasGroup;
         private VLCMediaPlayer _currentPlayer;
         private float _targetAlpha;
-        private string _timeFormat = @"mm\:ss";
 
         private void Awake()
         {
@@ -35,7 +34,8 @@ namespace LibVLCSharp
             if (_currentPlayer != player)
             {
                 _currentPlayer = player;
-                UpdateStaticInfo(title);
+                titleText.text = title.ToUpper();
+                UpdateDynamicInfo();
             }
         }
 
@@ -71,26 +71,17 @@ namespace LibVLCSharp
             promptText.color = isFocused ? new Color32(231, 76, 60, 255) : new Color32(46, 204, 113, 255);
         }
 
-        private void UpdateStaticInfo(string title)
-        {
-            titleText.text = title.ToUpper();
-
-            var tracks = _currentPlayer.Tracks(TrackType.Video);
-            if (tracks != null && tracks.Count > 0)
-            {
-                var videoTrack = tracks[0].Data.Video;
-                resolutionText.text = $"{videoTrack.Width}x{videoTrack.Height}";
-            }
-
-            _timeFormat = _currentPlayer.Duration >= 3600000 ? @"hh\:mm\:ss" : @"mm\:ss";
-        }
-
         private void UpdateDynamicInfo()
         {
+            var texture = _currentPlayer.OutputTexture;
+            resolutionText.text = texture != null ? $"{texture.width}x{texture.height}" : string.Empty;
+
             TimeSpan currentTime = TimeSpan.FromMilliseconds(_currentPlayer.Time);
             TimeSpan totalTime = TimeSpan.FromMilliseconds(_currentPlayer.Duration);
+            string timeFormat = currentTime.TotalHours >= 1 || totalTime.TotalHours >= 1
+                ? @"hh\:mm\:ss" : @"mm\:ss";
 
-            timeText.text = $"{currentTime.ToString(_timeFormat)} / {totalTime.ToString(_timeFormat)}";
+            timeText.text = $"{currentTime.ToString(timeFormat)} / {totalTime.ToString(timeFormat)}";
             statusText.text = _currentPlayer.CurrentState.ToString().ToUpper();
         }
     }
