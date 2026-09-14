@@ -17,28 +17,63 @@ namespace LibVLCSharp
             _cameraTransform = Camera.main.transform;
         }
 
+        private void OnEnable()
+        {
+            Bind();
+        }
+
+        private void OnDisable()
+        {
+            Unbind();
+        }
+
         public void Focus(VLCMediaPlayer player)
         {
             if (CurrentPlayer == player)
                 return;
 
+            Unbind();
             CurrentPlayer = player;
 
             visualRoot.SetActive(true);
             displayMesh.MediaPlayer = player;
 
-            if (player != null && player.OutputTexture != null)
-            {
-                float aspect = (float)player.OutputTexture.width / player.OutputTexture.height;
-                displayMesh.transform.localScale = new Vector3(screenHeight * aspect, screenHeight, 1f);
-            }
+            if (isActiveAndEnabled)
+                Bind();
         }
 
         public void Unfocus()
         {
+            Unbind();
             visualRoot.SetActive(false);
             displayMesh.MediaPlayer = null;
             CurrentPlayer = null;
+        }
+
+        private void Bind()
+        {
+            // Activating visualRoot in Focus can also invoke OnEnable.
+            Unbind();
+            if (CurrentPlayer == null)
+                return;
+
+            CurrentPlayer.OnTextureResized += UpdateScreenShape;
+            UpdateScreenShape(CurrentPlayer.OutputTexture);
+        }
+
+        private void Unbind()
+        {
+            if (CurrentPlayer != null)
+                CurrentPlayer.OnTextureResized -= UpdateScreenShape;
+        }
+
+        private void UpdateScreenShape(RenderTexture texture)
+        {
+            if (texture == null)
+                return;
+
+            float aspect = (float)texture.width / texture.height;
+            displayMesh.transform.localScale = new Vector3(screenHeight * aspect, screenHeight, 1f);
         }
 
         private void Update()
