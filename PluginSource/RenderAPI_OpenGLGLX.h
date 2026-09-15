@@ -13,7 +13,7 @@ class RenderAPI_OpenGLGLX final : public RenderAPI_OpenGLBase,
                                   public LinuxOpenGLUnityImportManager
 {
 public:
-    explicit RenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
+    explicit RenderAPI_OpenGLGLX(UnityGfxRenderer apiType, LinuxVideoOutput* output);
     ~RenderAPI_OpenGLGLX() override;
 
     void setVlcContext(libvlc_media_player_t* mp) override;
@@ -48,6 +48,7 @@ public:
     }
 
 private:
+    LinuxVideoOutput* m_output;
     bool hasRenderThreadContext() const override;
     LinuxOpenGLContextIdentity currentRenderThreadContextIdentity()
         const override

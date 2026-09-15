@@ -11,19 +11,19 @@
 
 bool RenderAPI_OpenGLLinuxEGL::s_unityContextReady = false;
 
-RenderAPI* CreateRenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType)
+RenderAPI* CreateRenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType, LinuxVideoOutput* output)
 {
-    return new RenderAPI_OpenGLLinuxEGL(apiType);
+    return new RenderAPI_OpenGLLinuxEGL(apiType, output);
 }
 
-RenderAPI_OpenGLLinuxEGL::RenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType)
+RenderAPI_OpenGLLinuxEGL::RenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType, LinuxVideoOutput* output)
     : RenderAPI_OpenEGL(apiType),
       LinuxOpenGLUnityImportManager(
           "EGL-Linux", *this
 #if defined(SHOW_WATERMARK)
           , &watermark
 #endif
-      )
+      ), m_output(output)
 {
     m_display = EGL_NO_DISPLAY;
     m_surface = EGL_NO_SURFACE;
@@ -163,10 +163,11 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(
         if (pending)
             setVlcContext(pending);
     } else if (type == kUnityGfxDeviceEventShutdown) {
-        if (m_mp && m_pendingPlayer != m_mp && m_producer)
+        if (!m_output && m_mp && m_pendingPlayer != m_mp && m_producer)
             m_producer->unsetVlcContext(m_mp);
         m_pendingPlayer = m_mp;
         releaseResources();
+        s_unityContextReady = false;
     }
 }
 
@@ -182,12 +183,17 @@ void RenderAPI_OpenGLLinuxEGL::setVlcContext(libvlc_media_player_t* mp)
         return;
     }
     m_pendingPlayer = nullptr;
-    if (!m_producer->setVlcContext(mp))
+    if (!m_producer->setVlcContext(mp, m_output))
         DEBUG("[EGL-Linux] failed to register shared DMA-BUF producer callbacks");
 }
 
 void RenderAPI_OpenGLLinuxEGL::unsetVlcContext(libvlc_media_player_t* mp)
 {
+    if (m_output) {
+        m_pendingPlayer = nullptr;
+        m_mp = nullptr;
+        return;
+    }
     if (m_pendingPlayer == mp)
         m_pendingPlayer = nullptr;
     else if (m_producer)

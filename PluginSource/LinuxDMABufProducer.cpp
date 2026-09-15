@@ -256,10 +256,15 @@ bool LinuxDMABufProducer::probe(unsigned probeWidth, unsigned probeHeight)
     return result;
 }
 
-bool LinuxDMABufProducer::setVlcContext(libvlc_media_player_t* mediaPlayer)
+bool LinuxDMABufProducer::setVlcContext(libvlc_media_player_t* mediaPlayer, LinuxVideoOutput* output)
 {
     if (!m_initialized || !mediaPlayer)
         return false;
+    if (output) {
+        output->configure({setupCallback, cleanupCallback, resizeCallback,
+            swapCallback, makeCurrentCallback, getProcCallback, this});
+        return true;
+    }
     return libvlc_video_set_output_callbacks(
         mediaPlayer, libvlc_video_engine_opengl, setupCallback, cleanupCallback,
         nullptr, resizeCallback, swapCallback, makeCurrentCallback,

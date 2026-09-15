@@ -26,25 +26,8 @@ RenderAPI* CreateRenderAPI(UnityGfxRenderer apiType)
         extern RenderAPI* CreateRenderAPI_Android(UnityGfxRenderer apiType);
 		return CreateRenderAPI_Android(apiType);
 #elif defined(UNITY_LINUX)
-        {
-            const char* backendOverride = getenv("VLC_UNITY_LINUX_OPENGL_BACKEND");
-            const LinuxOpenGLBackend backend = LinuxChooseOpenGLBackend(
-                backendOverride, getenv("DISPLAY"), getenv("WAYLAND_DISPLAY"));
-            if (!LinuxIsOpenGLBackendOverrideValid(backendOverride)) {
-                DEBUG("[Linux] ignoring invalid VLC_UNITY_LINUX_OPENGL_BACKEND=%s",
-                      backendOverride);
-            }
-            DEBUG("[Linux] selected %s OpenGL interop backend (DISPLAY=%s, WAYLAND_DISPLAY=%s)",
-                  LinuxOpenGLBackendName(backend),
-                  getenv("DISPLAY") ? getenv("DISPLAY") : "",
-                  getenv("WAYLAND_DISPLAY") ? getenv("WAYLAND_DISPLAY") : "");
-            if (backend == LinuxOpenGLBackend::EGL) {
-                extern RenderAPI* CreateRenderAPI_OpenGLLinuxEGL(UnityGfxRenderer apiType);
-                return CreateRenderAPI_OpenGLLinuxEGL(apiType);
-            }
-        }
-        extern RenderAPI* CreateRenderAPI_OpenGLGLX(UnityGfxRenderer apiType);
-        return CreateRenderAPI_OpenGLGLX(apiType);
+        extern RenderAPI* CreateRenderAPI_LinuxOpenGL(UnityGfxRenderer apiType);
+        return CreateRenderAPI_LinuxOpenGL(apiType);
 #endif
 	}
 #endif // if SUPPORT_OPENGL_UNIFIED

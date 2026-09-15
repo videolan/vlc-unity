@@ -31,15 +31,17 @@ void touch(const std::string& path)
 
 void testBackendSelection()
 {
-    check(LinuxChooseOpenGLBackend(nullptr, ":0", "wayland-0") == LinuxOpenGLBackend::GLX,
-          "XWayland must prefer GLX when DISPLAY is present");
-    check(LinuxChooseOpenGLBackend(nullptr, nullptr, "wayland-0") == LinuxOpenGLBackend::EGL,
-          "native Wayland must use EGL");
-    check(LinuxChooseOpenGLBackend("egl", ":0", "wayland-0") == LinuxOpenGLBackend::EGL,
+    check(LinuxChooseOpenGLBackend(nullptr, LinuxOpenGLBackend::Unknown) == LinuxOpenGLBackend::Unknown,
+          "automatic selection must wait for a captured Unity context");
+    check(LinuxChooseOpenGLBackend(nullptr, LinuxOpenGLBackend::GLX) == LinuxOpenGLBackend::GLX,
+          "a captured GLX context must use GLX, including GLES and XWayland");
+    check(LinuxChooseOpenGLBackend(nullptr, LinuxOpenGLBackend::EGL) == LinuxOpenGLBackend::EGL,
+          "a captured EGL context must use EGL even if DISPLAY is set");
+    check(LinuxChooseOpenGLBackend("egl", LinuxOpenGLBackend::GLX) == LinuxOpenGLBackend::EGL,
           "explicit EGL override must win");
-    check(LinuxChooseOpenGLBackend("GLX", nullptr, "wayland-0") == LinuxOpenGLBackend::GLX,
+    check(LinuxChooseOpenGLBackend("GLX", LinuxOpenGLBackend::Unknown) == LinuxOpenGLBackend::GLX,
           "backend override must be case insensitive");
-    check(LinuxChooseOpenGLBackend("invalid", ":0", "wayland-0") == LinuxOpenGLBackend::GLX,
+    check(LinuxChooseOpenGLBackend("invalid", LinuxOpenGLBackend::EGL) == LinuxOpenGLBackend::EGL,
           "invalid override must fall back to automatic selection");
     check(LinuxIsOpenGLBackendOverrideValid(nullptr),
           "missing backend override must be valid");

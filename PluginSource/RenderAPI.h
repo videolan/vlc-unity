@@ -49,6 +49,7 @@ public:
     virtual void prepareForPluginUnload() { beginShutdown(); }
     virtual bool canDestroy() const { return true; }
     virtual bool isInitialized() const { return true; }
+    virtual bool hasVideoOutputFailure() const { return false; }
     virtual void setColorSpace(int color_space) {
         (void)color_space;
     }

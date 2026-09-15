@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LinuxVideoOutput.h"
+
 #include "LinuxGBMDevice.h"
 #include "RenderAPI_OpenGLLinuxDMABuf.h"
 
@@ -82,7 +84,7 @@ public:
 
     bool initialize();
     bool probe(unsigned width = 64, unsigned height = 64);
-    bool setVlcContext(libvlc_media_player_t* mediaPlayer);
+    bool setVlcContext(libvlc_media_player_t* mediaPlayer, LinuxVideoOutput* output = nullptr);
     void unsetVlcContext(libvlc_media_player_t* mediaPlayer);
     void release();
 

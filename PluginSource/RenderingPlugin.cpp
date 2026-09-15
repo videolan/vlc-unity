@@ -303,6 +303,10 @@ libvlc_unity_media_player_new(libvlc_instance_t* libvlc,
     DEBUG("Calling... setVlcContext s_CurrentAPI=%p mp=%p", currentAPI.get(), mp);
     currentAPI->setVlcContext(mp);
     vlcContextSet = true;
+    if (currentAPI->hasVideoOutputFailure()) {
+        DEBUG("Unable to install Unity video output, refusing standalone fallback");
+        goto err;
+    }
 
     if (!s_contexts.insert(mp, std::move(currentAPI))) {
         DEBUG("Renderer registry rejected a duplicate media player");

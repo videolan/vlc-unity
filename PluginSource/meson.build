@@ -44,6 +44,8 @@ linux_egl_sources = files(
 )
 
 linux_graphics_interop_sources = files(
+    'RenderAPI_LinuxOpenGL.cpp',
+    'LinuxVideoOutput.h',
     'LinuxGraphicsInterop.cpp',
     'LinuxGraphicsInterop.h',
     'LinuxGBMDevice.cpp',
@@ -244,6 +246,15 @@ vlc_unity_plugin = library(
 )
 
 if host_system == 'linux'
+    linux_video_output_tests = executable(
+        'linux-video-output-tests',
+        files('Log.cpp', 'tests/LinuxVideoOutputTests.cpp'),
+        include_directories: plugin_include_dirs,
+        dependencies: [libvlc_dep.partial_dependency(compile_args: true, includes: true), dependency('threads')],
+        cpp_args: ['-DUNITY_LINUX=1'],
+    )
+    test('linux-video-output', linux_video_output_tests)
+
     render_api_registry_tests = executable(
         'render-api-registry-tests',
         files(

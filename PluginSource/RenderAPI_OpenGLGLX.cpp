@@ -71,19 +71,19 @@ GLXErrorTrap* GLXErrorTrap::s_active = nullptr;
 
 } // namespace
 
-RenderAPI* CreateRenderAPI_OpenGLGLX(UnityGfxRenderer apiType)
+RenderAPI* CreateRenderAPI_OpenGLGLX(UnityGfxRenderer apiType, LinuxVideoOutput* output)
 {
-    return new RenderAPI_OpenGLGLX(apiType);
+    return new RenderAPI_OpenGLGLX(apiType, output);
 }
 
-RenderAPI_OpenGLGLX::RenderAPI_OpenGLGLX(UnityGfxRenderer apiType)
+RenderAPI_OpenGLGLX::RenderAPI_OpenGLGLX(UnityGfxRenderer apiType, LinuxVideoOutput* output)
     : RenderAPI_OpenGLBase(apiType),
       LinuxOpenGLUnityImportManager(
           "GLX", *this
 #if defined(SHOW_WATERMARK)
           , &watermark
 #endif
-      )
+      ), m_output(output)
 {
 }
 
@@ -336,7 +336,7 @@ void RenderAPI_OpenGLGLX::ProcessDeviceEvent(
         if (pending)
             setVlcContext(pending);
     } else if (type == kUnityGfxDeviceEventShutdown) {
-        if (m_mp && m_pendingPlayer != m_mp) {
+        if (!m_output && m_mp && m_pendingPlayer != m_mp) {
             if (m_sharedContext) {
                 libvlc_video_set_output_callbacks(
                     m_mp, libvlc_video_engine_disable, nullptr, nullptr,
@@ -368,17 +368,25 @@ void RenderAPI_OpenGLGLX::setVlcContext(libvlc_media_player_t* mp)
     }
     m_pendingPlayer = nullptr;
     if (m_sharedContext) {
-        libvlc_video_set_output_callbacks(
+        if (m_output)
+            m_output->configure({setup, cleanup, resize, sharedSwap,
+                staticMakeCurrent, get_proc_address, this});
+        else libvlc_video_set_output_callbacks(
             mp, libvlc_video_engine_opengl, setup, cleanup, nullptr, resize,
             sharedSwap, staticMakeCurrent, get_proc_address,
             nullptr, nullptr, this);
-    } else if (!m_producer->setVlcContext(mp)) {
+    } else if (!m_producer->setVlcContext(mp, m_output)) {
         DEBUG("[GLX] failed to register shared DMA-BUF producer callbacks");
     }
 }
 
 void RenderAPI_OpenGLGLX::unsetVlcContext(libvlc_media_player_t* mp)
 {
+    if (m_output) {
+        m_pendingPlayer = nullptr;
+        m_mp = nullptr;
+        return; // The owner cancels the stable output callbacks.
+    }
     if (m_pendingPlayer == mp)
         m_pendingPlayer = nullptr;
     else if (m_sharedContext) {

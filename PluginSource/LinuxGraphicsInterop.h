@@ -7,6 +7,7 @@
 
 enum class LinuxOpenGLBackend
 {
+    Unknown,
     GLX,
     EGL,
 };
@@ -40,11 +41,11 @@ struct LinuxDrmMatchResult
 };
 
 // Select the backend used to interoperate with Unity's OpenGL context.
-// Unity normally uses GLX when DISPLAY is present, including under XWayland.
+// Until Unity's render-thread binding is captured, automatic selection must
+// remain unknown. Display environment variables and GLES do not identify it.
 // The explicit override accepts "glx" or "egl".
 LinuxOpenGLBackend LinuxChooseOpenGLBackend(const char* overrideValue,
-                                            const char* x11Display,
-                                            const char* waylandDisplay);
+                                            LinuxOpenGLBackend unityBinding);
 
 const char* LinuxOpenGLBackendName(LinuxOpenGLBackend backend);
 bool LinuxIsOpenGLBackendOverrideValid(const char* overrideValue);

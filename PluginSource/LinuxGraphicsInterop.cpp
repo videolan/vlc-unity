@@ -85,27 +85,20 @@ std::string joinPath(const std::string& directory, const char* name)
 } // namespace
 
 LinuxOpenGLBackend LinuxChooseOpenGLBackend(const char* overrideValue,
-                                            const char* x11Display,
-                                            const char* waylandDisplay)
+                                            LinuxOpenGLBackend unityBinding)
 {
     if (equalsIgnoreCase(overrideValue, "egl"))
         return LinuxOpenGLBackend::EGL;
     if (equalsIgnoreCase(overrideValue, "glx"))
         return LinuxOpenGLBackend::GLX;
 
-    // A Wayland desktop still exports WAYLAND_DISPLAY to XWayland clients.
-    // DISPLAY tells us that Unity can use GLX, which permits direct context
-    // sharing and avoids cross-driver DMA-BUF imports.
-    if (hasValue(x11Display))
-        return LinuxOpenGLBackend::GLX;
-    if (hasValue(waylandDisplay))
-        return LinuxOpenGLBackend::EGL;
-    return LinuxOpenGLBackend::GLX;
+    return unityBinding;
 }
 
 const char* LinuxOpenGLBackendName(LinuxOpenGLBackend backend)
 {
-    return backend == LinuxOpenGLBackend::EGL ? "EGL" : "GLX";
+    return backend == LinuxOpenGLBackend::EGL ? "EGL" :
+           backend == LinuxOpenGLBackend::GLX ? "GLX" : "unknown";
 }
 
 bool LinuxIsOpenGLBackendOverrideValid(const char* overrideValue)
