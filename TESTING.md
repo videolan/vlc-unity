@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Install Unity `6000.3.10f1` through Unity Hub. This is the version recorded in `ProjectSettings/ProjectVersion.txt`.
+- Install the Unity version recorded in `ProjectSettings/ProjectVersion.txt` through Unity Hub.
 - Make sure the managed `LibVLCSharp.dll` is available. Binary plugin files are intentionally ignored by Git.
   - A packaged VLC for Unity build already contains it.
   - On Windows, place it at `Assets/VLCUnity/Plugins/Windows/x86_64/LibVLCSharp.dll`.
@@ -107,3 +107,116 @@ For backend A/B testing:
 VLC_UNITY_LINUX_OPENGL_BACKEND=glx ./YourGame.x86_64 -force-glcore
 VLC_UNITY_LINUX_OPENGL_BACKEND=egl ./YourGame.x86_64 -force-glcore
 ```
+
+## Automated Linux graphics regressions
+
+These tests reproduce the paths without fixing them. Known broken paths are
+expected to **fail** until the implementation is corrected.
+
+Use the Unity version in `ProjectSettings/ProjectVersion.txt`, with Linux
+Standalone and Embedded Linux support installed.
+Supply the normal Linux native binaries and Unity-enabled `LibVLCSharp.dll`.
+No downloaded video or ffmpeg is needed: each player generates a local 64x64
+red/green/blue YUV4MPEG2 fixture. The LibVLC build must include its Y4M demuxer
+and raw-video decoder.
+
+Close the Editor for the project being tested, or use an isolated project copy.
+A real GPU, accessible DRM render node, and the requested display server are
+required. For the complete matrix use a Wayland desktop with XWayland, with both
+`DISPLAY` and `WAYLAND_DISPLAY` set. Native Xorg coverage requires a separate
+Xorg session. A missing requested display is a failure, not a silent skip.
+
+Run the standalone matrix from the project root:
+
+```bash
+UNITY_EDITOR=/path/to/Unity/Editor/Unity
+VLC_UNITY_RUN_GRAPHICS_TESTS=1 \
+VLC_UNITY_GRAPHICS_RESULTS=/tmp/vlc-graphics-results \
+"$UNITY_EDITOR" -batchmode -nographics -projectPath "$PWD" \
+  -buildTarget Linux64 -runTests -testPlatform EditMode \
+  -testFilter LibVLCSharp.Tests.LinuxGraphicsCliTests \
+  -testResults /tmp/vlc-graphics-linux.xml -logFile /tmp/vlc-graphics-linux-cli.log
+```
+
+Run the Embedded Linux matrix:
+
+```bash
+VLC_UNITY_RUN_GRAPHICS_TESTS=1 \
+VLC_UNITY_GRAPHICS_RESULTS=/tmp/vlc-graphics-results \
+"$UNITY_EDITOR" -batchmode -nographics -projectPath "$PWD" \
+  -buildTarget EmbeddedLinux -runTests -testPlatform EditMode \
+  -testFilter LibVLCSharp.Tests.LinuxGraphicsCliTests \
+  -testResults /tmp/vlc-graphics-embedded.xml -logFile /tmp/vlc-graphics-embedded-cli.log
+```
+
+Do not add `-quit`. The Test Runner exits on completion and produces NUnit XML;
+its exit status indicates success/failure. Here `-nographics` applies **only to
+the orchestrating Editor**. The tests launch separate GPU-backed players without
+`-nographics` or `-batchmode`, and enable background updates so an external VLC
+window cannot turn lost Unity focus into a false success.
+
+The suite builds one dedicated player per invocation, containing only a temporary
+empty scene and the test bootstrap. It enables both relevant graphics APIs for
+that build, restores the project's graphics API settings in `finally`, and removes
+its uniquely named generated scene. It does not rebuild/deploy native libraries,
+change renderer implementations, or replace production scenes. The probe assembly
+is gated by the build-only `VLC_UNITY_GRAPHICS_TEST_PLAYER` define.
+
+### Cases and assertions
+
+| Test name | Window system | Bridge | Initialization |
+| --- | --- | --- | --- |
+| `Auto_X11_Cold` | X11/XWayland | Automatic, expect GLX | Cold |
+| `Auto_Wayland_Cold` | Native Wayland, DISPLAY also set | Automatic, expect EGL | Cold |
+| `GLX_X11_cold`, `GLX_X11_warm` | X11/XWayland | Explicit GLX | Both |
+| `EGL_X11_cold`, `EGL_X11_warm` | X11/XWayland | Explicit EGL | Both |
+| `EGL_Wayland_cold`, `EGL_Wayland_warm` | Native Wayland | Explicit EGL | Both |
+| `Vulkan_X11`, `Vulkan_Wayland` | X11 or native Wayland | Vulkan | Cold |
+| `NativeLibrariesAreLoadedOnce` | X11/XWayland | GLX | Warm; also asserts unique mappings |
+
+For one case, replace the filter with, for example,
+`LibVLCSharp.Tests.LinuxGraphicsCliTests.EGL_Wayland_cold`. On an Xorg-only machine,
+select X11 cases rather than treating unavailable Wayland coverage as a pass.
+
+Cold construction happens at `AfterAssembliesLoaded`, before the production
+`OnLoad` render event at `BeforeSceneLoad`. Warm construction waits for the
+native Unity-context-capture log marker. The checker verifies that the requested
+order really occurred; arbitrary sleeps or an accidentally warm run cannot pass
+the cold test.
+
+Each case asserts the actual graphics API, selected bridge, display backend,
+GLX/EGL context observed **on the render thread after plugin work** (OpenGL cases),
+and all three fixture colors in the 64x64 Unity output texture. Pixel readback
+runs at `WaitForEndOfFrame`, after rendering and queued texture work.
+A static/non-video/black texture,
+wrong backend, lost context, missing result, or timeout is not success. Vulkan
+does not use the OpenGL context observer; its binding field is zero (not applicable).
+GLX on native Wayland is intentionally not a case: GLX requires X11/XWayland.
+
+The runtime probe has a 20-second deadline after managed bootstrap. The parent
+has a 45-second wall-clock watchdog including startup and shutdown, and kills only
+its own test player if necessary (up to five more seconds each for stopping and
+draining output). A pixel-success JSON followed by a shutdown hang
+still fails the CLI test, with both pieces of evidence retained.
+
+Every run gets a unique artifacts directory under `VLC_UNITY_GRAPHICS_RESULTS`
+(default: ignored `build-linux-graphics-tests/`). Each case saves `player.log`,
+`console.log`, `colors.y4m`, `result.json` when managed code completes, and
+`assertions.txt`. JSON includes the API, context binding, colors seen, sample count,
+and mapped bridge/LibVLC/core paths. The packaging test checks those paths separately
+so a duplicated library cannot be mistaken for a video-decoding failure.
+
+### Fast tests for the result checker
+
+These need neither GPU access nor native libraries and do not build a player:
+
+```bash
+"$UNITY_EDITOR" -batchmode -nographics -projectPath "$PWD" \
+  -runTests -testPlatform EditMode \
+  -testFilter LibVLCSharp.Tests.LinuxGraphicsAssertionsTests \
+  -testResults /tmp/vlc-graphics-oracle.xml -logFile /tmp/vlc-graphics-oracle.log
+```
+
+Ordinary Run All skips the expensive graphics fixture unless
+`VLC_UNITY_RUN_GRAPHICS_TESTS=1` is explicitly set. The CLI commands above opt in;
+missing prerequisites or broken results in an opted-in run are failures.

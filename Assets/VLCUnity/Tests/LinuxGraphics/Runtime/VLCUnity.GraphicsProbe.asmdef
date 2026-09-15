@@ -1,0 +1,7 @@
+{
+    "name": "VLCUnity.GraphicsProbe",
+    "references": ["VLCUnity"],
+    "includePlatforms": ["Editor", "LinuxStandalone64", "EmbeddedLinux"],
+    "autoReferenced": true,
+    "defineConstraints": ["VLC_UNITY_GRAPHICS_TEST_PLAYER"]
+}
