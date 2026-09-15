@@ -14,6 +14,7 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "LibVLCSharp.dll",
         "nunit.framework.dll"
     ],
     "autoReferenced": true,
