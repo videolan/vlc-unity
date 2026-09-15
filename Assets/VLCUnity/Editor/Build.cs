@@ -96,7 +96,13 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
             if (name.EndsWith(".meta"))
                 continue;
             if (name.Contains(".so"))
+            {
+                // Copy one real file per LibVLC library. File.Copy dereferences
+                // source symlinks, so copying SONAME aliases creates duplicates.
+                if (name.StartsWith("libvlc.so.") || name.StartsWith("libvlccore.so."))
+                    continue;
                 CopyFile(file, Path.Combine(libvlcBuildOutput, name));
+            }
         }
 
         // libVLCUnityPlugin.so has NEEDED entries for the SONAMEs
@@ -104,6 +110,22 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
         // their SONAME names so the dynamic linker resolves them at runtime.
         LinkAsSoname(libvlcBuildOutput, "libvlc.so", "libvlc.so.12");
         LinkAsSoname(libvlcBuildOutput, "libvlccore.so", "libvlccore.so.9");
+
+        // Unity may preload from Plugins/x64 while managed P/Invoke resolves
+        // Plugins/. Both names must resolve to the very same ELF file, not two
+        // independent bridges with separate registries and context state.
+        foreach (var architecture in new[] { "x64", "x86_64" })
+        {
+            var directory = Path.Combine(libvlcBuildOutput, architecture);
+            if (!Directory.Exists(directory))
+                continue;
+            foreach (var file in Directory.GetFiles(libvlcBuildOutput))
+            {
+                var name = Path.GetFileName(file);
+                if (name.Contains(".so") && !name.EndsWith(".meta"))
+                    ReplaceWithSymlink(Path.Combine(directory, name), "../" + name);
+            }
+        }
     }
 
     [DllImport("libc", EntryPoint = "symlink", SetLastError = true)]
@@ -113,10 +135,19 @@ public class CopyLibVLCFiles : IPostprocessBuildWithReport
     {
         var srcPath = Path.Combine(directory, source);
         var dstPath = Path.Combine(directory, sonameName);
-        if (!File.Exists(srcPath) || File.Exists(dstPath))
+        if (!File.Exists(srcPath))
             return;
-        if (symlink(source, dstPath) != 0)
-            File.Copy(srcPath, dstPath);
+        ReplaceWithSymlink(dstPath, source);
+    }
+
+    static void ReplaceWithSymlink(string destination, string relativeTarget)
+    {
+        // These are generated player-output files only. Replace stale regular
+        // copies too; silently retaining them defeats ELF loader deduplication.
+        File.Delete(destination);
+        if (symlink(relativeTarget, destination) != 0)
+            throw new BuildFailedException($"Could not create Linux library alias {destination} -> {relativeTarget} " +
+                $"(errno {Marshal.GetLastWin32Error()}). A copied alias would load duplicate libraries.");
     }
 
     void CopyFolder(string sourceFolder, string destFolder)
