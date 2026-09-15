@@ -149,6 +149,11 @@ void RenderAPI_OpenGLLinuxEGL::ProcessDeviceEvent(
     if (type == kUnityGfxDeviceEventInitialize) {
         if (m_producer || !s_unityContextReady)
             return;
+        ScopedLinuxOpenGLContextRestore restoreContext(nullptr, m_context);
+        if (!restoreContext.releaseCurrent()) {
+            DEBUG("[EGL-Linux] could not release Unity context for producer initialization");
+            return;
+        }
         if (!initializeDrmAndContext()) {
             releaseResources();
             return;
@@ -217,6 +222,10 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
         ScopedLinuxOpenGLContextRestore restoreContext(nullptr, m_context);
         abandonImports();
         if (m_producer) {
+            if (!restoreContext.releaseCurrent()) {
+                DEBUG("[EGL-Linux] could not release Unity context for producer cleanup");
+                return;
+            }
             m_producer->release();
             m_producer.reset();
         }

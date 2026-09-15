@@ -24,6 +24,7 @@ public:
     ScopedLinuxOpenGLContextRestore(GLXContext privateGlx,
                                     EGLContext privateEgl)
         : m_privateGlx(privateGlx), m_privateEgl(privateEgl),
+          m_eglApi(eglQueryAPI()),
           m_eglDisplay(eglGetCurrentDisplay()),
           m_eglContext(eglGetCurrentContext()),
           m_eglDraw(eglGetCurrentSurface(EGL_DRAW)),
@@ -37,6 +38,9 @@ public:
 
     ~ScopedLinuxOpenGLContextRestore()
     {
+        // An initialization attempt may have bound a different client API,
+        // even when no EGL context was current on entry (GLX or main thread).
+        eglBindAPI(m_eglApi);
         if (m_eglContext != EGL_NO_CONTEXT && m_eglContext != m_privateEgl) {
             eglMakeCurrent(m_eglDisplay, m_eglDraw, m_eglRead, m_eglContext);
         } else if (m_glxContext && m_glxContext != m_privateGlx &&
@@ -48,9 +52,22 @@ public:
 
     GLXContext glxContext() const { return m_glxContext; }
 
+    bool releaseCurrent()
+    {
+        // GLVND rejects switching from a live GLX context directly to EGL.
+        // Unbind only the calling thread's context, then restore on every exit.
+        if (m_eglContext != EGL_NO_CONTEXT)
+            return eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE,
+                                  EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_TRUE;
+        if (m_glxContext && m_glxDisplay)
+            return glXMakeContextCurrent(m_glxDisplay, None, None, nullptr) == True;
+        return true;
+    }
+
 private:
     GLXContext m_privateGlx;
     EGLContext m_privateEgl;
+    EGLenum m_eglApi;
     EGLDisplay m_eglDisplay;
     EGLContext m_eglContext;
     EGLSurface m_eglDraw;
