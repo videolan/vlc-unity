@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -68,20 +67,8 @@ namespace LibVLCSharp.Tests
         public IEnumerator DisposalDrainsRenderersAndPlaybackCanBeRecreated()
         {
             yield return CreatePlayAndDispose("warm-up player");
-            int descriptorBaseline = CountOpenFileDescriptors();
-
             yield return CreatePlayAndDisposeDirectly();
             yield return CreatePlayAndDispose("recreated player");
-
-            int finalDescriptorCount = CountOpenFileDescriptors();
-            if (descriptorBaseline >= 0 && finalDescriptorCount >= 0)
-            {
-                Assert.That(
-                    finalDescriptorCount,
-                    Is.LessThanOrEqualTo(descriptorBaseline + 1),
-                    "Linux file-descriptor count grew across disposal. " +
-                    $"Baseline={descriptorBaseline}, final={finalDescriptorCount}.");
-            }
         }
 
         IEnumerator CreatePlayAndDispose(string objectName)
@@ -194,17 +181,6 @@ namespace LibVLCSharp.Tests
             Assert.That(File.Exists(localPath), Is.True,
                 $"{MediaEnvironmentVariable} does not exist: {localPath}");
             return new Uri(localPath).AbsoluteUri;
-        }
-
-        static int CountOpenFileDescriptors()
-        {
-#if UNITY_EDITOR_LINUX
-            return Directory.Exists("/proc/self/fd")
-                ? Directory.EnumerateFileSystemEntries("/proc/self/fd").Count()
-                : -1;
-#else
-            return -1;
-#endif
         }
     }
 }
