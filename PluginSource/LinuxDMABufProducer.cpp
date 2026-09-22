@@ -5,6 +5,7 @@
 #include <cstring>
 #include <drm_fourcc.h>
 #include <gbm.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -560,7 +561,8 @@ void LinuxDMABufProducer::release()
     const bool current = m_context.producerMakeCurrent(true);
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        (void)destroySlots(current);
+        while (!destroySlots(current))
+            std::this_thread::yield();
     }
     if (current)
         m_context.producerMakeCurrent(false);

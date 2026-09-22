@@ -228,10 +228,8 @@ void RenderAPI_OpenGLLinuxEGL::releaseResources()
         ScopedLinuxOpenGLContextRestore restoreContext(nullptr, m_context);
         abandonImports();
         if (m_producer) {
-            if (!restoreContext.releaseCurrent()) {
-                DEBUG("[EGL-Linux] could not release Unity context for producer cleanup");
-                return;
-            }
+            if (!restoreContext.releaseCurrent())
+                DEBUG("[EGL-Linux] could not release Unity context; releasing producer without GL deletes");
             m_producer->release();
             m_producer.reset();
         }
