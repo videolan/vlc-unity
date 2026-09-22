@@ -240,8 +240,12 @@ To force the Linux OpenGL interop backend:
 VLC_UNITY_LINUX_OPENGL_BACKEND=glx ./YourGame.x86_64 -force-glcore
 VLC_UNITY_LINUX_OPENGL_BACKEND=egl ./YourGame.x86_64 -force-glcore
 ```
-GLX is selected automatically whenever `DISPLAY` is present, including in an
-XWayland session. EGL is currently intended for experimental native Wayland
+Automatic selection waits for Unity's actual render-thread GLX/EGL context;
+`DISPLAY`, `WAYLAND_DISPLAY`, and GLES alone do not identify that binding.
+Video output callbacks are installed before playback, with setup waiting on the
+LibVLC thread for up to five seconds for Unity interop readiness. Unity's main
+and render threads never wait for that setup, and disposal cancels the wait.
+EGL is currently intended for experimental native Wayland
 testing.
 
 **Common causes of DRI3/GPU issues:**

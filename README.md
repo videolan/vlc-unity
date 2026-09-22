@@ -116,7 +116,7 @@ It includes [best practices](https://code.videolan.org/videolan/LibVLCSharp/blob
 - **Hardware GPU required**: `glxinfo | grep renderer` must show your real GPU, not `llvmpipe`. Software rendering does not support `GL_EXT_memory_object_fd`.
 - **Hybrid GPU selection**: The GLX backend first verifies direct context sharing. If it must use DMA-BUF instead, it probes every `/dev/dri/renderD*` node and selects the first one whose buffers can be imported by the active OpenGL device.
 - **Device override**: Set `VLC_UNITY_DRM_DEVICE=/dev/dri/renderD129` (or a stable `/dev/dri/by-path/*-render` symlink) to test a specific GPU. An override is exclusive and fails rather than silently selecting another device.
-- **Backend override**: Set `VLC_UNITY_LINUX_OPENGL_BACKEND=glx` or `egl` to force an interop backend. GLX is the normal choice whenever `DISPLAY` is available, including XWayland.
+- **Backend selection**: Automatic selection follows Unity's actual render-thread GLX/EGL context, not `DISPLAY`/`WAYLAND_DISPLAY` or the GLES API name. Set `VLC_UNITY_LINUX_OPENGL_BACKEND=glx` or `egl` to force an interop backend for diagnostics.
 - **DMA-BUF diagnostic**: Set `VLC_UNITY_GLX_FORCE_DMABUF=1` to bypass a working GLX shared context and exercise render-node probing. This is intended for testing rather than normal playback.
 
 ## Support

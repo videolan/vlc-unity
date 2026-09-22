@@ -110,8 +110,8 @@ VLC_UNITY_LINUX_OPENGL_BACKEND=egl ./YourGame.x86_64 -force-glcore
 
 ## Automated Linux graphics regressions
 
-These tests reproduce the paths without fixing them. Known broken paths are
-expected to **fail** until the implementation is corrected.
+These tests assert working behaviour; failures are not marked as expected passes
+or skipped.
 
 Use the Unity version in `ProjectSettings/ProjectVersion.txt`, with Linux
 Standalone and Embedded Linux support installed.
