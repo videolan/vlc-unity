@@ -4,7 +4,7 @@
 #include "LinuxVulkanDeviceIdentity.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/IUnityGraphicsVulkan.h"
-#include "VulkanFrameSource.h"
+#include "vulkan/VulkanFrameSource.h"
 
 #if defined(SHOW_WATERMARK)
 #include "RenderAPI_OpenGLWatermark.h"

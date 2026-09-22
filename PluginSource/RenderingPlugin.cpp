@@ -23,7 +23,7 @@ static const int64_t TRIAL_TIME_LIMIT_MS = 30 * 1000;
 #endif
 
 #if defined(SUPPORT_VULKAN)
-#include "VulkanPlatformRequirements.h"
+#include "vulkan/VulkanPlatformRequirements.h"
 #endif
 
 extern "C" {

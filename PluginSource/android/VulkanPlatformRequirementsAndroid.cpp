@@ -2,7 +2,7 @@
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #endif
 
-#include "VulkanPlatformRequirements.h"
+#include "vulkan/VulkanPlatformRequirements.h"
 
 VulkanPlatformRequirements GetVulkanPlatformRequirements()
 {

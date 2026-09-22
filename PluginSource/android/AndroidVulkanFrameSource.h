@@ -4,7 +4,7 @@
 #define VK_USE_PLATFORM_ANDROID_KHR 1
 #endif
 
-#include "VulkanFrameSource.h"
+#include "vulkan/VulkanFrameSource.h"
 #include "Unity/IUnityGraphics.h"
 #include "Unity/IUnityGraphicsVulkan.h"
 

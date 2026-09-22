@@ -24,7 +24,7 @@
 #include "AndroidJNI.h"
 #include "Log.h"
 #include "TrialWatermark.h"
-#include "VulkanPlatformRequirements.h"
+#include "vulkan/VulkanPlatformRequirements.h"
 
 #include <android/hardware_buffer_jni.h>
 #include <jni.h>

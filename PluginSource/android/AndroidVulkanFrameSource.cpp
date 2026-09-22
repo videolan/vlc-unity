@@ -1,6 +1,6 @@
 #include "AndroidVulkanFrameSource.h"
 #include "Log.h"
-#include "VulkanUnityCopyCore.h"
+#include "vulkan/VulkanUnityCopyCore.h"
 
 bool AndroidVulkanFrameSource::initialize(const UnityVulkanInstance& instance)
 {

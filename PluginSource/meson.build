@@ -20,8 +20,8 @@ watermark_sources = files(
 )
 
 android_sources = files(
-    'AndroidJNI.h',
-    'RenderAPI_Android.cpp',
+    'android/AndroidJNI.h',
+    'android/RenderAPI_Android.cpp',
 )
 
 d3d11_sources = files(
@@ -34,63 +34,63 @@ egl_sources = files(
 )
 
 glx_sources = files(
-    'RenderAPI_OpenGLGLX.cpp',
-    'RenderAPI_OpenGLGLX.h',
+    'linux/RenderAPI_OpenGLGLX.cpp',
+    'linux/RenderAPI_OpenGLGLX.h',
 )
 
 linux_egl_sources = files(
-    'RenderAPI_OpenGLLinuxEGL.cpp',
-    'RenderAPI_OpenGLLinuxEGL.h',
+    'linux/RenderAPI_OpenGLLinuxEGL.cpp',
+    'linux/RenderAPI_OpenGLLinuxEGL.h',
 )
 
 linux_graphics_interop_sources = files(
-    'RenderAPI_LinuxOpenGL.cpp',
-    'LinuxVideoOutput.h',
-    'LinuxGraphicsInterop.cpp',
-    'LinuxGraphicsInterop.h',
-    'LinuxGBMDevice.cpp',
-    'LinuxGBMDevice.h',
-    'LinuxDMABufProducer.cpp',
-    'LinuxDMABufProducer.h',
-    'LinuxDMABufWatermark.cpp',
-    'LinuxDMABufWatermark.h',
-    'LinuxOpenGLUnityImports.cpp',
-    'LinuxOpenGLUnityImports.h',
-    'RenderAPI_OpenGLLinuxDMABuf.cpp',
-    'RenderAPI_OpenGLLinuxDMABuf.h',
-    'UniqueFd.cpp',
-    'UniqueFd.h',
+    'linux/RenderAPI_LinuxOpenGL.cpp',
+    'linux/LinuxVideoOutput.h',
+    'linux/LinuxGraphicsInterop.cpp',
+    'linux/LinuxGraphicsInterop.h',
+    'linux/LinuxGBMDevice.cpp',
+    'linux/LinuxGBMDevice.h',
+    'linux/LinuxDMABufProducer.cpp',
+    'linux/LinuxDMABufProducer.h',
+    'linux/LinuxDMABufWatermark.cpp',
+    'linux/LinuxDMABufWatermark.h',
+    'linux/LinuxOpenGLUnityImports.cpp',
+    'linux/LinuxOpenGLUnityImports.h',
+    'linux/RenderAPI_OpenGLLinuxDMABuf.cpp',
+    'linux/RenderAPI_OpenGLLinuxDMABuf.h',
+    'linux/UniqueFd.cpp',
+    'linux/UniqueFd.h',
 )
 
 vulkan_core_sources = files(
-    'VulkanFrameSource.h',
-    'VulkanSubmissionStrategy.h',
-    'VulkanUnityCopyCore.cpp',
-    'VulkanUnityCopyCore.h',
-    'VulkanPlatformRequirements.cpp',
-    'VulkanPlatformRequirements.h',
+    'vulkan/VulkanFrameSource.h',
+    'vulkan/VulkanSubmissionStrategy.h',
+    'vulkan/VulkanUnityCopyCore.cpp',
+    'vulkan/VulkanUnityCopyCore.h',
+    'vulkan/VulkanPlatformRequirements.cpp',
+    'vulkan/VulkanPlatformRequirements.h',
 )
 
 vulkan_android_sources = files(
-    'AndroidVulkanFrameSource.cpp',
-    'AndroidVulkanFrameSource.h',
-    'RenderAPI_Vulkan.cpp',
-    'RenderAPI_Vulkan.h',
-    'UnitySubmissionStrategy.cpp',
-    'UnitySubmissionStrategy.h',
-    'VulkanPlatformRequirementsAndroid.cpp',
+    'android/AndroidVulkanFrameSource.cpp',
+    'android/AndroidVulkanFrameSource.h',
+    'android/RenderAPI_Vulkan.cpp',
+    'android/RenderAPI_Vulkan.h',
+    'vulkan/UnitySubmissionStrategy.cpp',
+    'vulkan/UnitySubmissionStrategy.h',
+    'android/VulkanPlatformRequirementsAndroid.cpp',
 )
 
 vulkan_linux_sources = files(
-    'LinuxDMABufFrameSource.cpp',
-    'LinuxDMABufFrameSource.h',
-    'LinuxVulkanDeviceIdentity.cpp',
-    'LinuxVulkanDeviceIdentity.h',
-    'OwnedQueueSubmissionStrategy.cpp',
-    'OwnedQueueSubmissionStrategy.h',
-    'RenderAPI_VulkanLinux.cpp',
-    'RenderAPI_VulkanLinux.h',
-    'VulkanPlatformRequirementsLinux.cpp',
+    'linux/LinuxDMABufFrameSource.cpp',
+    'linux/LinuxDMABufFrameSource.h',
+    'linux/LinuxVulkanDeviceIdentity.cpp',
+    'linux/LinuxVulkanDeviceIdentity.h',
+    'vulkan/OwnedQueueSubmissionStrategy.cpp',
+    'vulkan/OwnedQueueSubmissionStrategy.h',
+    'linux/RenderAPI_VulkanLinux.cpp',
+    'linux/RenderAPI_VulkanLinux.h',
+    'linux/VulkanPlatformRequirementsLinux.cpp',
 )
 
 cgl_sources = files(
@@ -269,7 +269,7 @@ if host_system == 'linux'
     linux_graphics_interop_tests = executable(
         'linux-graphics-interop-tests',
         files(
-            'LinuxGraphicsInterop.cpp',
+            'linux/LinuxGraphicsInterop.cpp',
             'tests/LinuxGraphicsInteropTests.cpp',
         ),
         include_directories: plugin_include_dirs,
@@ -279,7 +279,7 @@ if host_system == 'linux'
     linux_vulkan_identity_tests = executable(
         'linux-vulkan-identity-tests',
         files(
-            'LinuxVulkanDeviceIdentity.cpp',
+            'linux/LinuxVulkanDeviceIdentity.cpp',
             'tests/LinuxVulkanDeviceIdentityTests.cpp',
         ),
         include_directories: plugin_include_dirs,
@@ -288,7 +288,7 @@ if host_system == 'linux'
 
     unique_fd_tests = executable(
         'unique-fd-tests',
-        files('UniqueFd.cpp', 'tests/UniqueFdTests.cpp'),
+        files('linux/UniqueFd.cpp', 'tests/UniqueFdTests.cpp'),
         include_directories: plugin_include_dirs,
     )
     test('unique-fd', unique_fd_tests)
@@ -298,7 +298,7 @@ if host_system == 'linux'
             'vulkan-core-tests',
             files(
                 'Log.cpp',
-                'VulkanUnityCopyCore.cpp',
+                'vulkan/VulkanUnityCopyCore.cpp',
                 'tests/VulkanCoreTests.cpp',
             ),
             include_directories: plugin_include_dirs,
@@ -311,8 +311,8 @@ if host_system == 'linux'
             'vulkan-requirements-tests',
             files(
                 'Log.cpp',
-                'VulkanPlatformRequirements.cpp',
-                'VulkanPlatformRequirementsLinux.cpp',
+                'vulkan/VulkanPlatformRequirements.cpp',
+                'linux/VulkanPlatformRequirementsLinux.cpp',
                 'tests/VulkanRequirementsTests.cpp',
             ),
             include_directories: plugin_include_dirs,
@@ -325,7 +325,7 @@ if host_system == 'linux'
             'owned-queue-submission-tests',
             files(
                 'Log.cpp',
-                'OwnedQueueSubmissionStrategy.cpp',
+                'vulkan/OwnedQueueSubmissionStrategy.cpp',
                 'tests/OwnedQueueSubmissionTests.cpp',
             ),
             include_directories: plugin_include_dirs,
@@ -337,7 +337,7 @@ if host_system == 'linux'
         unity_submission_strategy_tests = executable(
             'unity-submission-strategy-tests',
             files(
-                'UnitySubmissionStrategy.cpp',
+                'vulkan/UnitySubmissionStrategy.cpp',
                 'tests/UnitySubmissionStrategyTests.cpp',
             ),
             include_directories: plugin_include_dirs,

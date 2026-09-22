@@ -4,7 +4,7 @@
 #include "Unity/IUnityGraphics.h"
 
 #if defined(UNITY_LINUX)
-#include "LinuxGraphicsInterop.h"
+#include "linux/LinuxGraphicsInterop.h"
 #include <cstdlib>
 #endif
 

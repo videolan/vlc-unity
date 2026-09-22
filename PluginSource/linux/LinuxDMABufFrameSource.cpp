@@ -3,8 +3,8 @@
 #include "LinuxGraphicsInterop.h"
 #include "Log.h"
 #include "UniqueFd.h"
-#include "VulkanPlatformRequirements.h"
-#include "VulkanUnityCopyCore.h"
+#include "vulkan/VulkanPlatformRequirements.h"
+#include "vulkan/VulkanUnityCopyCore.h"
 
 #include <algorithm>
 #include <cstdlib>

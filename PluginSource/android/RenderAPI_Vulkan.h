@@ -5,8 +5,8 @@
 #include "RenderAPI_OpenGLEGL.h"
 #include "PlatformBase.h"
 #include "AndroidVulkanFrameSource.h"
-#include "UnitySubmissionStrategy.h"
-#include "VulkanUnityCopyCore.h"
+#include "vulkan/UnitySubmissionStrategy.h"
+#include "vulkan/VulkanUnityCopyCore.h"
 
 #if defined(SHOW_WATERMARK)
 #  include "RenderAPI_OpenGLWatermark.h"

@@ -1,4 +1,4 @@
-#include "../OwnedQueueSubmissionStrategy.h"
+#include "../vulkan/OwnedQueueSubmissionStrategy.h"
 
 #include <cstdint>
 #include <cstring>

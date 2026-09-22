@@ -1,4 +1,4 @@
-#include "../LinuxGraphicsInterop.h"
+#include "../linux/LinuxGraphicsInterop.h"
 
 #include <cstdlib>
 #include <fcntl.h>

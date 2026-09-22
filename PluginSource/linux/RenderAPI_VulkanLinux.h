@@ -1,9 +1,9 @@
 #pragma once
 
 #include "LinuxDMABufFrameSource.h"
-#include "OwnedQueueSubmissionStrategy.h"
+#include "vulkan/OwnedQueueSubmissionStrategy.h"
 #include "RenderAPI.h"
-#include "VulkanUnityCopyCore.h"
+#include "vulkan/VulkanUnityCopyCore.h"
 
 #include <atomic>
 
