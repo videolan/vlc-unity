@@ -94,17 +94,22 @@ bool AndroidVulkanFrameSource::importHardwareBuffer(
         imageInfo, width, height, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         &external);
-    if (vkCreateImage(m_instance.device, &imageInfo, nullptr, &slot.image) != VK_SUCCESS) {
-        DEBUG("[Vulkan-Android] external VkImage creation failed");
+    const VkResult imageResult =
+        vkCreateImage(m_instance.device, &imageInfo, nullptr, &slot.image);
+    if (imageResult != VK_SUCCESS) {
+        DEBUG("[Vulkan-Android] external VkImage creation failed (VkResult %d, %ux%u)",
+              static_cast<int>(imageResult), width, height);
         return false;
     }
 
     VkAndroidHardwareBufferPropertiesANDROID properties = {};
     properties.sType =
         VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
-    if (m_getHardwareBufferProperties(
-            m_instance.device, buffer, &properties) != VK_SUCCESS) {
-        DEBUG("[Vulkan-Android] AHardwareBuffer property query failed");
+    const VkResult propertiesResult =
+        m_getHardwareBufferProperties(m_instance.device, buffer, &properties);
+    if (propertiesResult != VK_SUCCESS) {
+        DEBUG("[Vulkan-Android] AHardwareBuffer property query failed (VkResult %d)",
+              static_cast<int>(propertiesResult));
         vkDestroyImage(m_instance.device, slot.image, nullptr);
         slot = {};
         return false;
@@ -134,11 +139,24 @@ bool AndroidVulkanFrameSource::importHardwareBuffer(
     allocation.pNext = &import;
     allocation.allocationSize = properties.allocationSize;
     allocation.memoryTypeIndex = memoryTypeIndex;
-    if (vkAllocateMemory(m_instance.device, &allocation, nullptr,
-                         &slot.memory) != VK_SUCCESS ||
-        vkBindImageMemory(m_instance.device, slot.image, slot.memory, 0) !=
-            VK_SUCCESS) {
-        DEBUG("[Vulkan-Android] external memory import or image bind failed");
+    const VkResult allocateResult = vkAllocateMemory(
+        m_instance.device, &allocation, nullptr, &slot.memory);
+    VkResult bindResult = VK_NOT_READY;
+    if (allocateResult == VK_SUCCESS) {
+        bindResult =
+            vkBindImageMemory(m_instance.device, slot.image, slot.memory, 0);
+    }
+    if (allocateResult != VK_SUCCESS || bindResult != VK_SUCCESS) {
+        AHardwareBuffer_Desc bufferDesc = {};
+        AHardwareBuffer_describe(buffer, &bufferDesc);
+        DEBUG("[Vulkan-Android] external memory import or image bind failed: "
+              "allocate=%d bind=%d allocationSize=%llu memoryTypeIndex=%u "
+              "ahb=%ux%u format=%u usage=0x%llx",
+              static_cast<int>(allocateResult), static_cast<int>(bindResult),
+              static_cast<unsigned long long>(properties.allocationSize),
+              memoryTypeIndex, bufferDesc.width, bufferDesc.height,
+              bufferDesc.format,
+              static_cast<unsigned long long>(bufferDesc.usage));
         if (slot.memory != VK_NULL_HANDLE)
             vkFreeMemory(m_instance.device, slot.memory, nullptr);
         vkDestroyImage(m_instance.device, slot.image, nullptr);
