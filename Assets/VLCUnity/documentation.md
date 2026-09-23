@@ -259,6 +259,15 @@ The scenes are located in `Assets/VLCUnity/Demos/Scenes` and provide a way to ge
 
 Select any scene (*.unity) and press play in the Unity Editor (or make a standalone build), and the video will start playing.
 
+### YouTube and other streaming sites
+
+VLC Unity does not resolve YouTube (or similar streaming site) page URLs. To play such content, extract a direct media stream URL first with a dedicated tool, then pass that URL to `VLCMediaPlayer`:
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp), a command-line tool (e.g. `yt-dlp -g <url>` prints the direct stream URLs),
+- [YoutubeExplode](https://github.com/Tyrrrz/YoutubeExplode), a .NET library you can call from your C# scripts.
+
+Extracted stream URLs are usually temporary, so resolve them shortly before playback.
+
 ## VLCMediaPlayer Component
 
 The plugin provides a centralized `VLCMediaPlayer` component for easy integration:
@@ -288,7 +297,7 @@ Do not normalize `flipTextureX`, `flipTextureY`, or `RawImage.uvRect` values acr
 
 | Scene or display path | Windows | Android | Linux | Notes |
 | --- | --- | --- | --- | --- |
-| `VLCMinimalPlayback`, `VLCYouTubePlayback`, `VLCTransparentVideoPlayback`, `VLCSubtitles` using `VLCDisplayMesh` | `flipTextureX=false`, `flipTextureY=false` | Same expected setup | Same expected setup | These use a regular mesh screen and the shared `VLCMediaPlayer.OutputTexture`. |
+| `VLCMinimalPlayback`, `VLCTransparentVideoPlayback`, `VLCSubtitles` using `VLCDisplayMesh` | `flipTextureX=false`, `flipTextureY=false` | Same expected setup | Same expected setup | These use a regular mesh screen and the shared `VLCMediaPlayer.OutputTexture`. |
 | `VLC 3D Example` using `VLCDisplayMesh` | `flipTextureX=true`, `flipTextureY=true` | Same scene-level correction expected | Same scene-level correction expected | The cinema-room screen mesh has its own UV/coordinate orientation, so this scene keeps explicit player flips. |
 | `VLC Playlist Demo` using `VLCPlaylistController` and `VLCDisplayMesh` | `flipTextureX=true`, `flipTextureY=true` on the playlist controller | Same scene-level correction expected | Same scene-level correction expected | The controller creates hidden `VLCMediaPlayer` instances at runtime, so the scene-level controller flips are propagated to those internal players. |
 | `VLC Canvas Example` / `VLCDisplayUGUI` using `RawImage` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | `VLCDisplayUGUI` applies `RawImage.uvRect = Rect(1, 1, -1, -1)` | UI rendering has a different texture coordinate path than mesh rendering. The Canvas path corrects both UI axes locally instead of changing the shared `VLCMediaPlayer` flips. |
