@@ -394,7 +394,7 @@ Removing one of the System.Numerics.Vectors.dll in your project seems to be a va
 All releases include binaries for all supported platforms.
 
 VLC Unity is distributed as either a trial package or a pro package:
-- Trial packages include all supported platforms, with watermarked video output and a 60 second playback limit per session.
+- Trial packages include all supported platforms, with watermarked video output and a 30 second playback limit per session.
 - Pro packages include all supported platforms without trial limitations.
 
 VLC Unity is provided as standalone .unitypackage files that you can import using the Unity Editor.
