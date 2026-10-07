@@ -1131,6 +1131,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: VLCUnity::LibVLCSharp.VLCMediaPlayer
   mediaPath: https://streams.videolan.org/misc/unity-samples/BigBuckBunny.avi
   playOnAwake: 1
+  loop: 1
   useUnityAudio: 0
   targetAudioSource: {fileID: 0}
   flipTextureX: 0

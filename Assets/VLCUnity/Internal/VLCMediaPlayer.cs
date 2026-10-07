@@ -36,6 +36,9 @@ namespace LibVLCSharp
         [Tooltip("Automatically load and play video when the scene starts.")]
         public bool playOnAwake = true;
 
+        [Tooltip("Loops the whole media using LibVLC's A-B loop.")]
+        public bool loop = false;
+
         [Tooltip("Routes audio through Unity's AudioSource.")]
         public bool useUnityAudio = false;
         public AudioSource targetAudioSource;
@@ -321,6 +324,9 @@ namespace LibVLCSharp
         {
             Log("VLCMediaPlayer Play");
             MediaPlayer.Play();
+
+            if (loop && !MediaPlayer.SetABLoopPosition(0, 1))
+                Debug.LogWarning($"[VLCMediaPlayer:{name}] Failed to enable looping");
         }
 
         public void Pause()

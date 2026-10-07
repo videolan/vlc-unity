@@ -18,6 +18,7 @@ namespace LibVLCSharp
         private SerializedProperty _mediaPath;
         private SerializedProperty _mediaOptions;
         private SerializedProperty _playOnAwake;
+        private SerializedProperty _loop;
 
         private SerializedProperty _configuration;
         private Editor _configEditor;
@@ -41,6 +42,7 @@ namespace LibVLCSharp
             _mediaPath = serializedObject.FindProperty("mediaPath");
             _mediaOptions = serializedObject.FindProperty("mediaOptions");
             _playOnAwake = serializedObject.FindProperty("playOnAwake");
+            _loop = serializedObject.FindProperty("loop");
 
             _configuration = serializedObject.FindProperty("Configuration");
 
@@ -79,6 +81,7 @@ namespace LibVLCSharp
                 EditorGUILayout.PropertyField(_mediaPath);
                 EditorGUILayout.PropertyField(_mediaOptions, true);
                 EditorGUILayout.PropertyField(_playOnAwake);
+                EditorGUILayout.PropertyField(_loop);
                 EditorGUI.indentLevel--;
             }
             GUILayout.Space(2);
