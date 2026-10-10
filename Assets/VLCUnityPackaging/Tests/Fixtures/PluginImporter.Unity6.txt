@@ -1,0 +1,80 @@
+fileFormatVersion: 2
+guid: 66dfdd91cef1d9d4ca8fb3c06d8496e1
+PluginImporter:
+  externalObjects: {}
+  serializedVersion: 3
+  iconMap: {}
+  executionOrder: {}
+  defineConstraints: []
+  isPreloaded: 0
+  isOverridable: 0
+  isExplicitlyReferenced: 0
+  validateReferences: 1
+  platformData:
+    Android:
+      enabled: 1
+      settings: {}
+    Any:
+      enabled: 0
+      settings: {}
+    CloudRendering:
+      enabled: 1
+      settings: {}
+    Editor:
+      enabled: 1
+      settings:
+        DefaultValueInitialized: true
+    EmbeddedLinux:
+      enabled: 1
+      settings: {}
+    GameCoreScarlett:
+      enabled: 1
+      settings: {}
+    GameCoreXboxOne:
+      enabled: 1
+      settings: {}
+    Linux64:
+      enabled: 1
+      settings: {}
+    OSXUniversal:
+      enabled: 1
+      settings: {}
+    PS4:
+      enabled: 1
+      settings: {}
+    PS5:
+      enabled: 1
+      settings: {}
+    QNX:
+      enabled: 1
+      settings: {}
+    Switch:
+      enabled: 1
+      settings: {}
+    VisionOS:
+      enabled: 1
+      settings: {}
+    WebGL:
+      enabled: 1
+      settings: {}
+    Win:
+      enabled: 1
+      settings: {}
+    Win64:
+      enabled: 1
+      settings: {}
+    WindowsStoreApps:
+      enabled: 1
+      settings: {}
+    XboxOne:
+      enabled: 1
+      settings: {}
+    iOS:
+      enabled: 1
+      settings: {}
+    tvOS:
+      enabled: 1
+      settings: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
