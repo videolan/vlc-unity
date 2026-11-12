@@ -1,4 +1,15 @@
+# LibVLC is built elsewhere and downloaded by get-libvlc.sh, which needs
+# LIBVLC_BUILDS_TOKEN: no pipelines in forks or for fork merge requests.
+workflow:
+    rules:
+        - if: '$CI_PROJECT_PATH != "videolan/vlc-unity"'
+          when: never
+        - if: '$CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_PROJECT_PATH'
+          when: never
+        - when: always
+
 stages:
+    - prepare
     - build-libvlc
     - build-unity-plugin
     - package
@@ -16,15 +27,15 @@ variables:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
       when: always
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_PROJECT_PATH == "videolan/vlc-unity"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
       changes:
         - "PluginSource/**/*"
-        - "build-libvlc.sh"
+        - "get-libvlc.sh"
         - ".gitlab-ci.yml"
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
         - "PluginSource/**/*"
-        - "build-libvlc.sh"
+        - "get-libvlc.sh"
         - ".gitlab-ci.yml"
   interruptible: yes
 
@@ -33,6 +44,29 @@ variables:
         - docker
         - amd64
     <<: *default_rules
+
+# same LibVLC version for the whole pipeline
+libvlc-version:
+    extends: .base-template
+    stage: prepare
+    image:
+        name: $VLC_DEBIAN_IMAGE
+    script:
+        - echo "LIBVLC_BUILDS_VERSION=$(bash get-libvlc.sh --resolve)" > libvlc-builds.env
+        - cat libvlc-builds.env
+    artifacts:
+        reports:
+            dotenv: libvlc-builds.env
+
+.libvlc-builds:
+    extends: .base-template
+    stage: build-libvlc
+    image:
+        name: $VLC_DEBIAN_IMAGE
+    needs:
+        - libvlc-version
+    script:
+        - bash get-libvlc.sh ${PACKAGE}
 
 # ANDROID
 
@@ -49,16 +83,7 @@ variables:
         ANDROID_ABI: x86_64
 
 .libvlc-android-common:
-    stage: build-libvlc
-    extends: .base-template
-    image:
-        name: $VLC_ANDROID_IMAGE
-    script: |
-        git clone https://code.videolan.org/videolan/vlc-android && cd vlc-android
-        git clone --branch adapt-latest-vlc-events https://code.videolan.org/mfkl/libvlcjni && cd libvlcjni
-        git clone https://code.videolan.org/videolan/vlc/ --depth=1
-        cd ..
-        ANDROID_HOME=/sdk/android-sdk-linux ./buildsystem/compile.sh -l -b -r -a ${ANDROID_ABI} ${CONFIG_ARGS} --license l
+    extends: .libvlc-builds
     artifacts:
         paths:
             - vlc-android/libvlcjni/libvlc/jni
@@ -82,43 +107,43 @@ variables:
 
 libvlc-android-armv7:
     extends: .libvlc-android-common
-    variables: *variables-android-armv7
+    variables:
+      PACKAGE: libvlc-android-armeabi-v7a
 
 libvlc-android-armv7-static:
     extends: .libvlc-android-common
     variables:
-      <<: *variables-android-armv7
-      CONFIG_ARGS: "--static-cpp"
+      PACKAGE: libvlc-android-armeabi-v7a-static-cpp
 
 libvlc-android-armv8:
     extends: .libvlc-android-common
-    variables: *variables-android-armv8
+    variables:
+      PACKAGE: libvlc-android-arm64-v8a
 
 libvlc-android-armv8-static:
     extends: .libvlc-android-common
     variables:
-      <<: *variables-android-armv8
-      CONFIG_ARGS: "--static-cpp"
+      PACKAGE: libvlc-android-arm64-v8a-static-cpp
 
 libvlc-android-x86:
     extends: .libvlc-android-common
-    variables: *variables-android-x86
+    variables:
+      PACKAGE: libvlc-android-x86
 
 libvlc-android-x86-static:
     extends: .libvlc-android-common
     variables:
-      <<: *variables-android-x86
-      CONFIG_ARGS: "--static-cpp"
+      PACKAGE: libvlc-android-x86-static-cpp
 
 libvlc-android-x86_64:
     extends: .libvlc-android-common
-    variables: *variables-android-x86_64
+    variables:
+      PACKAGE: libvlc-android-x86_64
 
 libvlc-android-x86_64-static:
     extends: .libvlc-android-common
     variables:
-      <<: *variables-android-x86_64
-      CONFIG_ARGS: "--static-cpp"
+      PACKAGE: libvlc-android-x86_64-static-cpp
 
 # unity android
 
@@ -205,28 +230,12 @@ unity-android-armv8-trial-static:
         PLATFORM: uwp
 
 .libvlc-win-common:
-    extends: .base-template
-    stage: build-libvlc
-    script: |
-        git clone https://code.videolan.org/videolan/vlc/ && cd vlc
-        if [[ $ARGS == *"-w"* ]]; then
-            echo "Applying the UWP specific patch"
-            git apply ../patches/uwp-plugins-path.patch
-        fi
-        extras/package/win32/build.sh $ARGS
-    after_script:
-        - cd ./vlc/$BUILD_FOLDER
-        - make package-win-strip
-        - rm -rf vlc-4.0.0-dev/lua/http
-        - cd ../..
-        - mv vlc vlc-${BUILD_FOLDER}
+    extends: .libvlc-builds
     artifacts:
         paths:
             - vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/vlc-4.0.0-dev
             - vlc-${BUILD_FOLDER}/${BUILD_FOLDER}/_win32
         expire_in: 2 weeks
-    variables:
-        WINE_SDK_PATH: /usr/include/wine/wine/windows/
 
 .unity-win-common:
     extends: .base-template
@@ -241,50 +250,23 @@ unity-android-armv8-trial-static:
             - vlc-${BUILD_FOLDER}/VLCUnityPlugin.dll
         expire_in: 2 weeks
 
-# libvlc-win-x86_64-debug:
-#     extends: .libvlc-win-common
-#     image:
-#         name: $VLC_WIN_LLVM_IMAGE
-#     variables:
-#         ARGS: -c -z -d -x -a x86_64 -g l
-#         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
-#         BUILD_FOLDER: win64
-
 libvlc-win-x86_64:
     extends: .libvlc-win-common
-    image:
-        name: $VLC_WIN_LLVM_IMAGE
     variables:
-        ARGS: -c -z -r -x -a x86_64 -i nope -g l
-        ARTIFACT: vlc-4.0.0-dev-win64.7z
+        PACKAGE: libvlc-windows-x86_64
         BUILD_FOLDER: win64
 
 libvlc-uwp-x64:
     extends: .libvlc-win-common
-    image:
-        name: $VLC_UWP_LLVM_IMAGE
     variables:
-        ARGS: -w -u -c -z -r -x -a x86_64 -i nope -S 0x0A000007 -g l
-        ARTIFACT: vlc-4.0.0-dev-win64.7z
+        PACKAGE: libvlc-uwp-x86_64
         BUILD_FOLDER: win64-uwp
 
 libvlc-uwp-arm64:
     extends: .libvlc-win-common
-    image:
-        name: $VLC_UWP_LLVM_IMAGE
     variables:
-        ARGS: -w -u -c -z -r -x -a aarch64 -i nope -S 0x0A000007 -g l
-        ARTIFACT: vlc-4.0.0-dev-win64.7z
+        PACKAGE: libvlc-uwp-aarch64
         BUILD_FOLDER: winarm64-uwp
-
-# libvlc-uwp-x64-debug:
-#     extends: .libvlc-win-common
-#     image:
-#         name: $VLC_UWP_LLVM_IMAGE
-#     variables:
-#         ARGS: -w -u -c -z -d -x -a x86_64 -S 0x0A000007 -g l
-#         ARTIFACT: vlc-4.0.0-dev-win64-debug.7z
-#         BUILD_FOLDER: win64-uwp
 
 unity-plugin-windows:
     extends: .unity-win-common
@@ -548,15 +530,7 @@ unity-plugin-ios-aarch64-trial:
         TRIPLET: x86_64-linux-gnu
 
 .libvlc-linux-common:
-    extends: .base-template
-    stage: build-libvlc
-    image:
-        name: $VLC_DEBIAN_IMAGE
-    script:
-        - bash build-libvlc.sh ${TRIPLET} ${ARCH}
-        # Organize artifacts
-        - mkdir -p linux-${ARCH}
-        - mv vlc/linux-install linux-${ARCH}/
+    extends: .libvlc-builds
     artifacts:
         paths:
             - linux-${ARCH}/linux-install/include/
@@ -567,7 +541,9 @@ unity-plugin-ios-aarch64-trial:
 
 libvlc-linux-x86_64:
     extends: .libvlc-linux-common
-    variables: *variables-linux-x86_64
+    variables:
+        <<: *variables-linux-x86_64
+        PACKAGE: libvlc-linux-x86_64
 
 .unity-plugin-linux-common:
     extends: .base-template

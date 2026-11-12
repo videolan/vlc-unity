@@ -12,6 +12,8 @@
 /embedded-linux-test/
 /libvlc-linux-*/
 /linux-x86_64/
+/vlc-android/
+/vlc-win*/
 /vlc-unity-linux-*/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
